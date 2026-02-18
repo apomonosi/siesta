@@ -1,0 +1,85 @@
+The main input file, typically with extension \program{.fdf},\index{input file}
+contains the physical data of the system and the parameters of
+the simulation to be performed.
+This file is written in a special format called FDF, developed by
+Alberto Garc\'{\i}a and Jos\'e M. Soler. This format allows data to be
+given in any order, or to be omitted in favor of default values.
+Refer to documentation of \program{libfdf} for details.
+Here we offer a glimpse of it through the following rules:
+
+\begin{itemize}
+
+  \item[$\bullet$] The \fdflib\ syntax is a ``data label'' followed by
+  its value.  Values that are not specified in the datafile are
+  assigned a default value.
+
+  \item[$\bullet$] \fdflib\ labels are case insensitive, and
+  characters - \_ .  in a data label are ignored. Thus,
+  \fdf*{LatticeConstant} and \fdf*{lattice\_constant} represent the
+  same label.
+
+\item[$\bullet$] All text following the \# character is taken as comment.
+
+\item[$\bullet$] Logical values can be specified as T, true, .true.,
+yes, F, false, .false., no. Blank is also equivalent to true.
+
+\item[$\bullet$] Character strings should \textbf{not} be in apostrophes.
+
+\item[$\bullet$] Real values which represent a physical magnitude must be
+followed by its units. Look at function fdf\_convfac in
+file $\sim$/siesta/Src/fdf/fdf.f for the units that are currently supported.
+It is important to include a decimal point in a real number to distinguish
+it from an integer, in order to prevent ambiguities when mixing the types
+on the same input line.
+
+\item[$\bullet$] Complex data structures are called blocks and are
+placed between ``\%block label''\index{block@\%block} and a
+``\%endblock label'' (without the quotes).
+
+\item[$\bullet$] You may ``include'' other \fdflib\ files and redirect
+the search for a particular data label to another file.  If a data
+label appears more than once, its first appearance is used.
+
+\item[$\bullet$] If the same label is specified twice, the first one
+takes precedence.
+
+\item[$\bullet$] If a label is misspelled it will not be recognized
+(there is no internal list of ``accepted'' tags in the program). You
+can check the actual value used by \siesta\ by looking for the label
+in the output \file{fdf.log} file.
+
+\end{itemize}
+
+\noindent
+These are some examples:
+
+\begin{verbatim}
+           SystemName      Water molecule  # This is a comment
+           SystemLabel     h2o
+           Spin polarized
+           SaveRho
+           NumberOfAtoms         64
+           LatticeConstant       5.42 Ang
+           %block LatticeVectors
+                    1.000  0.000  0.000
+                    0.000  1.000  0.000
+                    0.000  0.000  1.000
+           %endblock LatticeVectors
+           KgridCutoff < BZ_sampling.fdf
+
+           # Reading the coordinates from a file
+           %block AtomicCoordinatesAndAtomicSpecies < coordinates.data
+
+           # Even reading more FDF information from somewhere else
+           %include mydefaults.fdf
+\end{verbatim}
+
+The file \file{fdf-XXXXX.log} contains all the parameters used by
+\siesta\ in a given run, both those specified in the input fdf file
+and those taken by default. They are written in fdf format, so that
+you may reuse them as input directly. Input data blocks are copied to
+the \file{fdf.log} file only if you specify the \textit{dump} option
+for them.  In practice, the name of a FDF log file contains a sequence
+of digits (e.g., \shell{fdf-12345.log}) chosen on-the-fly in
+order to have a reduced chance of overwriting other FDF log files that
+may be present in the same directory.

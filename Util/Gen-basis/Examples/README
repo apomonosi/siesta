@@ -1,0 +1,8 @@
+To run the examples, be sure to define
+
+   export SIESTA_PS_PATH=/path/to/pseudos
+
+(typically the Tests/Pseudos directory of the Siesta distribution)
+
+or to copy appropriate pseudopotential files in the working directory.
+

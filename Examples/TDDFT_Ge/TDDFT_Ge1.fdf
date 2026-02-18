@@ -1,0 +1,47 @@
+SystemName         Germanium
+SystemType         Bulk
+SystemLabel        Ge
+
+NumberOfAtoms      9
+NumberOfSpecies    2
+%block ChemicalSpeciesLabel
+ 1  32  Ge
+ 2   1  H  
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize DZP
+
+LatticeConstant   5.590  Ang
+%block LatticeVectors
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+%endblock LatticeVectors
+
+%block kgrid_Monkhorst_Pack
+1 0 0 0.0
+0 1 0 0.0
+0 0 2 0.0
+%endblock kgrid_Monkhorst_Pack
+
+xc.functional         LDA
+xc.authors            CA
+MeshCutoff            100.0  Ry
+TDED.WF.Initialize    T 
+
+MaxSCFIterations       100
+SCF.Mixer.Weight       0.2
+SCF.Mixer.History      3
+
+AtomicCoordinatesFormat Bohr
+%block AtomicCoordinatesAndAtomicSpecies
+ 0.000000000       0.000000000       0.000000000    1
+ 2.640893312       2.640893312       2.640893312    1
+ 0.000000000       5.281786623       5.281786623    1
+ 5.281786623       0.000000000       5.281786623    1
+ 5.281786623       5.281786623       0.000000000    1
+ 2.640893312       7.922679935       7.922679935    1
+ 7.922679935       2.640893312       7.922679935    1
+ 7.922679935       7.922679935       2.640893312    1
+ 0.000000000       1.320400000       0.000000000    2
+%endblock AtomicCoordinatesAndAtomicSpecies

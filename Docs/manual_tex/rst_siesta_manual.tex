@@ -1,0 +1,128 @@
+% Siesta user manual skeleton without the preambles and bibliography. This substitutes siesta.tex.
+
+\input{tex/helpers/init.tex}
+\input{./sphinx_commands.tex}
+
+\begin{document}
+
+\section*{Contributors to \siesta}
+\addcontentsline{toc}{section}{Contributors to \texorpdfstring{\siesta}{Siesta}}
+
+\input{tex/sections/Contributors.tex}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\input{tex/sections/Introduction.tex}
+
+\section{Compilation}
+\label{sec:compilation}
+
+\input{tex/sections/Compilation.tex}
+
+\section{Execution of the program}
+
+\input{tex/sections/Execution.tex}
+
+\section{Flexible data Format (FDF)}
+\index{FDF}
+
+\input{tex/sections/FDF.tex}
+
+\section{Program output}
+
+\input{tex/sections/Output.tex}
+
+\section{Program options}
+
+\input{tex/sections/Options.tex}
+
+\vspace{5pt}
+\section{Moving atoms: Structural relaxation, phonons, and molecular dynamics}
+
+\input{tex/sections/Relaxation_phonons_md.tex}
+
+\section{DFT+U}
+
+\input{tex/sections/DFT+U.tex}
+
+\section{RT-TDDFT}\index{RT-TDDFT}\index{TDDFT}\label{sec:tddft}
+
+\input{tex/sections/RT-TDDFT.tex}
+
+\section{External control of \texorpdfstring{\siesta}{SIESTA}}
+
+\input{tex/sections/External_control.tex}
+
+\section{TranSIESTA}
+\label{sec:transiesta}
+
+\input{tex/sections/TranSIESTA.tex}
+
+\section{Analysis tools}
+
+\input{tex/sections/Analysis_tools.tex}
+
+\section{Scripting}
+
+\input{tex/sections/Scripting.tex}
+
+\section{Problem handling}
+
+\input{tex/sections/Problem_handling.tex}
+
+\section{Reporting bugs}
+\index{bug reports}
+
+\input{tex/sections/Reporting_bugs.tex}
+
+\section{Acknowledgements}
+
+\input{tex/sections/Acknowledgements.tex}
+
+\section{APPENDIX: Physical unit names recognized by FDF}
+\label{sec:fdf-units}
+
+\input{tex/sections/Fdf_units.tex}
+
+\newpage
+\section{APPENDIX: XML Output}
+\index{XML}
+\index{CML}
+
+\input{tex/sections/XML_output.tex}
+
+\newpage
+\section{APPENDIX: Selection of precision for storage}
+\index{Precision selection}
+
+\input{tex/sections/Precision_selection.tex}
+
+\newpage
+\section{APPENDIX: Data structures and reference counting}
+\index{Reference counting}
+\index{Data Structures}
+
+\input{tex/sections/Data_structures.tex}
+
+
+\clearpage
+\addcontentsline{toc}{section}{Bibliography}
+\bibliographystyle{plainnat}
+\bibliography{siesta}
+
+
+\end{document}
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% ispell-local-dictionary: "american"
+%%% fill-column: 70
+%%% TeX-master: t
+%%% End:

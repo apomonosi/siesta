@@ -1,0 +1,30 @@
+Starting in the summer of 2015, some changes were made to the behavior
+of the program regarding default dynamics options and choice of
+coordinates to work with during post-processing of the electronic
+structure. The changes are:
+
+\begin{itemize}
+  \item %
+  The default dynamics option is ``CG'' instead of ``Verlet''.
+
+  \item%
+  The coordinates, if moved by the dynamics routines, are reset to
+  their values at the previous step for the analysis of the electronic
+  structure (band structure calculations, DOS, LDOS, etc).
+
+  \item%
+  Some output files reflect the values of the ``un-moved''
+  coordinates.
+
+  \item%
+  The default convergence criteria is now \emph{both} density and
+  Hamiltonian convergence, see \fdf{SCF.DM!Converge} and
+  \fdf{SCF.H!Converge}.
+
+\end{itemize}
+
+To recover the previous behavior, the user can turn on the
+compatibility switch \fdf*{Compat.PreV4Dynamics}, which is off by
+default.
+
+Note that complete compatibility cannot be perfectly guaranteed.

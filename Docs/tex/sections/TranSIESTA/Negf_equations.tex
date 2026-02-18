@@ -1,0 +1,48 @@
+The options available for \tsiesta\ will impact how the calculation
+is performed. It is vital that the users carefully read this section
+and the options that refer to these.
+
+The NEGF equation are primarily concerning the Green function:
+\begin{equation}
+  \label{eq:negf:green}
+  \G(E) = \big[ (E+i\eta)\SO - \Ham - \sum_\elec \SE_\elec(E).
+\end{equation}
+The electrode self-energy is calculated from the bulk electrode
+calculation
+\begin{equation}
+  \SE_\elec(E) \leftarrow \big\{\Ham_\elec, \SO_\elec\big\}.
+\end{equation}
+
+\tsiesta\ has options to discern which Hamiltonian elements can be
+used in which parts of the calculation.
+Default is that the electrode matrices ($\Ham_\elec, \SO_\elec$) are
+used whenever the electrode enters a matrix. Lets show a partitioning
+of the Green function for a particular electrode ($z=E+i\eta$)
+\begin{equation}
+  \label{eq:negf:green-elec}
+  \G(z) =
+  \begin{bmatrix}
+    \mathbf M_{\elec,\elec} & \mathbf M_{\elec, D} & \dots
+    \\
+    \mathbf M_{D,\elec} & \mathbf M_{D, D} &
+    \\
+    \vdots && \ddots
+    \\
+  \end{bmatrix}^{-1}=
+  \begin{bmatrix}
+    (z+\mu_elec)\SO_\elec - \Ham_\elec - \SE_\elec(E) & z\SO_{\elec,D} - \Ham_{\elec,D} & \dots
+    \\
+    z\SO_{D,\elec} - \Ham_{D,\elec} & z\SO_D - \Ham_D &
+    \\
+    \vdots & & \ddots
+    \\
+  \end{bmatrix}^{-1}.
+\end{equation}
+The following options alter the above equation slightly:
+\begin{itemize}
+  \item \fdf{TS!Elec.<>!Bulk}
+  \item \fdf{TS!Elec.<>!Eta}
+  \item \fdf{TS!Elec.<>!chemical-potential}
+  \item \fdf{TS!Elec.<>!V-fraction} (experts only!)
+  \item \fdf{TS!Elec.<>!delta-Ef} (experts only!)
+\end{itemize}

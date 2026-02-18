@@ -1,0 +1,83 @@
+The user can optionally request that specific wavefunctions are
+written to file. These wavefunctions are re-computed after the
+geometry loop (if any) finishes, using the last (presumably converged)
+density matrix produced during the last self-consistent field loop
+(after a final mixing). They are written to the
+\sysfile{selected.WFSX} file.
+
+Note that the complete set of wavefunctions obtained during the last
+iteration of the SCF loop will be written to SystemLabel.fullBZ.WFSX
+if the \fdf{COOP.Write} option is in effect.
+
+Note that the complete set of wavefunctions obtained during the last
+iteration of the SCF loop will be written to a NetCDF file
+\file{WFS.nc} if the \fdf{Diag!WFS.Cache} option is set to anything other
+than \textbf{none}.
+
+\begin{fdfentry}{WaveFuncKPointsScale}[string]<pi/a>
+
+    Specifies the scale of the $k$ vectors given in
+    \fdf{WaveFuncKPoints} below.  The options are:
+    \begin{fdfoptions}
+      \option[pi/a]%
+      k-vector coordinates are given in Cartesian coordinates, in units
+      of $\pi/a$, where $a$ is the lattice constant
+
+      \option[ReciprocalLatticeVectors]%
+      $k$ vectors are given in reciprocal-lattice-vector coordinates
+
+    \end{fdfoptions}
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{WaveFuncKPoints}[block]
+
+    Specifies the $k$-points at which the electronic wavefunction
+    coefficients are written.  An example for an FCC lattice is:
+    \begin{fdfexample}
+       %block WaveFuncKPoints
+       0.000  0.000  0.000  from 1 to 10   # Gamma wavefuncs 1 to 10
+       2.000  0.000  0.000  1 3 5          # X wavefuncs 1,3 and 5
+       1.500  1.500  1.500                 # K wavefuncs, all
+       %endblock WaveFuncKPoints
+    \end{fdfexample}
+    The index of a wavefunction is defined by its energy, so that the
+    first one has lowest energy.
+
+    The user can also narrow the energy-range used with the
+    \fdf{WFS.Energy.Min} and \fdf{WFS.Energy.Max} options (both take
+    an energy (with units) as extra argument -- see
+    section~\ref{sec:coop}). Care should be taken to make sure that the
+    actual values of the options make sense.
+
+    The output of the wavefunctions in described in Section
+    \ref{sec:wf-output-user}.
+
+  \end{fdfentry}
+
+
+  \begin{fdflogicalF}{WriteWaveFunctions}
+    \index{output!wave functions}
+
+    If \fdftrue, it writes to the output file a list of the
+    wavefunctions actually written to the \sysfile{selected.WFSX} file,
+    which is always produced.
+
+  \end{fdflogicalF}
+
+  The unformatted WFSX file contains the information of the
+  k-points for which wavefunctions coefficients are written, and the
+  energies and coefficients of each wavefunction which was specified in
+  the input file (see \fdf{WaveFuncKPoints} descriptor above). It also contains information
+  on the atomic species and the orbitals for postprocessing purposes.
+
+  \textbf{NOTE:} The \sysfile{WFSX} file is in a more compact
+  form than the old WFS, and the wavefunctions are output in single
+  precision. The \program{Util/WFS/wfsx2wfs} program can be used to
+  convert to the old format.
+
+  \noindent
+  The \program{readwf}\index{readwf} and
+  \program{readwfsx}\index{readwfsx} postprocessing utilities programs
+  (found in the \shell{Util/WFS} directory) read the \sysfile{WFS} or
+  \sysfile{WFSX} files, respectively, and generate a readable file.

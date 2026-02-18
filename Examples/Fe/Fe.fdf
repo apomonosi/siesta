@@ -1,0 +1,51 @@
+SystemName       bcc Fe ferro GGA
+SystemLabel      Fe
+
+NumberOfSpecies        1       
+NumberOfAtoms          1      
+%block ChemicalSpeciesLabel
+  1  26  Fe
+%endblock ChemicalSpeciesLabel
+
+PAO.EnergyShift       50 meV
+%block PAO.Basis
+  Fe  2
+  0  2  P
+  6.0 0.0
+  2  2
+  0.0 0.0
+%endblock PAO.Basis
+
+LatticeConstant       2.87 Ang  
+%block LatticeVectors          
+ 0.50000   0.500000  0.500000
+ 0.50000  -0.500000  0.500000 
+ 0.50000   0.500000 -0.500000
+%endblock LatticeVectors
+
+KgridCutoff          15. Ang
+%block BandLines
+  1  0.00000   0.000000  0.000000  \Gamma
+ 40  2.00000   0.000000  0.000000  H
+ 28  1.00000   1.000000  0.000000  N
+ 28  0.00000   0.000000  0.000000  \Gamma
+ 34  1.00000   1.000000  1.000000  P
+%endblock BandLines
+
+xc.functional  GGA
+xc.authors     PBE
+Spin           Polarized
+MeshCutoff     150. Ry
+
+DM.UseSaveDM        T
+MaxSCFIterations    40
+SCF.DM.Tolerance    1.d-3
+SCF.Mixer.Weight    0.1
+SCF.Mixer.History   3
+
+AtomicCoordinatesFormat     Fractional    
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000000000000    0.000000000000    0.000000000000  1 
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+WriteMullikenPop       1

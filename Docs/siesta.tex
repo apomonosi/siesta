@@ -1,0 +1,360 @@
+% Manual for the SIESTA program
+%
+% To generate the printed version:
+%
+% pdflatex siesta
+% splitidx siesta.idx (optional if you want a split index)
+% makeindex siesta    (Optional if you have a current siesta.ind)
+% pdflatex siesta
+%
+%
+
+% NOTE:
+% If you want to reference a fdf flag, use:
+%  \fdf{#1}
+% This command will automatically create the necessary link
+% to the created entry of the flag. Thus every flag will
+% eventually become a link to the correct.
+% If you want to create an fdf flag which is not referenced
+% For instance a sub-block segment, use \fdf*{#1}.
+% The \fdf command will automatically convert ! to . but retains
+% the ! for indexing of the flag. Thus \fdf{FDF!Flag} will print
+% as FDF.Flag, but indexed as \index{FDF!Flag}. If you reference
+% a flag you must use the exclamation mark as used in the fdfentry
+% environment.
+% If you want to reference a fdf flag with an argument do it like
+% this:
+%   \fdf{Label:Argument}
+% in case the index exists for this.
+%
+% Two very used fdf-flags are \fdftrue and \fdffalse which
+% are short-hands for \fdf*{true} and \fdf*{false}.
+%
+% To document a new flag, do this:
+%
+%  \begin{fdfentry}{FDF.Flag}
+%
+%    Description
+%
+%  \end{fdfentry}
+%
+% Remark that it is not necessary to create any index commands
+% as that is handled by the fdfentry environment.
+% Optionally one may specify the type of variable it corresponds
+% to:
+%
+%  \begin{fdfentry}{FDF.Flag}[integer]<0>
+%
+%    Description
+%
+%  \end{fdfentry}
+%
+% where [#1] may be any of:
+%    block, integer, real, energy, length, logical
+% and <#1> is the default value of the flag.
+%
+% There are two shorthands for the logical input with T/F default:
+%
+%  \begin{fdflogicalT}{FlagDefaultTrue}
+%
+%    This flag is default \fdftrue.
+%
+%  \end{fdflogicalT}
+%  \begin{fdflogicalF}{FlagDefaultFalse}
+%
+%    This flag is default \fdffalse.
+%
+%  \end{fdflogicalF}
+%
+% Sometimes it is useful to create an index value without
+% having to create the entry (say if a flag has been
+% superseeded by a new flag), in this case you should do:
+%
+%  \begin{fdfentry}{FDF.Flag}[integer]<0>
+%    \fdfindex*{Old.Flag}
+%
+%    Description
+%
+%  \end{fdfentry}
+%
+% Additionally one may create dependency flags to make it
+% easy to see dependencies between flags
+%  \begin{fdfentry}{FDF.Flag}[integer]<0>
+%    \fdfdepend{FDF.First, FDF.Second}
+%
+%    Description
+%
+%  \end{fdfentry}
+% will create additional information in the PDF with
+% proper dependencies and hyperlinks to the fdf-flags.
+% To document a flag has replaced another flag, use
+%  \fdfdeprecates{...} in the same manner as \fdfdepend{...}.
+%
+%
+% !!!IMPORTANT!!!
+% Do NOT use \bf, \it, \tt, \rm, \em etc!
+%
+% If you want to emphasize a word in a sentence, prefer to
+% use \emph{#1}.
+% If you want bold, use \textbf{#1}
+% If you want italics, use \textit{#1}.
+
+% In addition to the above specifications one may add developer
+% notes by encapsulating sections in:
+%  \ifdeveloper
+%    content only shown when compiling the developer version
+%  \fi
+% This may be handy for doing documentation in-line together
+% with the regular documentation.
+
+% Include settings appropriate for siesta
+\input{tex/helpers/init.tex}
+
+% Local command for the software version for printing
+% \unskip helps when space/newline chars are present in the
+% SIESTA.version file.
+\providecommand\softwareversion{\input{../SIESTA.version}\unskip}
+
+% Title (note that \input above will fail in the title, we however
+% don't care since it is only meaningful for final publications where
+% direct text is used.)
+\title{SIESTA manual \softwareversion}
+
+% Set the date
+\date{\today}
+
+% Specify Authors
+\author{%
+    Emilio Artacho, %
+    Jose Maria Cela, %
+    Julian D. Gale, %
+    Alberto Garcia, %
+    Javier Junquera, %
+    Richard M. Martin, %
+    Pablo Ordejon, %
+    Daniel Sanchez-Portal, %
+    Jose M. Soler, %
+    Nick R. Papior%
+}
+
+% Ensure the information is written in the PDF (see tex/setup.tex)
+\setpdfmetadata
+
+\begin{document}
+
+% TITLE PAGE --------------------------------------------------------------
+
+\begin{titlepage}
+
+\begin{center}
+
+\vspace{1cm}
+\ifdeveloper
+ {\Huge \textsc{D e v e l o p e r' s \, \, G u i d e}}
+\else
+ {\Huge \textsc{U s e r' s \, \, G u i d e}}
+\fi
+
+\vspace{1cm}
+\hrulefill
+\vspace{1cm}
+
+{\Huge \textbf{S I E S T A \, \, \softwareversion}\par}
+
+\vspace{1cm}
+\hrulefill
+\vspace{0.5cm}
+
+{\Large \today}
+
+\vspace{1.5cm}
+{\Large \url{https://siesta-project.org}}
+
+\vspace{2.5cm}
+\siesta\ Steering Committee:
+\vspace{1.0cm}
+
+\begin{tabular}{ll}
+
+  Emilio Artacho &
+  \textit{CIC-Nanogune and University of Cambridge} \\
+
+  Jos\'e Mar\'{\i}a Cela &
+  \textit{Barcelona Supercomputing Center} \\
+
+  Julian D. Gale &
+  \textit{Curtin University of Technology, Perth} \\
+
+  Alberto Garc\'{\i}a &
+  \textit{Institut de Ci\`encia de Materials, CSIC, Barcelona} \\
+
+  Javier Junquera &
+  \textit{Universidad de Cantabria, Santander} \\
+
+  Richard M. Martin &
+  \textit{University of Illinois at Urbana-Champaign} \\
+
+  Pablo Ordej\'on &
+  \textit{Centre de Investigaci\'o en Nanoci\`encia} \\
+  &
+  \textit{  i Nanotecnologia, (CSIC-ICN), Barcelona} \\
+
+  Nick R\"ubner Papior &
+  \textit{Technical University of Denmark} \\
+
+  Daniel S\'anchez-Portal &
+  \textit{Unidad de F\'{\i}sica de Materiales,} \\
+  &
+  \textit{Centro Mixto CSIC-UPV/EHU, San Sebasti\'an} \\
+
+  Jos\'e M. Soler &
+  \textit{Universidad Aut\'onoma de Madrid} \\
+
+\end{tabular}
+
+\vspace{0.5cm}
+
+\siesta\ is Copyright \copyright\ 1996-\the\year{} by The Siesta Group
+
+\end{center}
+
+\end{titlepage}
+
+% END TITLE PAGE --------------------------------------------------------------
+
+\newpage
+
+\section*{Contributors to \siesta}
+\addcontentsline{toc}{section}{Contributors to \texorpdfstring{\siesta}{Siesta}}
+
+\input{tex/sections/Contributors.tex}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{INTRODUCTION}
+
+\input{tex/sections/Introduction.tex}
+
+\section{COMPILATION}
+\label{sec:compilation}
+
+\input{tex/sections/Compilation.tex}
+
+\section{EXECUTION OF THE PROGRAM}
+
+\input{tex/sections/Execution.tex}
+
+\section{THE FLEXIBLE DATA FORMAT (FDF)}
+\index{FDF}
+
+\input{tex/sections/FDF.tex}
+
+\section{PROGRAM OUTPUT}
+
+\input{tex/sections/Output.tex}
+
+\section{DETAILED DESCRIPTION OF PROGRAM OPTIONS}
+
+\input{tex/sections/Options.tex}
+
+\vspace{5pt}
+\section{STRUCTURAL RELAXATION, PHONONS, AND MOLECULAR DYNAMICS}
+
+\input{tex/sections/Relaxation_phonons_md.tex}
+
+\section{DFT+U}
+
+\input{tex/sections/DFT+U.tex}
+
+\section{RT-TDDFT}\index{RT-TDDFT}\index{TDDFT}\label{sec:tddft}
+
+\input{tex/sections/RT-TDDFT.tex}
+
+\section{External control of \texorpdfstring{\siesta}{SIESTA}}
+
+\input{tex/sections/External_control.tex}
+
+\section{TRANSIESTA}
+\label{sec:transiesta}
+
+\input{tex/sections/TranSIESTA.tex}
+
+\section{QM/MM with SIESTA}
+\label{sec:qmmm}
+
+\input{tex/sections/QMMM.tex}
+
+\section{ANALYSIS TOOLS}
+
+\input{tex/sections/Analysis_tools.tex}
+
+\section{SCRIPTING}
+
+\input{tex/sections/Scripting.tex}
+
+\section{PROBLEM HANDLING}
+
+\input{tex/sections/Problem_handling.tex}
+
+\section{REPORTING BUGS}
+\index{bug reports}
+
+\input{tex/sections/Reporting_bugs.tex}
+
+\section{ACKNOWLEDGMENTS}
+
+\input{tex/sections/Acknowledgements.tex}
+
+\section{APPENDIX: Physical unit names recognized by FDF}
+\label{sec:fdf-units}
+
+\input{tex/sections/Fdf_units.tex}
+
+\newpage
+\section{APPENDIX: XML Output}
+\index{XML}
+\index{CML}
+
+\input{tex/sections/XML_output.tex}
+
+\newpage
+\section{APPENDIX: Selection of precision for storage}
+\index{Precision selection}
+
+\input{tex/sections/Precision_selection.tex}
+
+\newpage
+\section{APPENDIX: Data structures and reference counting}
+\index{Reference counting}
+\index{Data Structures}
+
+\input{tex/sections/Data_structures.tex}
+
+
+\clearpage
+\addcontentsline{toc}{section}{Bibliography}
+\bibliographystyle{plainnat}
+\bibliography{siesta}
+
+% Indices
+\clearpage
+\addcontentsline{toc}{section}{Index}
+\printindex
+
+\printindex[sfiles]
+\printindex[sfdf]
+
+
+\end{document}
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% ispell-local-dictionary: "american"
+%%% fill-column: 70
+%%% TeX-master: t
+%%% End:

@@ -1,0 +1,16 @@
+To implement some of the new features (e.g. charge mixing
+and DM extrapolation), \siesta\ uses new flexible data structures. These are defined and
+handled through a combination and extension of ideas already in the
+Fortran community:
+\begin{itemize}
+\item Simple templating using the ``include file'' mechanism, as for example in
+  the FLIBS project led by Arjen Markus
+  (\url{http://flibs.sourceforge.net}).
+\item The classic reference-counting mechanism to avoid memory leaks, as
+  implemented in the PyF95++ project
+  (\url{http://blockit.sourceforge.net}).
+\end{itemize}
+
+Reference counting makes it much simpler to store data in container
+objects. For example, a circular stack is used in the charge-mixing
+module. A number of future enhancements depend on this paradigm.

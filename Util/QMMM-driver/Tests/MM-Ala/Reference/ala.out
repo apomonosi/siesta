@@ -1,0 +1,222 @@
+QMMM-driver Version: QMMM_DRIVER_VERSION
+Siesta Library Version: SIESTA_VERSION
+Architecture  : SIESTA_ARCH
+Compiler flags: FFLAGS
+SERIAL version
+
+siesta-qmmm: Running in serial mode
+>> Start of run:  13-JUN-2024  11:36:04
+
+                           ****************************  
+                           *  WELCOME TO SIESTA-QMMM  *  
+                           ****************************  
+
+qmmm_reinit: Reading from standard input
+************************** Dump of input data file.****************************
+#!
+SystemName       alanine amide
+SystemLabel      ala
+WriteForces      T
+# Global system
+NetCharge        0.0D0
+CoulombType      ewald
+LatticeConstant 1.0 Ang
+%block LatticeVectors
+ 51.039672   0.0       0.0
+  0.0       53.470335  0.0
+  0.0        0.0      48.996778
+%endblock LatticeVectors
+# QMMM and MM Interaction parameters
+MM.Cutoff       8.0 Ang
+# MM-Region  relevant parameters.
+NumberOfMMAtoms 22
+%block MM.Atoms
+ATOM      1  H1  ACE X   1      2.000   1.000  -0.000  0.00  0.00
+ATOM      2  CH3 ACE X   1      2.000   2.090   0.000  0.00  0.00
+ATOM      3  H2  ACE X   1      1.486   2.454   0.890  0.00  0.00
+ATOM      4  H3  ACE X   1      1.486   2.454  -0.890  0.00  0.00
+ATOM      5  C   ACE X   1      3.427   2.641  -0.000  0.00  0.00
+ATOM      6  O   ACE X   1      4.391   1.877  -0.000  0.00  0.00
+ATOM      7  N   ALA X   2      3.555   3.970  -0.000  0.00  0.00
+ATOM      8  H   ALA X   2      2.733   4.556  -0.000  0.00  0.00
+ATOM      9  CA  ALA X   2      4.853   4.614  -0.000  0.00  0.00
+ATOM     10  HA  ALA X   2      5.408   4.316   0.890  0.00  0.00
+ATOM     11  CB  ALA X   2      5.661   4.221  -1.232  0.00  0.00
+ATOM     12  HB1 ALA X   2      5.123   4.521  -2.131  0.00  0.00
+ATOM     13  HB2 ALA X   2      6.630   4.719  -1.206  0.00  0.00
+ATOM     14  HB3 ALA X   2      5.809   3.141  -1.241  0.00  0.00
+ATOM     15  C   ALA X   2      4.713   6.129   0.000  0.00  0.00
+ATOM     16  O   ALA X   2      3.601   6.653   0.000  0.00  0.00
+ATOM     17  N   NME X   3      5.846   6.835   0.000  0.00  0.00
+ATOM     18  H   NME X   3      6.737   6.359  -0.000  0.00  0.00
+ATOM     19  C   NME X   3      5.846   8.284   0.000  0.00  0.00
+ATOM     20  H1  NME X   3      4.819   8.648   0.000  0.00  0.00
+ATOM     21  H2  NME X   3      6.360   8.648   0.890  0.00  0.00
+ATOM     22  H3  NME X   3      6.360   8.648  -0.890  0.00  0.00
+%endblock MM.Atoms
+************************** End of input data file.*****************************
+
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Name: alanine amide
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Label: ala                                                                                                                                                                                                                             
+qmmm_reinit: -----------------------------------------------------------------------
+
+siesta-qmmm: Running with no QM atoms.
+mm_assign: SolventConnectivity block not found.
+read: Write coordinates each           =     1  steps
+read: MM x QM steps                    =     1
+read: *************************************************************************
+
+ --- Initializing libsiesta data structures --- 
+
+
+* Running in serial mode.
+
+siestaqmmm: Atomic coordinates (Bohr) and species
+siestaqmmm:      3.77945   1.88973  -0.00000  1        1
+siestaqmmm:      3.77945   3.94953   0.00000  1        2
+siestaqmmm:      2.80813   4.63739   1.68186  1        3
+siestaqmmm:      2.80813   4.63739  90.90864  1        4
+siestaqmmm:      6.47609   4.99077  -0.00000  1        5
+siestaqmmm:      8.29779   3.54702  -0.00000  1        6
+siestaqmmm:      6.71798   7.50221  -0.00000  1        7
+siestaqmmm:      5.16462   8.60959  -0.00000  1        8
+siestaqmmm:      9.17084   8.71920  -0.00000  1        9
+siestaqmmm:     10.21964   8.15606   1.68186  1       10
+siestaqmmm:     10.69774   7.97653  90.26235  1       11
+siestaqmmm:      9.68107   8.54345  88.56349  1       12
+siestaqmmm:     12.52888   8.91762  90.31148  1       13
+siestaqmmm:     10.97742   5.93563  90.24534  1       14
+siestaqmmm:      8.90628  11.58213   0.00000  1       15
+siestaqmmm:      6.80490  12.57235   0.00000  1       16
+siestaqmmm:     11.04734  12.91628   0.00000  1       17
+siestaqmmm:     12.73108  12.01677  -0.00000  1       18
+siestaqmmm:     11.04734  15.65449   0.00000  1       19
+siestaqmmm:      9.10659  16.34235   0.00000  1       20
+siestaqmmm:     12.01866  16.34235   1.68186  1       21
+siestaqmmm:     12.01866  16.34235  90.90864  1       22
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Long output                                 =   F
+redata: Number of Atomic Species                    =        1
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken Pop.                         = NO
+redata: Matel table size (NRTAB)                    =     1024
+redata: Mesh Cutoff                                 =   300.0000 Ry
+redata: Net charge of the system                    =     0.0000 |e|
+redata: Min. number of SCF Iter                     =        0
+redata: Max. number of SCF Iter                     =     1000
+redata: SCF convergence failure will abort job
+redata: SCF mix quantity                            = Hamiltonian
+redata: Mix DM or H after convergence               =   F
+redata: Recompute H after scf cycle                 =   F
+redata: Mix DM in first SCF step                    =   T
+redata: Write Pulay info on disk                    =   F
+redata: New DM Occupancy tolerance                  = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks                  =     0.5000
+redata: Require Harris convergence for SCF          =   F
+redata: Harris energy tolerance for SCF             =     0.000100 eV
+redata: Require DM convergence for SCF              =   T
+redata: DM tolerance for SCF                        =     0.000100
+redata: Require EDM convergence for SCF             =   F
+redata: EDM tolerance for SCF                       =     0.001000 eV
+redata: Require H convergence for SCF               =   T
+redata: Hamiltonian tolerance for SCF               =     0.001000 eV
+redata: Require (free) Energy convergence for SCF   =   F
+redata: (free) Energy tolerance for SCF             =     0.000100 eV
+redata: Using Saved Data (generic)                  =   F
+redata: Use continuation files for DM               =   T
+redata: Neglect nonoverlap interactions             =   F
+redata: Method of Calculation                       = Diagonalization
+redata: Electronic Temperature                      =   299.9863 K
+redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Number of TDED substeps                     =        3
+redata: Dynamics option                             = Single-point calculation
+redata: ***********************************************************************
+Total number of electrons:     0.000000
+ 
+Number of different MM atom types found:   8
+Type   1 (species:   1) - HC  
+Type   2 (species:   2) - CT  
+Type   3 (species:   3) - C   
+Type   4 (species:   4) - O   
+Type   5 (species:   5) - N   
+Type   6 (species:   6) - H   
+Type   7 (species:   7) - CX  
+Type   8 (species:   8) - H1  
+ 
+
+
+       ********************************
+         siesta-qmmm:  Begin Step=        0
+       ********************************
+
+
+siesta-qmmm: AMBER MM Region Energy Components: /eV
+Bonds             =      0.0008800
+Angles            =      0.0159093
+Dihedrals         =      0.4225037
+Improper Torsions =      0.0000000
+Lennard-Jones     =      0.1223217
+Lennard-Jones 1-4 =      0.2138968
+Non-bonded elec.  =     -1.3548618
+Non-bonded e. 1-4 =      0.0019899
+
+
+siesta-qmmm: Energy Decomposition (eV):
+Esolv:           -0.577360
+Etot:           -0.577360
+
+siesta-qmmm: Total Free (Unconstrained) Atoms:     22
+
+qmmm: Atomic forces (eV/Ang):
+     1    0.178933    0.032978   -0.000715
+     2    0.259512    0.370812    0.002378
+     3    0.010193   -0.049405   -0.051373
+     4    0.011757   -0.048588    0.049624
+     5   -0.417722   -0.251063    0.257564
+     6   -0.722484   -0.357762    0.401910
+     7   -0.088172   -0.817498   -0.436470
+     8    0.037277    0.061011   -0.007651
+     9    0.458752    0.279233    0.222540
+    10   -0.027061   -0.009702    0.035447
+    11   -0.012125   -0.123513   -0.369508
+    12    0.014913   -0.026939   -0.070011
+    13    0.090073   -0.203415   -0.134116
+    14    0.420059    0.274854   -0.345288
+    15   -0.083569    0.057300    0.277969
+    16   -0.215517   -0.057684   -0.018628
+    17   -0.054377    0.338376    0.195836
+    18   -0.149268   -0.100692   -0.007147
+    19    0.307601    0.214776   -0.000166
+    20    0.029037    0.297671   -0.000969
+    21   -0.023691    0.060238    0.015128
+    22   -0.024122    0.059011   -0.016354
+----------------------------------------
+   Tot   -0.000000   -0.000000   -0.000000
+----------------------------------------
+   Max    0.817498
+   Res    0.237940    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    0.817498    constrained
+
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       -0.01       -0.05        0.03       -0.00        0.01       -0.01
+(Free)E + p*V (eV/cell)        0.6627
+Target enthalpy (eV/cell)        0.0000
+
+timer: CPU execution times (min):
+timer:  Routine       Calls   Time/call    Tot.time        %
+timer:  Siesta-qmm        1       0.000       0.000   100.00
+timer:  Setup             1       0.000       0.000    70.00
+timer:  IterMD            1       0.000       0.000    30.00
+timer:  MMenergy          1       0.000       0.000    25.00
+  
+>> End of run:  13-JUN-2024  11:36:04

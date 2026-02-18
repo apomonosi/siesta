@@ -1,0 +1,93 @@
+Every time the atoms move, either during coordinate relaxation or
+molecular dynamics, their positions \textbf{predicted for next step}
+and \textbf{current} velocities are stored in file \sysfile{XV}. The
+shape of the unit cell and its associated 'velocity' (in
+Parrinello-Rahman dynamics) are also stored in this file.
+
+\begin{fdflogicalT}{WriteCoorInitial}
+  \index{output!atomic coordinates!initial}
+
+  It determines whether the initial atomic coordinates of the
+  simulation are dumped into the main output file. These coordinates
+  correspond to the ones actually used in the first step (see the
+  section on precedence issues in structural input) and are output in
+  Cartesian coordinates in Bohr units.
+
+  It is not affected by the setting of \fdf{LongOutput}.
+
+\end{fdflogicalT}
+
+
+\begin{fdflogicalF}{WriteCoorStep}
+  \index{output!atomic coordinates!in a dynamics step}
+
+  If \fdftrue, it writes the atomic coordinates to standard
+  output at every MD time step or relaxation step. The coordinates are
+  always written in the \sysfile{XV} file, but overriden at
+  every step. They can be also accumulated in the \sysfile*{MD}
+  or \sysfile{MDX} files depending on \fdf{WriteMDHistory}.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{WriteForces}
+  \index{output!forces}
+
+  If \fdftrue, it writes the atomic forces to the output file at every
+  MD time step or relaxation step.  Note that the forces of the last
+  step can be found in the file \sysfile{FA}. If constraints are used,
+  the file \sysfile{FAC} is also written.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{WriteMDHistory}
+  \index{output!molecular dynamics!history}
+
+  If \fdftrue, \siesta\ accumulates the molecular dynamics trajectory
+  in the following files:
+  \begin{itemize}
+    \item%
+    \sysfile{MD} : atomic coordinates and velocities (and lattice
+    vectors and their time derivatives, if the dynamics implies
+    variable cell). The information is stored unformatted for
+    postprocessing with utility programs to analyze the MD trajectory.
+
+    \item%
+    \sysfile{MDE} : shorter description of the run, with energy,
+    temperature, etc., per time step.
+
+  \end{itemize}
+  These files are accumulative even for different runs.
+
+  \index{output!molecular dynamics!history}
+
+  The trajectory of a molecular dynamics run (or a conjugate gradient
+  minimization) can be accumulated in different files: SystemLabel.MD,
+  SystemLabel.MDE, and SystemLabel.ANI. The first file keeps the whole
+  trajectory information, meaning positions and velocities at every time
+  step, including lattice vectors if the cell varies. NOTE that the
+  positions (and maybe the cell vectors) stored at each time step are
+  the \textbf{predicted} values for the next step. Care should be taken if
+  joint position-velocity correlations need to be computed from this
+  file.  The second gives global information (energy, temperature, etc),
+  and the third has the coordinates in a form suited for XMol animation.
+  See the \fdf{WriteMDHistory} and \fdf{WriteMDXmol} data descriptors
+  above for information. \siesta\ always appends new information on
+  these files, making them accumulative even for different runs.
+
+  The \program{iomd} subroutine can generate both an unformatted file
+  \sysfile*{MD} (default) or ASCII formatted files \sysfile*{MDX} and
+  \sysfile*{MDC} containing the atomic and lattice trajectories,
+  respectively. Edit the file to change the settings if desired.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalT}{Write.OrbitalIndex}
+
+  If \fdftrue\ it causes the writing of an extra file
+  named \sysfile{ORB\_INDX} containing all orbitals used in the
+  calculation.
+
+  Its formatting is clearly specified at the end of the file.
+
+\end{fdflogicalT}

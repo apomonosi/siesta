@@ -1,0 +1,118 @@
+! ---
+! Copyright (C) 1996-2016	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
+      Program SIESTA
+
+      use m_siesta_init
+      use m_siesta_analysis
+      use m_siesta_move
+      use m_siesta_end
+      use m_siesta_forces
+      use m_siesta_tddft
+      use m_ts_global_vars, only: onlyS
+      
+      USE m_steps, only: inicoor, fincoor
+      use siesta_options, only: td_elec_dyn
+      use siesta_handlers_m, only: siesta_set_handlers
+      
+      use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
+      use parallel, only: ionode
+#ifdef MPI      
+      use mpi_siesta, only: mpi_comm_dft ! Includes Solver nodes
+#endif      
+      use m_mpi_utils, only: broadcast
+
+
+      implicit none
+
+      
+      integer :: istep
+      logical :: relaxd
+
+! Notes for PEXSI and ELSI operation (extra procs for Solver)
+!
+! A subset of nodes carries out non-Solver Siesta operations 
+! (i.e., setting up H, moving atoms, diagonalizing...). 
+! These are tagged as "SIESTA_worker" (admittedly, a bad name)
+! All nodes are involved in the (PEXSI or ELSI) electronic-structure solver,
+! and in the new LocalDOS computation based on selected inversion.
+!
+! 'siesta_init', 'siesta_forces', and 'siesta_analysis' need to
+! be called by all nodes. 
+!
+! In some cases, the result of a computation by "SIESTA_worker" nodes needs
+! to be broadcast to guarantee proper control-flow logic (for example,
+! the "relaxd" variable from 'siesta_move'.
+!
+!----------------------------------------------------------------- BEGIN
+!      if (ionode) call memory_snapshot("at start of program")
+
+      call siesta_set_handlers()
+      
+      call siesta_init()
+
+#ifdef SIESTA__PEXSI
+      if (ionode) call memory_snapshot("after siesta_init")
+#endif
+
+C     Begin of coordinate relaxation iteration
+      relaxd = .false.
+
+#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
+      ! Broadcast relevant things for program logic
+      ! These were set in siesta_options, called only by "SIESTA_workers".
+      call broadcast(inicoor,comm=mpi_comm_dft)
+      call broadcast(fincoor,comm=mpi_comm_dft)
+#endif
+      istep  = inicoor
+      DO WHILE ((istep.le.fincoor) .AND. (.not. relaxd))
+
+        call timer('IterGeom', 1)
+
+         if ( td_elec_dyn ) then
+            call siesta_tddft( istep )
+         else
+            call siesta_forces( istep )
+         end if
+
+         if ( onlyS ) then
+             call bye("Saved S only, exiting.")
+         end if
+
+        if (SIESTA_worker) call siesta_move( istep, relaxd )
+#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
+        call broadcast(relaxd,comm=mpi_comm_dft)
+#endif
+
+        call timer('IterGeom', 2)
+
+        if (.not. relaxd) then
+          istep = istep + 1
+        endif
+#ifdef SIESTA__PEXSI
+        if (ionode) call memory_snapshot("after geometry step")
+#endif
+
+      ENDDO
+
+C     End of coordinate-relaxation loop 
+      call siesta_analysis( relaxd )
+#ifdef SIESTA__PEXSI
+      if (ionode) call memory_snapshot("after siesta_analysis")
+#endif
+
+      call siesta_end()
+#ifdef SIESTA__PEXSI
+      if (ionode) call memory_snapshot("at end of program")
+#endif
+
+#ifdef _TRACE_
+      call Extrae_fini( )
+#endif
+
+!-----------------------------------------------------------------------END
+      END program siesta

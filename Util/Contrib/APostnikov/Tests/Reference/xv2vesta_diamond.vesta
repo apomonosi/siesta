@@ -1,0 +1,15 @@
+#VESTA_FORMAT_VERSION 3.0.0
+ # crystal structure from diamond.XV
+ diamond.XV
+ CRYSTAL
+ # Cell vectors in Angstroem and angles in degrees:
+ CELLP
+   2.5109364   2.5109364   2.5109364  59.9999967  59.9999967  59.9999967
+   0.0000000   0.0000000   0.0000000   0.0000000   0.0000000   0.0000000
+ # relative coordinates of the atoms dimensionless:
+ STRUC
+        1     C     C  1.0000    -0.0014306    -0.0018201     0.0037670
+                              0.0000000     0.0000000     0.0000000
+        2     C     C  1.0000     0.2514306     0.2518201     0.2462330
+                              0.0000000     0.0000000     0.0000000
+   0 0 0 0 0 0 0 0 0

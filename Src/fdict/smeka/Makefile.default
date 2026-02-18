@@ -1,0 +1,29 @@
+_SMEKA_default = 1
+
+ifndef SETUP
+ifneq ("$(wildcard setup.make)","")
+SETUP = setup.make
+endif
+endif
+
+
+# Specific options for different OS
+ifeq ($(SMEKA_uname_S),Linux)
+endif
+ifeq ($(SMEKA_uname_S),Darwin)
+endif
+ifeq ($(SMEKA_uname_S),SunOS)
+endif
+ifeq ($(SMEKA_uname_S),FreeBSD)
+endif
+ifeq ($(SMEKA_uname_S),OpenBSD)
+endif
+ifeq ($(SMEKA_uname_S),NetBSD)
+endif
+ifeq ($(SMEKA_uname_S),Cygwin)
+endif
+
+
+# Local Variables:
+#  mode: makefile-gmake
+# End:

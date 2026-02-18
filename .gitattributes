@@ -1,0 +1,18 @@
+### Files that git archive will skip: ###
+
+#    a) irrespective of where they are located
+.gitignore        export-ignore
+.gitattributes    export-ignore
+#.gitmodules       export-ignore  # Commented out until we decide how to
+                                  # manage submodules.
+
+#    b) specific paths
+/.gitlab            export-ignore
+/Tools/release.sh   export-ignore
+/towncrier.toml     export-ignore
+/Docs/release/template.md export-ignore
+
+###
+
+### Keyword replacements: ###
+/Tools/version_generate.sh  export-subst

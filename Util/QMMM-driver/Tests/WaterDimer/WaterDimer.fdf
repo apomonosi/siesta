@@ -1,0 +1,54 @@
+#!
+SystemName       1 QM + 1 MM water molecules
+SystemLabel      WaterDimer
+WriteForces      T
+
+# Global system
+NetCharge        0.0D0
+CoulombType      ewald
+
+LatticeConstant 1.0 Ang
+%block LatticeVectors
+ 20.0   0.0    0.0
+  0.0  20.0    0.0
+  0.0   0.0   20.0
+%endblock LatticeVectors
+
+# MD Options
+MD.TypeOfRun         verlet
+MD.FinalTimeStep     1
+MD.InitialTemperature 300.0 K
+
+# QMMM Interaction parameters
+MM.Cutoff       8.0 Ang
+QMMM.Cutoff     8.0 Ang
+
+# QM-Region relevant parameters
+NumberOfAtoms    3
+NumberOfSpecies  2
+
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   8  O
+%endblock ChemicalSpeciesLabel
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   0.000  0.000  0.000     2
+   0.757  0.586  0.000     1
+  -0.757  0.586  0.000     1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block QM.AtomTypes
+OW
+HW
+HW
+%endblock QM.AtomTypes
+
+# MM-Region  relevant parameters.
+NumberOfMMAtoms 3
+%block MM.Atoms
+ATOM      1  O   HOH     1      0.000  2.500  0.000
+ATOM      2  H1  HOH     1      0.757  3.086  0.000
+ATOM      3  H2  HOH     1     -0.757  3.086  0.000
+%endblock MM.Atoms

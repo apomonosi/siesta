@@ -1,0 +1,1 @@
+siestaqmmm_subtest(fixedMM LABELS qmmm FILES_SETUP amber.parm)

@@ -1,0 +1,52 @@
+This directory contains several utilities related to TranSIESTA.
+Scripts to help generate input fdf files and do transmission
+analysis are located here.
+
+Unless otherwise stated all programs/utilities have been developed
+by:
+  Nick Papior, nickpapior<at>gmail.com
+
+- tselecs.sh
+  This small scripts eases the creation of several electrodes
+  input. It can also be used to initialize a script for TranSIESTA.
+  Call with:
+    tselecs.sh -2
+  to generate a default input FDF for TranSIESTA which defaults
+  to the old versions implementation.
+
+- TBtrans / PHtrans
+  this directory contains the TBtrans utility which is used for 
+  calculating the transmission and other quantities from the 
+  Hamiltonian output files from TranSIESTA.
+
+  It also reads NetCDF4 files created by the community utility:
+
+    www.github.com/zerothi/sisl
+
+
+- tscontour
+  Create contours from an fdf file.
+  This may be handy if you want to use the contours in external
+  programs, or simply check them before running the full calculation.
+  It reads only the chemical potential and contour blocks.
+
+- ts2ts
+  A small utility which takes an old input file for TranSIESTA
+  and converts it into the new input format.
+  First make the utility in the folder and then you can utilise it as:
+    ts2ts <fdf-file> 
+  and it will print out a converted fdf-input file.
+  It is made for piping directly into another file.
+
+  Easy usage will append to the FDF file:
+    ts2ts run.fdf >> run.fdf
+
+  REMARK: It will only read in TranSIESTA/TBtrans options and thus
+          also only print TranSIESTA/TBtrans options. 
+	  It will not copy any other FDF-flags.
+
+- Tight-binding
+  To use tight-binding parameters compatible with TBtrans
+  you can use the utility created here:
+
+     www.github.com/zerothi/sisl

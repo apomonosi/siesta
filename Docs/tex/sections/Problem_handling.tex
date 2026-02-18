@@ -1,0 +1,24 @@
+\subsection{Error and warning messages}
+
+\begin{description}
+\itemsep 10pt
+\parsep 0pt
+
+\item[\texttt{chkdim: ERROR: In \textit{routine} dimension \textit{parameter} =
+\textit{value}. It must be  ...}]
+
+And other similar messages.
+
+\textit{Description:} Some array dimensions which change infrequently,
+and do not lead to much memory use, are fixed to oversized
+values. This message means that one of this parameters is too small
+and neads to be increased.  However, if this occurs and your system is
+not very large, or unusual in some sense, you should suspect first of
+a mistake in the data file (incorrect atomic positions or cell
+dimensions, too large cutoff radii, etc).
+
+\textit{Fix:} Check again the data file.  Look for previous warnings or
+suspicious values in the output.  If you find nothing unusual, edit
+the specified routine and change the corresponding parameter.
+
+\end{description}

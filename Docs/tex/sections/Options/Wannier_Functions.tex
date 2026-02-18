@@ -1,0 +1,590 @@
+
+  \program{wannier90} (\url{http://www.wannier.org}) is a code to generate
+  maximally localized wannier functions according to the original
+  Marzari and Vanderbilt recipe.
+
+  A wrapper interface between \program{siesta} and \program{wannier90}
+  (version 3.1.0) has been implemented, so that \program{wannier90} can
+  be called from \program{siesta} on-the-fly, as well as used as a
+  post-processing tool.
+
+  It is strongly recommended to read the original papers on which this
+  method is based and the  documentation of \program{wannier90} code.
+  Here we shall focus only on those internal \siesta\ variables
+  required to produce the files that will be processed
+  by \program{wannier90}.
+
+  \subsubsection{\program{wannier90}\, as a postprocessing tool}
+
+  This interface is analogous to that found in other programs. The user
+  first runs \program{wannier90} in pre-processing mode to get a \program{.nnkp} file.
+  Then \siesta\ is run with the appropriate options to generate the files needed
+  by a wannierization run with \program{wannier90}.
+
+  A complete list of examples and tests (including molecules, metals,
+  semiconductors, insulators, magnetic systems, plotting of Fermi surfaces
+  or interpolation of bands), can be downloaded from
+
+   \url{http://personales.unican.es/junqueraj/Wannier-examples.tar.gz}
+
+  \textbf{NOTE}: The Bloch functions produced by a first-principles code
+        have arbitrary phases that depend on the number of processors
+        used and other possibly non-reproducible details of the
+        calculation. In what follows it is essential to maintain
+        consistency in the handling of the overlap and Bloch-function
+        files produced and fed to \program{wannier90}.
+
+
+  \begin{fdflogicalF}{Siesta2Wannier90.WriteMmn}
+
+    This flag determines whether the overlaps between the periodic part
+    of the Bloch states at neighbour k-points are computed and dumped
+    into a file in the format required by \program{wannier90}.  These
+    overlaps are defined in Eq. (27) in the paper by N. Marzari
+    \textit{et al.}, Review of Modern Physics \textbf{84}, 1419 (2012),
+    or Eq. (1.7) of the Wannier90 User Guide, Version 2.0.1.
+
+    The k-points for which the overlaps will be computed are read from a
+    \sysfile*{nnkp} file produced by \program{wannier90}. It is strongly
+    recommended for the user to read the corresponding user guide.
+
+    The overlap matrices are written in a file with extension
+    \sysfile*{mmn}.
+
+  \end{fdflogicalF}
+
+  \begin{fdflogicalF}{Siesta2Wannier90.WriteAmn}
+
+    This flag determines whether the overlaps between Bloch states and
+    trial localized orbitals are computed and dumped into a file in the
+    format required by \program{wannier90}.  These projections are
+    defined in Eq. (16) in the paper by N. Marzari \textit{et al.},
+    Review of Modern Physics \textbf{84}, 1419 (2012), or Eq. (1.8) of
+    the Wannier90 User Guide, Version 2.0.1.
+
+    The localized trial functions to use are taken from the
+    \sysfile*{nnkp} file produced by \program{wannier90}. It is strongly
+    recommended for the user to read the corresponding user guide.
+
+    The overlap matrices are written in a file with extension
+    \sysfile*{amn}.
+
+  \end{fdflogicalF}
+
+  \begin{fdflogicalF}{Siesta2Wannier90.WriteEig}
+
+    Flag that determines whether the Kohn-Sham eigenvalues (in eV) at
+    each point in the Monkhorst-Pack mesh required by
+    \program{wannier90} are written to file.  This file is mandatory in
+    \program{wannier90} if any of disentanglement, plot\_bands,
+    plot\_fermi\_surface or hr\_plot options are set to true in the
+    \program{wannier90} input file.
+
+    The eigenvalues are written in a file with extension \sysfile*{eigW}.
+    This extension is chosen to avoid name clashes with \siesta's
+    standard eigenvalue file in case-insensitive filesystems.
+
+  \end{fdflogicalF}
+
+  \begin{fdflogicalF}{Siesta2Wannier90.WriteUnk}
+
+    Produces \file{UNKXXXXX.Y} files which contain the periodic part
+    of a Bloch function in the unit cell on a grid given by global
+    unk\_nx, unk\_ny, unk\_nz variables.  The name of the output files
+    is assumed to have the previous form, where the \texttt{XXXXXX}
+    refer to the k-point index (from 00001 to the total number of
+    k-points considered), and the \texttt{Y} refers to the spin
+    component (1 or 2)
+
+    The periodic part of the Bloch functions is defined by
+    \begin{equation}
+      u_{n \vec{k}} (\vec{r}) =
+      \sum_{\vec{R} \mu} c_{n \mu}(\vec{k})
+      e^{i \vec{k} \cdot ( \vec{r}_{\mu} + \vec{R} - \vec{r} )}
+      \phi_{\mu} (\vec{r} - \vec{r}_{\mu} - \vec{R} ) ,
+    \end{equation}
+    where $\phi_{\mu} (\vec{r} - \vec{r}_{\mu} - \vec{R} )$ is a basis
+    set atomic orbital centered on atom $\mu$ in the unit cell
+    $\vec{R}$, and $c_{n \mu}(\vec{k})$ are the coefficients of the wave
+    function. The latter must be identical to the ones used for
+    wannierization in $M_{mn}$. (See the above comment about arbitrary
+    phases.)
+
+  \end{fdflogicalF}
+
+  \begin{fdfentry}{Siesta2Wannier90.UnkGrid1}[integer]<\nonvalue{mesh
+        points along $A$}>
+
+    Number of points along the first lattice vector in the grid where
+    the periodic part of the wave functions will be plotted.
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{Siesta2Wannier90.UnkGrid2}[integer]<\nonvalue{mesh
+        points along $B$}>
+
+    Number of points along the second lattice vector in the grid where
+    the periodic part of the wave functions will be plotted.
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{Siesta2Wannier90.UnkGrid3}[integer]<\nonvalue{mesh
+        points along $C$}>
+
+    Number of points along the third lattice vector in the grid where
+    the periodic part of the wave functions will be plotted.
+
+  \end{fdfentry}
+
+
+  \begin{fdflogicalT}{Siesta2Wannier90.UnkGridBinary}
+
+    Flag that determines whether the periodic part of the wave function
+    in the real space grid is written in binary format (default) or in
+    ASCII format.
+
+  \end{fdflogicalT}
+
+  \begin{fdfentry}{Siesta2Wannier90.NumberOfBands}[integer]<occupied bands>
+
+    In spin unpolarized calculations, number of bands that will be
+    initially considered by \siesta\ to generate the information
+    required by \program{wannier90}. Note that it should be at least as
+    large as the index of the highest-lying band in the
+    \program{wannier90} post-processing. For example, if the
+    wannierization is going to involve bands 3 to 5, the \siesta\ number
+    of bands should be at least 5. Bands 1 and 2 should appear in a
+    ``excluded'' list.
+
+    \note you are highly encouraged to explicitly specify the number of
+    bands.
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{Siesta2Wannier90.NumberOfBandsUp}[integer]<\fdfvalue{Siesta2Wannier90.NumberOfBands}>
+
+    In spin-polarized calculations, number of bands with spin up that
+    will be initially considered by \siesta\ to generate the information
+    required by \program{wannier90}.
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{Siesta2Wannier90.NumberOfBandsDown}[integer]<\fdfvalue{Siesta2Wannier90.NumberOfBands}>
+
+    In spin-polarized calculations, number of bands with spin down that
+    will be initially considered by \siesta\ to generate the information
+    required by \program{wannier90}.
+
+  \end{fdfentry}
+
+
+  \subsubsection{\program{wannier90}\, called on-the-fly within
+      \program{siesta}}
+  \label{sec:w90:library}
+
+   A wrapper interface to \program{wannier90} can be compiled and called directly
+   from \program{siesta}. This presents several advantages:
+
+   \begin{itemize}
+     \item No need to prepare two different input files.
+     \item No need to run \program{wannier90} in pre-processing mode.
+     \item We can use the basis set of \program{siesta} (numerical
+           atomic orbitals) as the initial guess for the projections.
+     \item Wannierization of different manifolds can be done in the
+           same run of \program{siesta}.
+     \item The unitary matrices connecting the Bloch and the Wannier
+           representations are available within \program{siesta}.
+     \item The coefficients of the Wannier functions in the
+           basis of the atomic orbitals of the supercell in \program{siesta}
+           are written in a file with \sysfile{WANNX} extension. Then,
+           the Wannier functions can be plotted using
+           \program{denchar}, following the same method as for the wave functions.
+   \end{itemize}
+
+   Further details of the compilation of \siesta\ with this
+   functionality can be found in the file
+   \file{External/Wannier/README.md}. Note also the (slightly outdated) presentation
+   \url{https://personales.unican.es/junqueraj/JavierJunquera_files/Metodos/Wannier/Exercise-Wannier90-within-siesta.pdf}
+
+  \begin{fdfentry}{Wannier!Manifolds}[block]
+
+    Each line denotes the name of a manifold to be processed by Wannier90.
+
+    Options for each manifold is specified in the \fdf{Wannier!Manifold.<>}
+
+  \end{fdfentry}
+
+
+  \begin{fdfentry}{Wannier!Manifold.<>}[block]
+
+    Each line represents a setting for the Wannier manifold to be
+    processed.
+
+    \begin{fdfoptions}
+
+      \option[bands]%
+      \fdfindex*{Wannier!Manifold.<>!bands}%
+
+      Two integers specifying the initial and final band of the manifold
+      to be wannierized.
+
+      \note required input
+
+
+      \option[trial-orbitals]%
+      \fdfindex*{Wannier!Manifold.<>!trial-orbitals}%
+
+      Indices of the orbitals that will be used
+      as localized trial orbitals in the first step of the minimization
+      of the spreading.
+      The user has to specify the same number of atomic orbitals as the number
+      of Wannier functions required.
+      For the sake of readiness, the number of trial orbitals can be split in
+      several lines, all of them starting with \fdf*{trial-orbitals}.
+      These indices can be found by inspection of the
+      \file{SystemLabel.ORB\_INDX} file.
+      If there are negative integers in this line, then the projectors will
+      be generated \`a-la-Wannier90, with the instructions given in the
+      WannierProjectors block.
+
+      If there are negative numbers, it is not strictly required that
+      they must appear after the list of positive indices.
+
+      \note required input
+
+      \option[spreading.nitt]%
+      \fdfindex*{Wannier!Manifold.<>!spreading.nitt}%
+
+      Number of iterations that \program{wannier90}
+      will carry out to minimize the spreading.
+      If zero, then the procedure is the same as a L\"owdin orthonormalization.
+      In such a case, the resulting Wannier function will keep the symmetry
+      of the trial projection function, but it will not be maximally localized.
+
+      \option[wannier-plot]%
+      \fdfindex*{Wannier!Manifold.<>!wannier-plot}%
+
+      Instructs \program{wannier90} to produce the files
+      required to plot the Wannier functions
+      (if \fdf*{w90.in.siesta.compute.unk} is set to \fdftrue).
+      The integer refers to the size of the supercell for plotting the
+      Wannier functions (see the variable
+      \fdf*{wannier.plot.supercell} in the \program{wannier90} User's Guide).
+      This will produce files with the .xsf extension, that can be directly plotted
+      with \program{xcrysden}.
+
+      \option[fermi-surface-plot]%
+      \fdfindex*{Wannier!Manifold.<>!fermi-surface-plot}%
+
+      Is the file required to plot the Fermi surface computed?
+      If true, this will produce files with the .bxsf extension, that can be directly plotted
+      with \program{xcrysden}.
+
+      \option[write-hr]%
+      \fdfindex*{Wannier!Manifold.<>!write-hr}%
+
+      Is the file with the Hamiltonian in real space in a basis of Wannier functions written?
+      If true, this will produce files with the \_hr.dat extension.
+
+
+      \option[write-tb]%
+      \fdfindex*{Wannier!Manifold.<>!write-tb}%
+
+      Is the file with the tight-binding parameters in a basis of Wannier functions written?
+      (this includes the lattice vectors, Hamiltonian
+      in real space, and position operator in a basis of Wannier functions.
+      If true, this will produce files with the \_tb.dat extension.
+
+      \option[write-unk]%
+      \fdfindex*{Wannier!Manifold.<>!write-unk}%
+
+      Are the files that contain the periodic part
+      of a Bloch function in the unit cell on a grid computed?
+      If true, files like those described in \fdf{Siesta2Wannier90.WriteUnk}
+      are written for this manifold, and then
+      the corresponding .xsf files directly readable by \program{xcrysden}
+      will be produced.
+      The computation of the UNK files might be rather expensive.
+      To plot the shape of the Wannier functions, the expansion of the Wannier functions
+      in the basis of Numerical Atomic Orbitals to produce .WFSX files, and the
+      subsequent use of \program{denchar} is recommended.
+
+      If a disentanglement procedure is required two extra lines are mandatory:
+
+      \option[window]%
+      \fdfindex*{Wannier!Manifold.<>!window}%
+
+      It refers to the bottom and top of the outer
+      energy window for band disentanglement. The units for the energy are
+      introduced as the last character string of the line.
+
+      \option[window.frozen]%
+      \fdfindex*{Wannier!Manifold.<>!window.frozen}%
+
+      It refers to the bottom and top of the inner
+      energy window for band disentanglement. The units for the energy are
+      introduced as the last character string of the line.
+      This is the energy window where some Bloch states are forced to be
+      preserved identically in the projected manifold.
+
+      \option[threshold]%
+      \fdfindex*{Wannier!Manifold.<>!window.threshold}%
+
+      Specification of the threshold for the real part of the
+      coefficients of a Wannier in a basis of NAO that will be written in
+      a \sysfile{WANNX} extension file.
+      This file can be used to plot the Wannier functions using
+      \program{denchar}, following the same method as for the wave functions.
+      This threshold is particularized for a particular manifold.
+
+    \end{fdfoptions}
+
+    An example of a manifold:
+
+    \begin{fdfexample}
+  %block Wannier.Manifold.second
+    bands 21 23
+    trial-orbitals [24 25 27]
+    spreading.nitt 0
+    wannier_plot 3
+    fermi_surface_plot true
+    write_hr true
+    write_tb true
+  %endblock
+    \end{fdfexample}
+
+  \end{fdfentry}
+
+
+
+  \iffalse
+  % These lines should be deleted once documentation is complete
+  \begin{fdfentry}{NumberOfBandManifoldsForWannier}[integer]<\fdfvalue{Number of band manifolds to be wannierized}>
+
+    Number of band manifolds that will be considered for Wannierization.
+
+    Multiple wannierizations on different band manifolds can be performed in the same
+    \program{siesta} run.
+
+    \note The default value will be 0.
+
+  \end{fdfentry}
+
+  \begin{fdfentry}{WannierManifolds}[block]
+  <\fdfvalue{Information on the band manifolds to be wannierized}>
+
+    Specifies all the information required to Wannierized a given
+    manifold of bands.
+    An example for an isolated manifold (top of the valence band of
+    bulk SrTiO$_{3}$) is:
+
+    \begin{fdfexample}
+       %block WannierManifolds
+         1                  # Sequential index of the manifold
+         12  20             # Indices of the initial and final band of the manifold
+         9                  # Number of bands for Wannier transformation
+         36 37 38 49 50 51 62 63 64  # Indices of the orbitals to be used as localized trial orbitals
+         num_iter 0         # Number of iterations for the minimization of \Omega
+         wannier_plot  3    # Plot the Wannier function
+         fermi_surface_plot # Plot the Fermi surface
+         write_hr           # Write the Hamiltonian in the WF basis
+         write_tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+       %endblock WannierManifolds
+    \end{fdfexample}
+
+    The first line is the sequential index of the manifold,
+    from 1 to \fdf{NumberOfBandManifoldsForWannier}.
+    The lines of this block must be repeated as many times as the
+    number of band manifolds that will be wannierized.
+
+    The second line refers to the initial and final band of the manifold
+    to be wannierized.
+
+    The third line is the number of bands that will be retained for
+    wannierization.
+    The number of bands retained for Wannierization must be the same
+    as the number of localized orbitals that will be introduced
+    as a first guess in the following lines.
+    This number is equal to the number of bands in the manifold if we are
+    dealing with isolated group of bands.
+    But if the desired bands lie within a limited energy range but
+    overlap and hybridize with other bands which extend further in energy
+    (as is the case in metals),
+    then the number of Wannier functions might be different from the
+    number of bands in the manifolds.
+    A disentanglement procedure is required, that will be carried out
+    following the recipe given by
+    I. Souza, N. Marzari and D. Vanderbilt,
+    Phys. Rev. B \textbf{65}, 035109 (2002)
+    "Maximally localized Wannier functions for entangled energy bands".
+    If there are more than two integers in this third line,
+    the total number of bands for Wannierization will be the product
+    of the two, and we will need as many lines to introduce the
+    initial localized functions as the number indicated by the second integer.
+
+    The fourth line (and subsequents if there are more than two integers
+    in the third line) refers to the indices of the orbitals that will be used
+    as localized trial orbitals in the first step of the minimization
+    of the spreading.
+    The user has to specify the same number of atomic orbitals as the number
+    of Wannier functions required.
+    These indices can be found by inspection of the
+    \file{SystemLabel.ORB\_INDX} file.
+    If there are negative integers in this line, then the projectors will
+    be generated \`a-la-Wannier90, with the instructions given in the
+    WannierProjectors block.
+    If there are negative numbers, then they must appear always after
+    the list of positive indices.
+
+    The fifth line is the number of iterations that \program{wannier90}
+    will carry out to minimize the spreading.
+    If zero, then the procedure is the same as a L\"owdin orthonormalization.
+    In such a case, the resulting Wannier function will keep the symmetry
+    of the trial projection function, but it will not be maximally localized.
+
+    The sixth function instructs \program{wannier90} to produce the files
+    required to plot the Wannier functions
+    (if \fdf*{w90.in.siesta.compute.unk} is set to \fdftrue).
+    The integer refers to the size of the supercell for plotting the
+    Wannier functions (see the variable
+    \fdf*{wannier.plot.supercell} in the \program{wannier90} User's Guide).
+    This will produce files with the .xsf extension, that can be directly plotted
+    with \program{xcrysden}.
+
+    The seventh line instructs \program{wannier90} to produce the files
+    required to plot the Fermi surface.
+    This will produce files with the .bxsf extension, that can be directly plotted
+    with \program{xcrysden}.
+
+    The eigth line is a instruction to write the Hamiltonian in real space
+    in a basis of Wannier functions.
+    This will produce files with the \_hr.dat extension.
+
+    The nineth line is a instuction to write the lattice vectors, Hamiltonian
+    in real space, and position operator in a basis of Wannier functions.
+    This will produce files with the \_tb.dat extension.
+
+    If a disentanglement procedure is required two extra lines are mandatory:
+
+    The first extra line refers to the bottom and top of the outer
+    energy window for band disentanglement (in eV).
+
+    The second extra line refers to the bottom and top of the inner
+    energy window for band disentanglement (in eV).
+    This is the energy window where some Bloch states are forced to be
+    preserved identically in the projected manifold.
+
+  \end{fdfentry}
+
+  \fi
+
+  \begin{fdfentry}{Wannier!Projectors}[block]<projection functions as in wannier90>
+
+  Information on the projection functions \`a-la-\program{wannier90},
+  used to construct the
+  initial guesses for the unitary transformations.
+
+  These are used when some of the atomic orbitals in the
+  \fdf*{trial-orbitals} lines of the block \fdf{Wannier!Manifold.<>} are negative.
+
+   For instance, to specify the projectors for the bottom of the
+   conduction band of bulk SrTiO$_{3}$, we can write a
+   block \fdf{Wannier!Manifold.<>} as
+
+   \begin{fdfexample}
+  %block Wannier.Manifold.example
+     # Indices of the initial and final band of the manifold
+     bands  21  23
+     # Number of bands for Wannier transformation
+     trial-orbitals  -1 -2 -3
+     spreading.nitt 0         # Number of iterations for the minimization of \Omega
+     wannier-plot  3    # Plot the Wannier function
+     fermi-surface-plot # Plot the Fermi surface
+     write-hr           # Write the Hamiltonian in the WF basis
+     write-tb           # Write lattice vectors, Hamiltonian, and position operator in WF basis
+  %endblock
+    \end{fdfexample}
+
+   Then, the three projector functions that will be generated
+   following the recipe of \program{wannier90} will be
+
+    \begin{fdfexample}
+  %block Wannier.Projectors.example
+     0.5 0.5 0.5  2  2  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+     0.5 0.5 0.5  2  3  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+     0.5 0.5 0.5  2  5  1 0.00  0.00  1.00   1.00  0.00  0.00    1.00
+  %endblock
+    \end{fdfexample}
+
+   The different lines in this block are written following the \program{wannier90} format
+   provided in the .nnkp file.
+
+   centre: three real numbers; projection function centre in crystallographic
+   co-ordinates relative to the direct lattice vectors.
+
+   $l$ $m_{r}$ $r$: three integers; $l$ and $m_{r}$ specify the angular part
+   $\Theta_{l m_{r}}(\theta,\varphi)$, and $r$ specifies the radial part
+   $R_{r} (r)$ of the projection function (see Tables 3.1, 3.2 and 3.3
+   of the \program{wannier90} User's Guide).
+
+   z-axis: three real numbers; default is 0.0 0.0 1.0;
+   defines the axis from which the polar angle $\theta$
+   in spherical polar coordinates is measured.
+
+   x-axis: three real numbers; must be orthogonal to z-axis\;
+   default is 1.0 0.0 0.0 or a vector perpendicular to z-axis
+   if z-axis is given; defines the axis from with the azimuthal
+   angle $\varphi$ in spherical polar coordinates is measured.
+
+   zona: real number; the value of $\frac{Z}{a}$ associated with
+   the radial part of the atomic orbital. Units are in reciprocal Angstrom.
+
+  \end{fdfentry}
+
+
+  \begin{fdfentry}{Wannier!Manifolds!Threshold}[real]<$10^{-6}$>
+
+    Global specification of the threshold for the real part of the
+    coefficients of a Wannier in a basis of NAO that will be written in
+    a \sysfile{WANNX} extension file.
+    This file can be used to plot the Wannier functions using
+    \program{denchar}, following the same method as for the wave functions.
+
+    Individual manifolds can be controlled via
+    \fdf*{Wannier.Manifold.<>.Threshold}
+
+  \end{fdfentry}
+
+  \begin{fdflogicalF}{Wannier!Manifolds!Unk}
+
+    Global flag that determines whether the periodic part of the wave function
+    in the real space grid will be computed (as using Siesta2Wannier90.WriteUnk),
+    and whether the files \file{xsf} directly readable by \program{xcrysden}
+    will be produced.
+
+    Individual manifolds can be controlled via
+    \fdf{Wannier!Manifold.<>!write-unk}.
+
+    The computation of the UNK files might be rather expensive.
+    To plot the shape of the Wannier functions, the expansion of the Wannier functions
+    in the basis of Numerical Atomic Orbitals to produce \sysfile{WFSX} files, and the
+    subsequent use of \program{denchar} is recommended.
+
+  \end{fdflogicalF}
+
+  \begin{fdfentry}{Wannier!k}[list/block]<$\Gamma$-point>
+    \index{output!kpoint mesh for Wannierization}
+
+    Dimension of the Monkhorst-Pack grid of k-points that will be used
+    during the wannierization.
+    The overlap matrices between periodic parts of the wavefunctions
+    at neighbour k-points in this grid will be computed.
+
+    \begin{fdfexample}
+  Wannier.k [4 4 4]
+  # Or equivalently
+  %block Wannier.k
+     4  4  4
+  %endblock
+    \end{fdfexample}
+  \end{fdfentry}

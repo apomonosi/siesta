@@ -1,0 +1,4 @@
+ ParallelCommand 'mpirun'                    # Can be others, such as mpiexec or srun.
+ nCpus 2                                     # Amount of CPUs to dedicate to SIESTA.
+ runSerial F                                 # Run SIESTA in serial mode, ingoring the above options.
+ SiestaInput  WaterDimer.siestain.fdf        # Name of the fdf file for SIESTA.

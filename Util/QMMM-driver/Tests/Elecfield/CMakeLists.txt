@@ -1,0 +1,1 @@
+siestaqmmm_subtest(elecfield MMONLY LABELS qmmm FILES_SETUP amber.parm)

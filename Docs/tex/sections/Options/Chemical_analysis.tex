@@ -1,0 +1,455 @@
+
+\subsubsection{Charge populations}
+\label{sec:charge-populations}
+
+Charge populations are ways to investigate the chemical nature of the
+environment the atoms reside in.
+
+In \siesta\ a number of methods exists. Be warned, that they will generally
+not be equal. For instance, Mulliken has a basis-set dependence, while the others are
+likely more stable with respect to basis, but still not \emph{correct}.
+
+The real problem in this, is how to distribute an electron to atoms.
+Should it be split among them, evenly, how etc. This is no trivial task, and still
+newer methods are researched.
+
+Please try and read the existing litterature for each of the methods before trusting
+its value for chemical insights, they all have limitations and biases.
+
+For all atomic charge populations, there is a common output format as described below.
+Currently, Hirshfeld and Voronoi can only perform atomic charge populations, and
+hence they default to this output format.
+%
+Mulliken can provide extended details (orbital-orbital charges).
+As such Mulliken will generally output
+the format as described below, but also additional formats.
+
+The common atomic output format is exemplified here:
+\begin{output}[fontsize=\footnotesize]
+Mulliken Atomic Populations:
+Atom #    delta [q] valence [e]           S          Sx          Sy          Sz  Species
+     1     0.093470    7.906530    3.089994    0.162048    0.000000    3.085742  fe_nc
+     2    -0.186941    8.186941    1.355661    1.355661    0.000000    0.000000  fe_nc
+     3     0.093471    7.906529    3.089994    0.162048   -0.000000   -3.085742  fe_nc
+-------------------------------------------------------------------------------
+ Total                             1.679757    1.679757    0.000000   -0.000000
+\end{output}
+The fields are described as this:
+\begin{description}
+
+  \item[\code{Atom \#}]%
+    The index of the atom.
+
+  \item[\code{delta [q]}]%
+    The net charge of the atom, with respect to the valence charge of the
+    pseudopotential.
+
+  \item[\code{valence [e]}]%
+    The valence charge of the atom.
+
+    Adding the charge and valence (this and the former column) will be
+    equal to the valence charge of the lone atom, as specified in the
+    pseudopotential.
+
+  \item[\code{S}]%
+    The length of the magnetic moment vector.
+
+    Only shown for non-collinear calculations.
+  
+  \item[\code{Sx}]%
+    The $x$ component of the magnetic moment vector.
+
+    Only shown for non-collinear calculations.
+  
+  \item[\code{Sy}]%
+    The $y$ component of the magnetic moment vector.
+
+    Only shown for non-collinear calculations.
+  
+  \item[\code{Sz}]%
+    The $z$ component of the magnetic moment vector.
+
+    Shown for polarized or non-collinear calculations.
+
+  \item[\code{Species}]%
+    The species name of the atom, equal to that specified in the
+    \fdf{AtomicCoordinatesAndAtomicSpecies}.
+
+  \item[\code{Total}]%
+    Finally, the total spin population is shown if there is a spin
+    component in the calculation.
+
+\end{description}
+
+\begin{fdfentry}{Charge!Mulliken}[str]<none>
+  \fdfdeprecates{WriteMullikenPop}
+  \index{Population analysis!Mulliken}%
+  \index{Mulliken population analysis}%
+  \index{output!Mulliken analysis}
+
+  Specify when the Mulliken analysis will be calculated.
+
+  The Mulliken analysis uses the density-matrix (which by definition contains
+  information integrated up to the Fermi level) and the overlap matrix.
+  
+  \note this population analysis depends on the basis set.
+
+  \begin{fdfoptions}
+    \option[none]%
+    \fdfindex*{Charge!Mulliken:none}%
+    Disable the calculation of the Mulliken population.
+    
+    \option[init]%
+    \fdfindex*{Charge!Mulliken:init}%
+    At the start of the geometry step.
+
+    \option[geometry]%
+    \fdfindex*{Charge!Mulliken:geometry}%
+    At the end of every geometry step.
+
+    \option[scf]%
+    \fdfindex*{Charge!Mulliken:scf}%
+    After every SCF step (can create a lot of output).
+
+    For \fdf{SCF.Mix:density} this will use the just calculated density matrix
+    after the diagonalization step.
+
+    Useful when dealing with SCF problems,
+    This can cause very verbose output files.
+    
+    \option[scf-after-mix]%
+    \fdfindex*{Charge!Mulliken:scf-after-mix}%
+    After mixing.
+    
+    For \fdf{SCF.Mix:density} this will use the just mixed density matrix.
+
+    Useful when dealing with SCF problems,
+    This can cause very verbose output files.
+    
+    \option[end]%
+    \fdfindex*{Charge!Mulliken:end}%
+    At the end of the calculation.
+
+  \end{fdfoptions}
+
+  One can combine various levels of print-outs to get more details during the calculation.
+
+  For instance, to get the Mulliken charge at the end of every geometry step and
+  during the SCF steps, then use the following option:
+  \begin{fdfexample}
+    Charge.Mulliken scf+geometry
+  \end{fdfexample}
+
+  Mulliken charges are sometimes used to estimate the ``net charge''
+  on an atom, which is an ill-defined concept to begin with. In
+  addition, this method gives results that depend on the basis set
+  used. For alternative ways to estimate the atomic charges,
+  see~\ref{sec:charge-populations} on Voronoi and Hirshfeld charges.
+  
+  Atom-based Mulliken overlaps are useful to estimate the level of chemical
+  interaction among two atoms.
+  
+  For a finer analysis of the chemical bonding, it is advised to
+  employ the COOP/COHP curves (see~\ref{sec:coop}).
+  
+\end{fdfentry}
+
+\begin{fdfentry}{Charge!Mulliken.Format}[int]<\fdfvalue{WriteMullikenPop}>
+  \fdfdepend{Charge!Mulliken}
+  \fdfdeprecates{WriteMullikenPop}
+
+  It determines the level of Mulliken analysis performed. This
+  uses the density-matrix (which by definition contains information
+  integrated up to the Fermi level) and the overlap matrix.
+
+  \note when \fdf{Charge!Mulliken} is not \fdf*{none}, it defaults to \fdf*{1}.
+
+  Values accepted are:
+  \begin{fdfoptions}
+    \option[0]%
+    none
+
+    \option[1]%
+    Prints the atomic and orbital charges.
+
+    \option[2]%
+    In addition to the Mulliken charges, it prints the Mulliken overlap
+    populations, grouped by atom.
+
+    \option[3]%
+    In addition to the Mulliken charges, and the atom-grouped overlaps,
+    it prints the overlaps orbital by orbital (this can be quite verbose).
+
+  \end{fdfoptions}
+
+  The order of the orbitals in the population lists is defined by the
+  order of atoms. For each atom, populations for PAO orbitals and
+  double-$\zeta$, triple-$\zeta$, etc... derived from them are displayed first
+  for all the angular momenta. Then, populations for perturbative
+  polarization orbitals are written.  Within a $l$-shell be aware that
+  the order is not conventional, being $y$, $z$, $x$ for $p$ orbitals,
+  and $xy$, $yz$, $z^2$, $xz$, and $x^2-y^2$ for $d$ orbitals.
+
+  Atom-based Mulliken overlaps are useful to estimate the level of chemical
+  interaction among two atoms.
+
+  For a finer analysis of the chemical bonding, it is advised to
+  employ the COOP/COHP curves (see~\ref{sec:coop}).
+  
+\end{fdfentry}
+
+
+
+\begin{fdfentry}{Charge!Hirshfeld}[str]<none>
+  \fdfdeprecates{Write!HirshfeldPop}
+  \index{Hirshfeld population analysis}%
+  \index{Population analysis!Hirshfeld}%
+  \index{output!Hirshfeld analysis}
+  
+  Specify when the Hirshfeld analysis will be calculated.
+
+  The Hirshfeld analysis uses the fractional of atomic charge
+  for the lone atoms with respect to the environment charge located
+  at the same point in space.
+ 
+  For a definition of
+  the Hirshfeld charges, see Hirshfeld, Theo Chem Acta \textbf{44},
+  129 (1977) and Fonseca et al, J. Comp. Chem. \textbf{25}, 189
+  (2003). Hirshfeld charges are more reliable than Mulliken charges,
+  specially for large basis sets. Value (\code{dQatom}) is the total net
+  charge of the atom: the variation from the neutral charge, in units
+  of $|e|$: positive (negative) values indicate deficiency (excess) of
+  electrons in the atom.
+
+  The Hirshfeld charge can be requested at these invocations:
+
+  \begin{fdfoptions}
+    \option[none]%
+    \fdfindex*{Charge!Hirshfeld:none}%
+    Disable the calculation of the Hirshfeld population.
+
+    \option[geometry]%
+    \fdfindex*{Charge!Hirshfeld:geometry}%
+    At the end of every geometry step.
+
+    \option[scf]%
+    \fdfindex*{Charge!Hirshfeld:scf}%
+    After every SCF step (can create a lot of output).
+
+    This will use the \emph{input} density matrix for the charge analysis.
+
+    Useful when dealing with SCF problems,
+    This can cause very verbose output files.
+    
+    \option[end]%
+    \fdfindex*{Charge!Hirshfeld:end}%
+    At the end of the calculation.
+
+  \end{fdfoptions}
+
+  See the discussion for the common atomic output format for details on output. 
+
+\end{fdfentry}
+
+
+
+\begin{fdfentry}{Charge!Voronoi}[str]<none>
+  \fdfdeprecates{Write!VoronoiPop}
+  \index{Voronoi population analysis}%
+  \index{Population analysis!Voronoi}%
+  \index{output!Voronoi analysis}
+  
+  Specify when the Voronoi analysis will be calculated.
+
+  The Voronoi ``net''
+  atomic populations on each atom in the system. For a definition of
+  the Voronoi charges, see Bickelhaupt et al, Organometallics
+  \textbf{15}, 2923 (1996) and Fonseca et al,
+  J. Comp. Chem. \textbf{25}, 189 (2003).  Voronoi charges are more
+  reliable than Mulliken charges, specially for large basis
+  sets. Value (\code{dQatom}) is the total net charge of the atom: the
+  variation from the neutral charge, in units of $|e|$: positive
+  (negative) values indicate deficiency (excess) of electrons in the
+  atom.
+
+  The Voronoi charge can be requested at these invocations:
+
+  \begin{fdfoptions}
+    \option[none]%
+    \fdfindex*{Charge!Voronoi:none}%
+    Disable the calculation of the Voronoi population.
+
+    \option[geometry]%
+    \fdfindex*{Charge!Voronoi:geometry}%
+    At the end of every geometry step.
+
+    \option[scf]%
+    \fdfindex*{Charge!Voronoi:scf}%
+    After every SCF step (can create a lot of output).
+
+    This will use the \emph{input} density matrix for the charge analysis.
+
+    Useful when dealing with SCF problems,
+    This can cause very verbose output files.
+    
+    \option[end]%
+    \fdfindex*{Charge!Voronoi:end}%
+    At the end of the calculation.
+
+  \end{fdfoptions}
+  
+  See the discussion for the common atomic output format for details on output. 
+
+\end{fdfentry}
+
+
+\subsubsection{Deprecated population flags}
+
+\begin{fdfentry}{WriteMullikenPop}[integer]<0>
+  \fdfdeprecatedby{Charge!Mulliken,Charge!Mulliken.Format}
+  \index{Mulliken population analysis}%
+  \index{output!Mulliken analysis}
+
+  See \fdf{Charge!Mulliken} and \fdf{Charge!Mulliken.Format} for details.
+  
+\end{fdfentry}
+
+
+\begin{fdflogicalF}{MullikenInSCF}
+  \fdfdeprecatedby{Charge!Mulliken:scf}
+
+  See \fdf{Charge!Mulliken} for details.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalT}{SpinInSCF}
+  \fdfdeprecatedby{Charge!Spin:scf}
+
+If true, the size and components of the (total) spin polarization will
+be printed at every SCF step.  This is analogous to the
+\fdf{MullikenInSCF} feature.  Enabled by default for calculations
+involving spin.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{Write!HirshfeldPop}
+  \fdfdeprecatedby{Charge!Hirshfeld}
+  \index{Hirshfeld population analysis}%
+  \index{output!Hirshfeld analysis}
+
+  See \fdf{Charge!Hirshfeld} for details.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{Write!VoronoiPop}
+  \fdfdeprecatedby{Charge!Voronoi}
+  \index{Voronoi population analysis}%
+  \index{output!Voronoi analysis}
+
+  See \fdf{Charge!Voronoi} for details.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{PartialChargesAtEveryGeometry}
+  \fdfdeprecatedby{Charge!Voronoi,Charge!Hirshfeld}
+  \index{Voronoi population analysis}%
+  \index{output!Voronoi analysis} %
+  \index{Hirshfeld population analysis} %
+  \index{output!Hirshfeld analysis}
+
+  The Hirshfeld and Voronoi populations are computed after
+  self-consistency is achieved, for all the geometry steps.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{PartialChargesAtEverySCFStep}
+  \fdfdeprecatedby{Charge!Voronoi,Charge!Hirshfeld}
+  \index{Voronoi population analysis}%
+  \index{output!Voronoi analysis}%
+  \index{Hirshfeld population analysis}%
+  \index{output!Hirshfeld analysis}
+
+  The Hirshfeld and Voronoi populations are computed for every step of
+  the self-consistency process.
+
+\end{fdflogicalF}
+
+\textbf{Performance note:}
+The default behavior (computing at the end of the program) involves
+an extra calculation of the charge density.
+
+\subsubsection{Crystal-Orbital overlap and hamilton populations (COOP/COHP)}
+\label{sec:coop}
+\index{COOP/COHP curves}
+
+These curves are quite useful to analyze the electronic structure to
+get insight about bonding characteristics. See the \program{Util/COOP}
+directory for more details. The \fdf{COOP.Write} option must be
+activated to get the information needed.
+
+References:
+\begin{itemize}
+  \item%
+  Original COOP reference:
+  Hughbanks, T.; Hoffmann, R., J. Am. Chem. Soc., 1983, 105, 3528.
+
+  \item%
+  Original COHP reference: Dronskowski, R.; Blöchl, P. E., J. Phys. Chem., 1993, 97, 8617.
+
+  \item%
+  A tutorial introduction: Dronskowski, R. Computational Chemistry of Solid State
+  Materials; Wiley-VCH: Weinheim, 2005.
+
+  \item%
+  Online material maintained by R. Dronskowski's group: \url{http://www.cohp.de/}
+\end{itemize}
+
+
+\begin{fdflogicalF}{COOP.Write}
+  \index{output!Information for COOP/COHP curves}
+
+  Instructs the program to generate \sysfile{fullBZ.WFSX} (packed
+  wavefunction file) and  \sysfile{HSX} (H, S and X\_~{ij} file),
+  to be processed by \program{Util/COOP/mprop} to generate COOP/COHP curves,
+  (projected) densities of states, etc.
+
+  The \sysfile*{WFSX} file is in a more compact form than the usual
+  \sysfile*{WFS}, and the wavefunctions are output in single
+  precision. The \program{Util/wfsx2wfs} program can be used to
+  convert to the old format.  The HSX file is in a more compact form
+  than the usual HS, and the Hamiltonian, overlap matrix, and
+  relative-positions array (which is always output, even for
+  gamma-point only calculations) are in single precision.
+
+  The user can narrow the energy-range used (and save some file space)
+  by using the \fdf{WFS.Energy.Min} and \fdf{WFS.Energy.Max} options
+  (both take an energy (with units) as extra argument), and/or the
+  \fdf{WFS.Band.Min} and \fdf{WFS.Band.Max} options. Care should be
+  taken to make sure that the actual values of the options make sense.
+
+  Note that the band range options could also affect the output of
+  wave-functions associated to bands (see section~\ref{sec:wf-bands}),
+  and that the energy range options could also affect the output of
+  user-selected wave-functions with the \fdf{WaveFuncKPoints} block
+  (see section~\ref{sec:wf-output-user}).
+
+\end{fdflogicalF}
+
+
+\begin{fdfentry}{WFS.Energy.Min}[energy]<$-\infty$>
+
+  Specifies the lowest value of the energy (eigenvalue) of the
+  wave-functions to be written to the file
+  \sysfile{fullBZ.WFSX} for each $k$-point (all $k$-points in
+  the BZ sampling are affected).
+
+\end{fdfentry}
+
+\begin{fdfentry}{WFS.Energy.Max}[energy]<$\infty$>
+
+  Specifies the highest value of the energy (eigenvalue) of the
+  wave-functions to be written to the file \sysfile{fullBZ.WFSX} for
+  each $k$-point (all $k$-points in the BZ sampling are affected).
+
+\end{fdfentry}

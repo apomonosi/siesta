@@ -1,0 +1,18 @@
+module configured_values_m
+
+  ! File to be configured with default values during the build
+
+#ifdef SIESTA__ELPA
+  use elpa
+
+  character(len=*), public, parameter :: elpa_gpu_string ="@SIESTA_ELPA_GPU_STRING@"
+
+  integer, public, parameter :: SIESTA_ELPA_REAL_GPU_KERNEL = @SIESTA_ELPA_REAL_GPU_KERNEL@
+  integer, public, parameter :: SIESTA_ELPA_COMPLEX_GPU_KERNEL = @SIESTA_ELPA_COMPLEX_GPU_KERNEL@
+
+#endif
+
+  private
+
+end module configured_values_m
+    

@@ -1,0 +1,271 @@
+QMMM-driver Version: QMMM_DRIVER_VERSION
+Siesta Library Version: SIESTA_VERSION
+Architecture  : SIESTA_ARCH
+Compiler flags: FFLAGS
+SERIAL version
+NetCDF support
+
+siesta-qmmm: Running in serial mode
+>> Start of run:   5-SEP-2025  14:33:05
+
+                           ****************************  
+                           *  WELCOME TO SIESTA-QMMM  *  
+                           ****************************  
+
+qmmm_reinit: Reading from standard input
+************************** Dump of input data file.****************************
+#!
+SystemName       1 QM + 1 MM water molecules
+SystemLabel      WaterDimer
+WriteForces      T
+# Global system
+NetCharge        0.0D0
+CoulombType      ewald
+LatticeConstant 1.0 Ang
+%block LatticeVectors
+ 20.0   0.0    0.0
+  0.0  20.0    0.0
+  0.0   0.0   20.0
+%endblock LatticeVectors
+# MD Options
+MD.TypeOfRun         verlet
+MD.FinalTimeStep     1
+MD.InitialTemperature 300.0 K
+# QMMM Interaction parameters
+MM.Cutoff       8.0 Ang
+QMMM.Cutoff     8.0 Ang
+# QM-Region relevant parameters
+NumberOfAtoms    3
+NumberOfSpecies  2
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   8  O
+%endblock ChemicalSpeciesLabel
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   0.000  0.000  0.000     2
+   0.757  0.586  0.000     1
+  -0.757  0.586  0.000     1
+%endblock AtomicCoordinatesAndAtomicSpecies
+%block QM.AtomTypes
+OW
+HW
+HW
+%endblock QM.AtomTypes
+# MM-Region  relevant parameters.
+NumberOfMMAtoms 3
+%block MM.Atoms
+ATOM      1  O   HOH     1      0.000  2.500  0.000
+ATOM      2  H1  HOH     1      0.757  3.086  0.000
+ATOM      3  H2  HOH     1     -0.757  3.086  0.000
+%endblock MM.Atoms
+************************** End of input data file.*****************************
+
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Name: 1 QM + 1 MM water molecules
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Label: WaterDimer                                                                                                                                                                                                                      
+qmmm_reinit: -----------------------------------------------------------------------
+
+read: *************************************************************************
+
+read: *************************************************************************
+qmmm_read: Atomic-coordinates input format  =     Cartesian coordinates (in Ang)
+qmmm_read: Total number of QM electrons =     8
+mm_assign: SolventConnectivity block not found.
+mm_assign: Using MM parameter file at amber.parm.
+read: Write coordinates each           =     1  steps
+read: MM x QM steps                    =     1
+read: *************************************************************************
+
+ --- Initializing libsiesta data structures --- 
+
+
+* Running in serial mode.
+Species number:   1 Atomic number:    1 Label: H
+Species number:   2 Atomic number:    8 Label: O
+
+
+siestaqmmm: Atomic coordinates (Bohr) and species
+siestaqmmm:      0.00000   0.00000   0.00000  2        1
+siestaqmmm:      1.43052   1.10738   0.00000  1        2
+siestaqmmm:     36.36400   1.10738   0.00000  1        3
+siestaqmmm:      0.00000   4.72432   0.00000  3        4
+siestaqmmm:      1.43052   5.83169   0.00000  3        5
+siestaqmmm:     -1.43052   5.83169   0.00000  3        6
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Long output                                 =   F
+redata: Number of Atomic Species                    =        3
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken charges (when)               = 
+redata: Write Mulliken Pop.                         = NO
+redata: Write Hirshfeld charges (when)              = 
+redata: Write Voronoi charges (when)                = 
+redata: Write spin charge (when)                    = 
+redata: Matel table size (NRTAB)                    =     1024
+redata: Mesh Cutoff                                 =   300.0000 Ry
+redata: Net charge of the system                    =     0.0000 |e|
+redata: Min. number of SCF Iter                     =        0
+redata: Max. number of SCF Iter                     =     1000
+redata: SCF convergence failure will abort job
+redata: SCF mix quantity                            = Hamiltonian
+redata: Mix DM or H after convergence               =   F
+redata: Recompute H after scf cycle                 =   F
+redata: Mix DM in first SCF step                    =   T
+redata: Write Pulay info on disk                    =   F
+redata: New DM Occupancy tolerance                  = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks                  =     0.5000
+redata: Require Harris convergence for SCF          =   F
+redata: Harris energy tolerance for SCF             =     0.000100 eV
+redata: Require DM convergence for SCF              =   T
+redata: DM tolerance for SCF                        =     0.000100
+redata: Require EDM convergence for SCF             =   F
+redata: EDM tolerance for SCF                       =     0.001000 eV
+redata: Require H convergence for SCF               =   T
+redata: Hamiltonian tolerance for SCF               =     0.001000 eV
+redata: Require (free) Energy convergence for SCF   =   F
+redata: (free) Energy tolerance for SCF             =     0.000100 eV
+redata: Using DFT-D3 dispersion                     =   F
+redata: Using Saved Data (generic)                  =   F
+redata: Use continuation files for DM               =   T
+redata: Neglect nonoverlap interactions             =   F
+redata: Method of Calculation                       = Diagonalization
+redata: Electronic Temperature                      =   300.0000 K
+redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Number of TDED substeps                     =        3
+redata: Dynamics option                             = Verlet MD run
+redata: Initial MD time step                        =        1
+redata:   Final MD time step                        =        1
+redata: Length of MD time step                      =     1.0000 fs
+redata: Initial Temperature of MD run               =   300.0000 K
+redata: Perform a MD quench                         =   F
+redata: Save all siesta data in one NC              =   F
+redata: ***********************************************************************
+ 
+Number of different MM atom types found:   2
+Type   1 (species:   3) - OW  
+Type   2 (species:   4) - HW  
+ 
+
+qm-mm: cut off radius QM-MM (Ang):    8.000000
+
+qm-mm: Number of QM-MM interacting atoms:      3
+
+qm-mm: Warning Block cutoff too large.
+
+siesta-qmmm: Total Free (Unconstrained) Atoms:      6
+siesta-qmmm: unit cell vectors (Ang) from siesta run:    
+   20.000000    0.000000    0.000000
+    0.000000   20.000000    0.000000
+    0.000000    0.000000   20.000000
+
+
+       ********************************
+         siesta-qmmm:  Begin Step=        1
+       ********************************
+
+
+
+siesta_send_coordinates: label = ./WaterDimer.siesta
+siesta_send_coordinates: cell (Bohr) =
+   37.794522    0.000000    0.000000
+    0.000000   37.794522    0.000000
+    0.000000    0.000000   37.794522
+siesta_send_coordinates: rqm (Bohr) =
+    0.000000    0.000000    0.000000
+    1.430523    1.107380    0.000000
+   36.364000    1.107380    0.000000
+siesta_send_coordinates: rlink (Bohr) =
+
+ ##################################################
+
+siesta_receive_forces: label = ./WaterDimer.siesta
+ ##################################################
+siesta_receive_forces: energy (Ry) =  -34.279015
+siesta_receive_forces: stress (Ry/Bohr**3) =
+   -0.000004    0.000000    0.000000
+    0.000000   -0.000000   -0.000000
+    0.000000    0.000000    0.000003
+siesta_receive_forces: forces (Ry/Bohr) =
+    0.000000   -0.060767    0.000000
+    0.022139    0.035614   -0.000000
+   -0.022139    0.035614   -0.000000
+    0.000000   -0.019676   -0.000000
+    0.000555    0.005113    0.000000
+   -0.000555    0.005113    0.000000
+siesta-qmmm: AMBER MM Region Energy Components: /eV
+Bonds             =      0.0000006
+Angles            =      0.0000001
+Dihedrals         =      0.0000000
+Improper Torsions =      0.0000000
+Lennard-Jones     =      0.0000000
+Lennard-Jones 1-4 =      0.0000000
+Non-bonded elec.  =     -0.0011163
+Non-bonded e. 1-4 =      0.0000000
+
+
+siesta-qmmm: Energy Decomposition (eV):
+Esiesta:       -466.389753
+Elj:              0.317723
+Esolv:           -0.001116
+Etot:         -466.073146
+
+qmmm: Atomic forces (eV/Ang):
+     1    0.000000   -3.341013    0.000000
+     2    0.569224    0.915683   -0.000000
+     3   -0.569224    0.915683   -0.000000
+     4    0.000000    1.277598   -0.000000
+     5    0.010878    0.129034    0.000000
+     6   -0.010878    0.129034    0.000000
+----------------------------------------
+   Tot    0.000000    0.026020    0.000000
+----------------------------------------
+   Max    3.341013
+   Res    0.917519    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    3.341013    constrained
+
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):       -0.57        0.80        0.34       -0.01        0.01        0.02
+(Free)E + p*V (eV/cell)       -0.9563
+Target enthalpy (eV/cell)        0.0000
+
+siesta: Stress tensor (static) (eV/Ang**3):
+        -0.000347    0.000000    0.000000
+         0.000000    0.000516   -0.000000
+         0.000000    0.000000    0.000238
+
+siesta: Pressure (static):         -0.21721786  kBar
+
+siesta: Stress tensor (total) (eV/Ang**3):
+        -0.000355    0.000011    0.000006
+         0.000011    0.000500   -0.000006
+         0.000006   -0.000006    0.000213
+
+siesta: Pressure (total):         -0.19151814  kBar
+
+siestaqmmm: Temp_ion =     297.828 K
+
+siesta-qmmm: Kinetic Energy (eV):    0.192486
+
+siesta-qmmm: Total Energy + Kinetic (eV): -465.880660
+
+siesta-qmmm: System Temperature:     297.828 K
+
+timer: CPU execution times (min):
+timer:  Routine       Calls   Time/call    Tot.time        %
+timer:  Siesta-qmm        1       0.019       0.019   100.00
+timer:  Setup             1       0.000       0.000     1.30
+timer:  IterMD            1       0.019       0.019    98.61
+timer:  Siesta            1       0.019       0.019    98.52
+timer:  QM-MMcoupl        1       0.000       0.000     0.00
+timer:  MMenergy          1       0.000       0.000     0.00
+  
+>> End of run:   5-SEP-2025  14:33:06

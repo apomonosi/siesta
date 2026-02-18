@@ -1,0 +1,140 @@
+The current implementation has the possibility of adding D3 corrections to DFT
+calculations (See Grimme, J. Chem. Phys. 132 (2010), 154104. DOI:
+10.1063/1.3382344). The following options provide a great deal of fine-tuning
+within this model; see in the above reference for
+insight on the parameters Sn, rSn and alpha, which correspond to the following
+equations:
+
+\begin{centering}
+
+$ E_{D3} = E_{2body} + E_{3body} $
+
+$ E_{2body} = \sum_{A,B} \frac{ s_{6} C_{6}^{AB}}{ (r_{AB})^6 } f_{6}(r_{AB}) + \sum_{A,B} \frac{ s_{8} C_{8}^{AB}}{ (r_{AB})^8 } f_{8}(r_{AB})$
+
+$ f_{n}(r_{AB}) = \frac{ 1}{1 + 6 \left (\frac{r_{AB}}{Sr_{n} R_{0}^{AB}} \right )^{-\alpha_{n}} } $
+
+\end{centering}
+
+The 3-body interaction is also calculated but there are no input parameters
+involved except for enabling or disabling it entirely. In this case, the value
+of $\alpha$ is always 16 and the value of $S_{r}$ is 4/3.
+
+\begin{centering}
+
+$ E_{3body} = \sum_{A,B,C} f_{3}(r_{ABC}) E_{ABC} $
+
+$ E_{ABC} = \frac{ 1 + 3 cos(\theta_{ABC}) cos(\theta_{BCA}) cos(\theta_{ACB}) }{ ( r_{AB} r_{BC} r_{AC} ) ^{3} } C_{9}^{ABC} $
+
+$ C_{9}^{ABC} = - \sqrt{ C_{6}^{AB} C_{6}^{BC} C_{6}^{AC} }$
+
+
+\end{centering}
+
+\begin{fdflogicalF}{DFTD3}
+  If \fdftrue, D3 corrections are enabled for the current calculation.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalT}{DFTD3!UseXCDefaults}
+  When doing D3 corrections, SIESTA may use default parameters for the D3
+  model which where already available for some functionals. At the moment
+  this covers only PBE, PBESol, RevPBE, RPBE, LYP, BLYP, but more of them
+  may be added in the future. With LIBXC, HS6 and PBE0 are also available.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{DFTD3!2BodyCutOff}[length]<$60.0 bohr$>
+  Cut-off distance for 2-body dispersion interactions. Interactions corresponding
+  to atom pairs farther away than this distance are ignored.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!3BodyCutOff}[length]<$40.0 bohr$>
+  Cut-off distance for 3-body dispersion interactions. Interactions corresponding
+  to atom pairs farther away than this distance are ignored.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!CoordinationCutoff}[length]<$10.0 bohr$>
+  Cut-off distance for coordination number calculation (i.e. first neighbours
+  count). This is relevant for the correct calculation of the C6 and C8 factors.
+
+\end{fdfentry}
+
+\begin{fdflogicalT}{DFTD3!BJdamping}
+  If \fdftrue, uses the Becke-Johnson damping for D3 interaction. If not,
+  uses the zero-damping variant.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{DFTD3!s6}[real]<$1.0$>
+  Sets the value for the s6 coefficient in the D3 model, with s6 being
+  the factor that multiplies the C6 interaction terms.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!rs6}[real]<$1.0$>
+  Sets the value for the rs6, which is the prefactor present in the
+  C6 damping function.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!s8}[real]<$1.0$>
+  Sets the value for the s8 coefficient in the D3 model, with s8 being
+  the factor that multiplies the C8 interaction terms.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!rs8}[real]<$1.0$>
+  Sets the value for the rs8, which is the prefactor present in the
+  C8 damping function. This is usually set to 1.0 and not changed.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!alpha}[real]<$14.0$>
+  Sets the value for the the exponent in the C6 damping function. The C8
+  damping function automatically takes the value of alpha + 2.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!a1}[real]<$0.4$>
+  Value of the a1 coefficient for Becke-Johnson damping.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DFTD3!a2}[real]<$5.0$>
+  Value of the a2 coefficient for Becke-Johnson damping.
+
+\end{fdfentry}
+
+\subsubsection{DFTD3 and periodicity}
+SIESTA will try to guess system periodicity from the existing coordinates and
+lattice vectors; however, detection might fail in non-orthogonal simulation
+cells, giving the following output:
+
+\begin{shellexample}
+Could not guess the right amount of periodicity directions for D3.
+Enabling periodicity on all directions.
+\end{shellexample}
+
+You can enforce the desired periodicity using the \fdf{DFTD3!Periodic} list
+option:
+
+\begin{fdfentry}{DFTD3!Periodic}[list]<[1 2 3]>
+  Indicates which lattice vectors are periodic. A value of [1 3], for example,
+  will enforce the periodicity for Simple-D3 in the directions of the first and
+  third lattice vectors.
+\end{fdfentry}
+
+\subsubsection{A note on LIBXC functionals}
+SIESTA has now LIBXC functionality enabled via GRIDXC. However, not
+every single one of the posibilities provided by that library are present
+in the standard D3 model. Most of the one that are already present, are
+already the standard SIESTA GGA functionals. So in case you want to try
+something different, we recommend referring to the following webpage for
+already existing D3 parameters:
+
+\href{https://www.chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dft-d3}{https://www.chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dft-d3}
+
+Don't forget to set \fdf{DFTD3!UseXCDefaults} to \shell{F} when adding
+external parameters.

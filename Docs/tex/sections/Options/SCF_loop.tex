@@ -1,0 +1,1772 @@
+
+\textbf{IMPORTANT NOTE: Convergence of the Kohn-Sham energy and forces}
+
+In versions prior to 4.0 of the program, the Kohn-Sham energy was computed
+using the ``in'' DM. The typical DM used as input for the calculation
+of H was not directly computed from a set of wave-functions (it was
+either the product of mixing or of the initialization from atomic
+values). In this case, the ``kinetic energy'' term in the total energy
+computed in the way stated in the \siesta\ paper had an error which
+decreased with the approach to self-consistency, but was non-zero. The
+net result was that the Kohn-Sham energy converged more slowly than
+the ``Harris'' energy (which is correctly computed).
+
+When mixing H (see below under ``Mixing Options''), the KS energy is
+in effect computed from DM(out), so this error vanishes.
+
+As a related issue, the forces and stress computed after SCF
+convergence were calculated using the DM coming out of the cycle,
+which by default was the product of a final mixing. This also
+introduced errors which grew with the degree of non-selfconsistency.
+
+The current version introduces several changes:
+
+\begin{itemize}
+\item When mixing the DM, the Kohn-Sham energy may be corrected to make it
+  variational. This involves an extra call to \texttt{dhscf} (although
+  with neither forces nor matrix elements being calculated, i.e. only
+  calls to \texttt{rhoofd}, \texttt{poison}, and \texttt{cellxc}), and is
+  turned on by the option \fdf*{SCF.Want.Variational.EKS}.
+
+
+\item The program now prints a new column labeled ``dHmax'' for the
+  self-consistent cycle. The value represents the maximum absolute
+  value of the changes in the entries of H, but its actual meaning
+  depends on whether DM or H mixing is in effect: if mixing the DM,
+  dHmax refers to the change in H(in) with respect to the previous
+  step; if mixing H, dHmax refers to H(out)-H(in) in the current
+  step.
+
+  \item When achieving convergence, the loop might be exited without a
+  further mixing of the DM, thus preserving DM(out) for further
+  processing (including the calculation of forces and the analysis of
+  the electronic structure) (see the \fdf{SCF.Mix!AfterConvergence}
+  option).
+
+  \index{Variational character of E\_KS}
+
+  \item It remains to be seen whether the forces, being computed
+  ``right'' on the basis of DM(out), exhibit somehow better
+  convergence as a function of the scf step. In order to gain some
+  more data and heuristics on this we have implemented a
+  force-monitoring option, activated by setting to \fdftrue\ the
+  variable \fdf*{SCF.MonitorForces}. The program will then print the
+  maximum absolute value of the change in forces from one step to the
+  next. Other statistics could be implemented.
+
+  \item While the (mixed) DM is saved at every SCF step, as was
+  standard practice, the final DM(out) overwrites the \sysfile{DM}
+  file at the end of the SCF cycle. Thus it is still possible to use a
+  ``mixed'' DM for restarting an interrupted loop, but a ``good'' DM
+  will be used for any other post-processing.
+
+
+\end{itemize}
+
+
+\begin{fdfentry}{MinSCFIterations}[integer]<0>
+
+  Minimum number of SCF\index{SCF} iterations per time step. In MD
+  simulations this can with benefit be set to 3.
+
+\end{fdfentry}
+
+\begin{fdfentry}{MaxSCFIterations}[integer]<1000>
+
+  Maximum number of SCF\index{SCF} iterations per time step.
+
+\end{fdfentry}
+
+\begin{fdflogicalT}{SCF!MustConverge}
+
+  Defines the behaviour if convergence is not reached in the maximum
+  number of SCF iterations. The default is to stop on the first SCF
+  convergence failure. Increasing \fdf{MaxSCFIterations} to a large
+  number may be advantageous when this is \fdftrue.
+
+\end{fdflogicalT}
+
+\subsubsection{Harris functional}
+
+\begin{fdflogicalF}{Harris!Functional}
+
+  Logical variable to choose between self-consistent Kohn-Sham
+  functional or non self-consistent Harris functional to calculate
+  energies and forces.
+  \begin{itemize}
+    \item \fdffalse: Fully self-consistent Kohn-Sham functional.
+    \item \fdftrue: Non self consistent Harris functional. Cheap but
+    pretty crude for some systems. The forces are computed within the
+    Harris functional in the first SCF step. Only implemented for LDA in
+    the Perdew-Zunger parametrization. It really only applies to starting
+    densities which are superpositions of atomic charge densities.
+
+    When this option is choosen, the values of \fdf{DM!UseSaveDM},
+    \fdf{SCF!MustConverge} and \fdf{SCF.Mix!First} are automatically
+    set \fdffalse and \fdf{MaxSCFIterations} is set to $1$, no matter
+    whatever other specification are in the INPUT file.
+  \end{itemize}
+
+\end{fdflogicalF}
+
+
+\subsubsection{Mixing options}
+\label{sec:scf:mix}
+\index{SCF!mixing}
+
+Whether a calculation reaches self-consistency in a moderate number of
+steps depends strongly on the mixing parameters used. The available
+mixing options should be carefully tested for a given calculation
+type. This search for optimal parameters can repay itself handsomely
+by potentially saving many self-consistency steps in production runs.
+
+
+\begin{fdfentry}{SCF.Mix}[string]<Hamiltonian|density|charge>
+  \index{SCF!mixing}
+  Control what physical quantity to mix in the self-consistent cycle.
+
+  The default is mixing the Hamiltonian, which may typically perform
+  better than density matrix mixing.
+
+  \begin{fdfoptions}
+    \option[Hamiltonian]%
+    \fdfindex*{SCF.Mix:Hamiltonian}%
+    \index{SCF!mixing!Hamiltonian}
+    Mix the Hamiltonian matrix (default).
+
+    \option[density]%
+    \fdfindex*{SCF.Mix:density}%
+    \index{SCF!mixing!Density}
+    Mix the density matrix.
+
+    \option[charge]%
+    \fdfindex*{SCF.Mix:charge}%
+    \index{SCF!mixing!Charge}
+    Mix the real-space charge density. Note this is an experimental
+    feature.
+
+  \end{fdfoptions}
+
+  \note Real-space charge density does not follow the regular options
+  that adhere to density-matrix or Hamiltonian mixing. Also it is not
+  recommended to use real-space charge density mixing with \tsiesta.
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.Mix!Spin}[string]<all|spinor|sum|sum+diff>
+
+  Controls how the mixing is performed when carrying out
+  spin-polarized calculations.
+
+  \begin{fdfoptions}
+    \option[all] %
+    Use all spin-components in the mixing
+
+    \option[spinor] %
+    Estimate mixing coefficients using the spinor components
+
+    \option[sum] %
+    Estimate mixing coefficients using the sum of the spinor
+    components
+
+    \option[sum+diff] %
+    Estimate mixing coefficients using the sum \emph{and} the
+    difference between the spinor components
+  \end{fdfoptions}
+
+  \note This option only influences density-matrix ($\DM$) or
+  Hamiltonian ($\Ham$) mixing when using anything but the
+  \fdf*{linear} mixing scheme. And it does not influence not charge
+  ($\rho$) mixing.
+
+\end{fdfentry}
+
+\begin{fdflogicalT}{SCF.Mix!First}
+  \fdfindex*{DM.MixSCF1}[|see SCF.Mix.First]
+  \fdfdeprecates{DM.MixSCF1}%
+  \fdfdepend{SCF.Mix!First.Force}%
+
+  This flag is used to decide whether mixing (of the DM or H) should
+  be done in the first SCF step. If mixing is not performed the output
+  DM or H generated in the first SCF step is used as input in the next
+  SCF step. When mixing the DM, this ``reset'' has the effect of
+  avoiding potentially undesirable memory effects: for example, a DM
+  read from file which corresponds to a different structure might not
+  satisfy the correct symmetry, and mixing will not fix it. On the
+  other hand, when reusing a DM for a restart of an interrupted
+  calculation, a full reset might not be advised.
+
+  The value of this flag is one of the ingredients used by \siesta\ to
+  decide what to do. If \fdftrue\ (the default), mixing will be
+  performed in all cases, except when a DM has been read from file and
+  the sparsity pattern of the DM on file is different from the current
+  one. To ensure that a first-step mixing is done even in this case,
+  \fdf{SCF.Mix!First.Force} should be set to \fdftrue.
+
+  If the flag is \fdffalse, no mixing in the first step will be
+  performed, except if overridden by \fdf{SCF.Mix!First.Force}.
+
+  \note that the default value for this flag has changed from the old
+  (pre-version 4) setting in \siesta. The new setting is most
+  appropriate for the case of restarting calculations. On the other
+  hand, it means that mixing in the first SCF step will also be
+  performed for the standard case in which the initial DM is built as
+  a (diagonal) superposition of atomic orbital occupation values. In
+  some cases (e.g. spin-orbit calculations) better results might be
+  obtained by avoiding this mixing.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{SCF.Mix!First.Force}
+
+  Force the mixing (of DM or H) in the first SCF step, regardless of
+  what \siesta\ may heuristically decide.
+
+  This overrules \fdf{SCF.Mix!First}.
+
+\end{fdflogicalF}
+
+
+In the following the density matrix ($\DM$) will be used in the
+equations, while for Hamiltonian mixing, $\DM$, should be replaced by
+the Hamiltonian matrix.
+%
+Also we define $\Res[i] = \DM^i_{\mathrm{out}} - \DM^i_{\mathrm{in}}$ and
+$\RRes[i] = \Res[i] - \Res[i-1]$.
+
+\begin{fdfentry}{SCF.Mixer!Method}[string]<Pulay|Broyden|Linear>
+
+  Choose the mixing algorithm between different methods. Each method
+  may have different variants, see \fdf{SCF.Mixer!Variant}.
+
+  \begin{fdfoptions}
+
+    \option[Linear] %
+    \index{SCF!mixing!Linear}
+    A simple linear extrapolation of the input matrix as
+    \begin{equation}
+      \DM^{n+1}_{\mathrm{in}} = \DM^n_{\mathrm{in}} + w \Res[n].
+    \end{equation}
+
+
+    \option[Pulay] %
+    \index{SCF!mixing!Pulay}
+    Using the Pulay mixing method corresponds using the
+    \citet{Kresse1996} variant. It relies on the previous $N$ steps and
+    uses those for estimating an optimal input
+    $\DM^{n+1}_{\mathrm{in}}$ for the following iteration. The
+    equation can be written as
+    \begin{equation}
+      \DM^{n+1}_{\mathrm{in}} = \DM^n_{\mathrm{in}} + G \Res[n]
+      + \sum_{i=n-N+1}^{N-1} \alpha_i (\Res[i] + G \RRes[i]),
+    \end{equation}
+    where $G$ is the damping factor of the Pulay mixing (also known as
+    the mixing weight).
+    The values $\alpha_i$ are calculated using this formula
+    \begin{equation}
+      \alpha_i = - \sum_{j=1}^{N-1}\mathbf A_{ji}^{-1}
+         \langle \RRes[j] | \Res[N] \rangle,
+    \end{equation}
+    with $\mathbf A_{ji} = \langle \RRes[j] | \RRes[i] \rangle$.
+
+    In \siesta\ $G$ is a constant, and not a matrix.
+
+    \note Pulay mixing is a special case of Broyden mixing, see the
+    Broyden method.
+
+
+    \option[Broyden] %
+    \index{SCF!mixing!Broyden}
+    The Broyden mixing is mixing method relying on the previous $N$
+    steps in the history for calculating an optimum input
+    $\DM^{n+1}_{\mathrm{in}}$ for the following iteration.  The
+    equation can be written as
+    \begin{equation}
+      \DM^{n+1}_{\mathrm{in}} = \DM^n_{\mathrm{in}} + G \Res[n]
+      - \sum_{i=n-N+1}^{N-1}\sum_{j=n-N+1}^{N-1} w_iw_j c_j \beta_{ij} (\Res[i] + G \RRes[i]),
+    \end{equation}
+    where $G$ is the damping factor (also known as
+    the mixing weight).
+    The values weights may be expressed by
+    \begin{align}
+      w_i &= 1 \quad\text{, for }i>0
+      \\
+      c_i &= \langle \RRes[i] | \Res[n] \rangle,
+      \\
+      \beta_{ij} &= \Big[\big(w_0^2\mathbf I + \mathbf
+      A\big)^{-1}\Big]_{ij}
+      \\
+      A_{ij} &= w_iw_j \langle \RRes[i] | \RRes[j] \rangle.
+    \end{align}
+    It should be noted that $w_i$ for $i>0$ may be chosen arbitrarily.
+    Comparing with the Pulay mixing scheme it is obvious that Broyden
+    and Pulay are equivalent for a suitable set of parameters.
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.Mixer!Variant}[string]<original>
+
+  Choose the variant of the mixing method.
+
+  \begin{fdfoptions}
+
+    \option[Pulay] %
+    This is implemented in two variants:
+    \begin{fdfoptions}
+
+      \option[original$\vert$kresse]%
+      The original\footnote{As such the ``original'' version is a
+          variant it-self. But this is more stable in the far majority
+          of cases.} Pulay mixing scheme, as implemented in
+      \citet{Kresse1996}.
+
+      \option[GR] %
+      The ``guaranteed-reduction'' variant of
+      Pulay\cite{Bowler2000}. This variant has a special convergence
+      path. It interchanges between linear and Pulay mixing thus using
+      the exact gradient at each $\DM^n_{\mathrm{in}}$.  For
+      relatively simple systems this may be advantageous to
+      use. However, for complex systems it may be worse until it
+      reaches a convergence basin.
+
+      To obtain the original guaranteed-reduction variant one should
+      set \fdf{SCF.Mixer.<>!weight.linear} to $1$.
+
+    \end{fdfoptions}
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.Mixer!Weight}[real]<0.25>%
+  \fdfdeprecates{DM!MixingWeight}%
+  \fdfindex*{DM!MixingWeight}[|see SCF.Mixer.Weight]
+
+  The mixing weight used to mix the quantity.
+  In the linear mixing case this refers to
+  \begin{equation}
+    \DM^{n+1}_{\mathrm{in}} = \DM^n_{\mathrm{in}} + w \Res[n].
+  \end{equation}
+  For details regarding the other methods please see
+  \fdf{SCF.Mixer!Method}.
+
+  Convergence of a system heavily depends on:
+  \begin{description}
+    \item[\fdf{SCF.Mixer!Weight}]
+
+    A high value retains much of the output solution, which may result
+    in leaving the convergence basin. However, when close to the
+    solution a high value might decrease needed SCF steps.
+
+    A low value only uses very little of the output solution. This may
+    result in high number of SCF steps but is more likely to
+    converge since it becomes harder for the solution to leave the
+    convergence basin.
+
+    This value is heavily system dependent.
+
+    Since the convergence depends on the input vs. the output, this value
+    can practically be arbitrarily low. For very low numbers (e.g. $<10^{-6}$) the
+    convergence will just take a large number of SCF iterations because so
+    little is added on every step.
+
+    \item[\fdf{SCF.Mixer!Method}]
+
+    The linear mixing is the only method that does not make use of
+    prior steps, for hard to converge systems it should only be tried
+    with very low mixing weights.
+
+    The choice of method may result in some reduction of SCF steps,
+    but experimentation with the mixing weight is preferred as a first
+    resort.
+
+    \item[\fdf{SCF.Mixer!History}]
+
+    Number of previous steps to use for the mixing. A too low value
+    (say $2$ -- $6$) might change the convergence properties a
+    lot. While two different high values might not change the
+    convergence properties significantly, if at all.
+
+  \end{description}
+
+  \note the older keyword \fdf{DM!MixingWeight} is used if this key is
+  not found in the input.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{SCF.Mixer!History}[integer]<2>%
+  \fdfdeprecates{DM.NumberPulay,DM.NumberBroyden}%
+  \fdfindex*{DM.NumberPulay}[|see SCF.Mixer.History]%
+  \fdfindex*{DM.NumberBroyden}[|see SCF.Mixer.History]
+
+  Number of previous SCF steps used in estimating the following input.
+  Increasing this number, typically, increases stability and a number
+  of around 6 or above may be advised.
+
+  \note the older keyword \fdf{DM.NumberPulay}/\fdf{DM.NumberBroyden}
+  is used if this key is not found in the input.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{SCF.Mixer!Kick}[integer]<0>%
+  \fdfindex*{DM.NumberKick}[|see SCF.Mixer.Kick]
+
+  After every $N$ SCF steps a linear mix is inserted to \emph{kick}
+  the SCF cycle out of a possible local minimum.
+
+  The mixing weight for this linear kick is determined by \fdf{SCF.Mixer!Kick.Weight}.
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.Mixer!Kick.Weight}[real]<\fdfvalue{SCF.Mixer!Weight}>%
+  \fdfindex*{DM!KickMixingWeight}[|see SCF.Mixer.Kick.Weight]
+
+  The mixing weight for the linear kick (if used).
+
+\end{fdfentry}
+
+
+
+\begin{fdfentry}{SCF.Mixer!Restart}[integer]<0>
+
+  When using advanced mixers (Pulay/Broyden) the mixing scheme may
+  periodically restart the history. This may greatly improve the
+  convergence path as local constraints in the minimization process
+  are periodically removed. This method has similarity to the method
+  proposed in \citet{Banerjee2016} and is a special case of the
+  \fdf{SCF.Mixer!Kick} method.
+
+  Please see \fdf{SCF.Mixer!Restart.Save} which is advised to be set
+  simultaneously.
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.Mixer!Restart.Save}[integer]<1>
+
+  When restarting the history of saved SCF steps one may choose to
+  save a subset of the latest history steps.
+  %
+  When using \fdf{SCF.Mixer!Restart} it is encouraged to also save a
+  couple of previous history steps.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{SCF.Mixer!Linear.After}[integer]<-1>
+
+  After reaching convergence one may run additional SCF cycles using a
+  linear mixing scheme. If this has a value $\ge 0$ \siesta\ will
+  perform linear mixing after it has converged using the regular
+  mixing method (\fdf{SCF.Mixer!Method}).
+
+  The mixing weight for this linear mixing is controlled by \fdf{SCF.Mixer!Linear.After.Weight}.
+
+\end{fdfentry}
+
+
+
+\begin{fdfentry}{SCF.Mixer!Linear.After.Weight}[real]<\fdfvalue{SCF.Mixer!Weight}>
+
+  After reaching convergence one may run additional SCF cycles using a
+  linear mixing scheme. If this has a value $\ge 0$ \siesta\ will
+  perform linear mixing after it has converged using the regular
+  mixing method (\fdf{SCF.Mixer!Method}).
+
+  The mixing weight for this linear mixing is controlled by \fdf{SCF.Mixer!Linear.After.Weight}.
+
+\end{fdfentry}
+
+In conjunction with the above simple settings controlling the SCF
+cycle \siesta\ employs a very configurable mixing scheme. In essence
+one may switch mixing methods, arbitrarily, during the SCF cycle via
+control commands. This can greatly speed up convergence.
+
+\begin{fdfentry}{SCF.Mixers}[block]
+
+  Each line in this block defines a separate mixer that is defined in
+  a subsequent \fdf{SCF.Mixer.<>} block.
+
+  The first line is the initial mixer used.
+
+  See the following options for controlling individual mixing
+  methods.
+
+  \note If this block is defined you \emph{must} define all mixing
+  parameters individually.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{SCF.Mixer.<>}[block]
+
+  This block controls the mixer named \fdf*{<>}.
+
+  \begin{fdfoptions}
+
+    \option[method]%
+    \fdfindex*{SCF.Mixer.<>!method}%
+    Define the method for the mixer, see \fdf{SCF.Mixer!Method} for
+    possible values.
+
+    \option[variant]%
+    \fdfindex*{SCF.Mixer.<>!variant}%
+    Define the variant of the method, see \fdf{SCF.Mixer!Variant} for
+    possible values.
+
+    \option[weight|w]%
+    \fdfindex*{SCF.Mixer.<>!weight}%
+    Define the mixing weight for the mixing scheme, see
+    \fdf{SCF.Mixer!Weight}.
+
+    \option[history]%
+    \fdfindex*{SCF.Mixer.<>!history}%
+    Define number of previous history steps used in the minimization process, see
+    \fdf{SCF.Mixer!History}.
+
+    \option[weight.linear|w.linear]%
+    \fdfindex*{SCF.Mixer.<>!weight.linear}%
+    Define the linear mixing weight for the mixing scheme. This only
+    has meaning for Pulay or Broyden mixing. It defines the initial
+    linear mixing weight.
+
+    To obtain the original Pulay Guarenteed-Reduction variant one
+    should set this to $1$.
+
+    \option[restart]%
+    \fdfindex*{SCF.Mixer.<>!restart}%
+    Define the periodic restart of the saved history, see
+    \fdf{SCF.Mixer!Restart}.
+
+    \option[restart.save]%
+    \fdfindex*{SCF.Mixer.<>!restart.save}%
+    Define number of latest history steps retained when restarting the
+    history, see \fdf{SCF.Mixer!Restart.Save}.
+
+    \option[iterations]%
+    \fdfindex*{SCF.Mixer.<>!iterations}%
+    Define the maximum number of iterations this mixer should run
+    before changing to another mixing method.
+
+    \note This \emph{must} be used in conjunction with the \fdf*{next} setting.
+
+    \option[next \fdf*{<>}]%
+    \fdfindex*{SCF.Mixer.<>!next}%
+    Specify the name of the next mixing scheme after having conducted
+    \fdf*{iterations} SCF cycles using this mixing method.
+
+    \option[next.conv \fdf*{<>}]%
+    \fdfindex*{SCF.Mixer.<>!next.conv}%
+    If SCF convergence is reached using this mixer, switch to the
+    mixing scheme via \fdf*{<>}. Then proceed with the SCF cycle.
+
+    \option[next.p]%
+    \fdfindex*{SCF.Mixer.<>!next.p}%
+    If the relative difference between the latest two residuals is
+    below this quantity, the mixer will switch to the method given in
+    \fdf*{next}.
+    Thus if
+    \begin{equation}
+      \frac{\langle \Res[i]|\Res[i]\rangle - \langle
+          \Res[i-1]|\Res[i-1]\rangle}%
+      {\langle \Res[i-1]|\Res[i-1]\rangle} <
+      \fdf*{next.p}
+    \end{equation}
+    is fulfilled it will skip to the next mixer.
+
+    \option[restart.p]%
+    \fdfindex*{SCF.Mixer.<>!restart.p}%
+    If the relative difference between the latest two residuals is
+    below this quantity, the mixer will restart the history.
+    Thus if
+    \begin{equation}
+      \frac{\langle \Res[i]|\Res[i]\rangle - \langle
+          \Res[i-1]|\Res[i-1]\rangle}%
+      {\langle \Res[i-1]|\Res[i-1]\rangle} <
+      \fdf*{restart.p}
+    \end{equation}
+    is fulfilled it will reset the history.
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+
+The options covered now may be exemplified in these examples. If the
+input file contains:
+\begin{fdfexample}
+  SCF.Mixer.Method pulay
+  SCF.Mixer.Weight 0.05
+  SCF.Mixer.History 10
+  SCF.Mixer.Restart 25
+  SCF.Mixer.Restart.Save 4
+  SCF.Mixer.Linear.After 0
+  SCF.Mixer.Linear.After.Weight 0.1
+\end{fdfexample}
+
+This may be equivalently setup using the more advanced input blocks:
+\begin{fdfexample}
+  %block SCF.Mixers
+    init
+    final
+  %endblock
+
+  %block SCF.Mixer.init
+     method pulay
+     weight 0.05
+     history 10
+     restart 25
+     restart.save 4
+     next.conv final
+  %endblock
+
+  %block SCF.Mixer.final
+     method linear
+     weight 0.1
+  %endblock
+\end{fdfexample}
+
+This advanced setup may be used to change mixers during the SCF to
+change certain parameters of the mixing method, or fully change the
+method for mixing. For instance it may be advantageous to increase the
+mixing weight once a certain degree of self-consistency has been
+reached. In the following example we change the mixing method to a
+different scheme by increasing the weight and decreasing the history steps:
+\begin{fdfexample}
+  %block SCF.Mixers
+    init
+    final
+  %endblock
+
+  %block SCF.Mixer.init
+     method pulay
+     weight 0.05
+     history 10
+     next final
+     # Switch when the relative residual goes below 5%
+     next.p 0.05
+  %endblock
+
+  %block SCF.Mixer.final
+     method pulay
+     weight 0.1
+     history 6
+  %endblock
+\end{fdfexample}
+
+In essence, very complicated schemes of convergence may be created
+using the block's input.
+
+The following options refer to the global treatment of how/when mixing
+should be performed.
+
+
+% Only show if not showing the other options
+\begin{fdflogicalF}{Compat!Pre-v4-DM-H}
+  \index{Backward compatibility}
+  \index{SCF!compat-pre4-dm-h}
+
+  This controls the default values of \fdf{SCF.Mix!AfterConvergence},
+  \fdf{SCF!RecomputeHAfterScf} and \fdf{SCF.Mix!First}.
+
+  In versions prior to v4 the two former options where defaulted to
+  \fdftrue\ while the latter option was defaulted to \fdffalse.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{SCF.Mix!AfterConvergence}
+  \index{SCF!mixing}%
+  \index{SCF!mixing!end of cycle}%
+
+  Indicate whether mixing is done in the last SCF cycle (after
+  convergence has been achieved) or not. Not mixing after convergence
+  improves the quality of the final Kohn-Sham energy and of the forces
+  when mixing the DM.
+
+  \note See \fdf{Compat!Pre-v4-DM-H}.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{SCF!RecomputeHAfterSCF}
+  \index{SCF!Recomputing H}%
+
+  Indicate whether the Hamiltonian is updated after the scf cycle,
+  while computing the final energy, forces, and stresses. Not
+  recomputing H makes further analysis tasks (such as the computation
+  of band structures) more consistent, as they will be able to use the
+  same H used to generate the last density matrix.
+
+  \note See \fdf{Compat!Pre-v4-DM-H}.
+
+\end{fdflogicalF}
+
+
+\ifdeprecated
+\subsubsection{Deprecated mixing options}
+
+\begin{description}
+
+\index{MixHamiltonian@\textbf{MixHamiltonian}}\index{SCF!mixing!Hamiltonian}
+\item[\textbf{MixHamiltonian}] (\textit{logical}):
+Mixing of the Hamiltonian instead of the density-matrix, a
+feature previously available only for \tsiesta\ runs has been
+implemented for general use. It is enabled by setting either the
+\textbf{MixHamiltonian} option (preferred) or the old-style \textbf{TS.MixH}
+option (deprecated but retained due to its use in \tsiesta).
+
+The evidence obtained so far from test runs indicates that Hamiltonian
+mixing might be better than density-matrix mixing in most cases, and
+is seldom worse. Users are encouraged to test this feature for their
+favorite tough-converging systems, and report their experiences.
+
+The H mixing algorithms available are exactly the same as for
+density-matrix mixing (Pulay, Broyden, Fire), and the keywords
+controlling it are also the same, e.g. \texttt{DM.MixingWeight} applies
+both to H and DM mixing.
+
+\item[\textbf{DM.MixSCF1}] (\textit{logical}):\index{SCF!mixing}
+\index{DM.MixSCF1@\textbf{DM.MixSCF1}}\index{SCF!mixing}
+Logical variable to indicate whether mixing is done in the
+first SCF cycle or not. Usually, mixing should not be done in
+the first cycle, to avoid non-idempotency in density matrix
+from Harris or previous steps. It can be useful, though,
+for restarts of selfconsistency runs.
+
+\textit{Default value:} \texttt{.true.}
+
+\item[\textbf{DM.MixingWeight}] (\textit{real}):
+\index{DM.MixingWeight@\textbf{DM.MixingWeight}}
+\index{DM.MixingWeight@\textbf{DM.MixingWeight}|see SCF.Mix.Weight}
+\index{SCF!mixing!linear}
+\index{SCF.Mix.Weight@\textbf{SCF.Mix.Weight}}
+
+Proportion $\alpha$ of
+output Density Matrix to be used for the input Density Matrix of
+next SCF cycle (linear mixing):
+$\rho^{n+1}_{in} = \alpha \rho^n_{out}
++(1 - \alpha) \rho^n_{in}$.
+
+\textit{Default value:} \texttt{0.25}
+
+Note that this parameter is also used in more sophisticated mixing
+approaches (i.e. Pulay).
+
+Pulay mixing (also known as DIIS extrapolation) is the method of
+choice for accelerating the convergence of the scf cycle.
+
+\item[\textbf{DM.NumberPulay}] (\textit{integer}):\index{Pulay mixing}
+\index{DM.NumberPulay@\textbf{DM.NumberPulay}}\index{SCF!mixing!Pulay}
+It controls the Pulay convergence accelerator. Pulay mixing generally
+accelerates convergence quite significantly, and can
+reach convergence in cases where linear mixing cannot.
+%One Pulay mixing will be performed every \textbf{DM.NumberPulay} SCF
+%iterations, the other iterations using linear mixing. If
+%it is less than 2, only linear mixing is used.
+The guess for the $n+1$ iteration is constructed using the
+input and output matrices of the \textbf{DM.NumberPulay} former
+SCF cycles, in the following way:
+$\rho^{n+1}_{in} = \alpha_P \bar{\rho}^{n}_{out}
++(1 - \alpha_P) \bar{\rho}^{n}_{in}$, where $\bar{\rho}^{n}_{out}$
+and $\bar{\rho}^{n}_{in}$ are constructed from the previous
+$N=$\textbf{DM.NumberPulay} cycles:
+%
+\begin{equation}
+\bar{\rho}^{n}_{out} = \sum_{i=1}^N
+\beta_i \rho_{out}^{(n-N+i)} \hspace{0.5truecm}; \hspace{0.5truecm}
+\bar{\rho}^{n}_{in} = \sum_{i=1}^N
+\beta_i \rho_{in}^{(n-N+i)}.
+\nonumber
+\end{equation}
+%
+The values of $\beta_i$ are obtained by minimizing the distance
+between $\bar{\rho}^{n}_{out}$ and $\bar{\rho}^{n}_{in}$.
+The value of $\alpha_P$ is given by default by variable \textbf{DM.MixingWeight}, although it can be set directly by \textbf{SCF.PulayDamping}.
+
+If \textbf{DM.NumberPulay} is 0 or 1, simple linear mixing is
+performed.
+
+\textit{Default value:} \texttt{0}
+
+
+\item[\textbf{SCF.Pulay.Damping}] (\textit{real}):\index{SCF!mixing}
+\index{SCF.Pulay.Damping@\textbf{SCF.Pulay.Damping}}\index{SCF!mixing!Pulay!damping}
+
+Proportion $\alpha_P$ of the predicted
+output Density Matrix to be used for the input Density Matrix of
+next SCF cycle in Pulay mixing (see above). Typically, this can be
+significantly higher than the mixing parameter used for linear
+mixing.
+
+\textit{Default value:} \textit{(the value of \textbf{DM.MixingWeight})}
+
+\item[\textbf{SCF.PulayMinimumHistory}] (\textit{integer}):\index{Pulay mixing}
+\index{SCF.PulayMinimumHistory@\textbf{SCF.PulayMinimumHistory}}\index{SCF!mixing!Pulay}
+
+Pulay mixing might kick in only after a specified number of history
+steps have been built up.
+
+\textit{Default value:} \texttt{2}
+
+\item[\textbf{SCF.PulayDmaxRegion}] (\textit{real}):\index{SCF!mixing!Pulay}
+\index{SCF.PulayDmaxRegion@\textbf{SCF.PulayDmaxRegion}}\index{SCF!mixing!Pulay!close region}
+
+Pulay mixing might not work well if far from the fixed point. This option
+will avoid inserting the current $X_{in}$, $X_{out}$ pair ($X$ could be
+the density matrix or the hamiltonian) in the history stack if
+the maximum difference is above the specified number.
+
+\textit{Default value:} \textit{(a very high number, so no effect by
+  default)}
+
+\item[\textbf{DM.NumberKick}] (\textit{integer}):\index{Linear mixing kick}
+\index{DM.NumberKick@\textbf{DM.NumberKick}}
+%\index{SCF!mixing!linear!Pulay!Broyden}
+\index{SCF!mixing!linear}
+Option to skip the Pulay (or Broyden) mixing each certain number of iterations,
+and use a linear mixing instead. Linear mixing is done
+every \textbf{DM.NumberKick} iterations, using a mixing coefficient
+$\alpha$ given by variable \textbf{DM.KickMixingWeight}
+(instead of the usual mixing \textbf{DM.MixingWeight}).
+This allows in some difficult cases to bring the SCF out of
+loops in which the selfconsistency is stuck.
+If \textbf{DM.MixingWeight}=0, no linear mix is used.
+
+\textit{Default value:} \texttt{0}
+
+\item[\textbf{DM.KickMixingWeight}] (\textit{real}):\index{SCF!mixing!Pulay!Broyden}
+\index{DM.KickMixingWeight@\textbf{DM.KickMixingWeight}}
+%\index{SCF!mixing!linear!Pulay!Broyden}
+\index{SCF!mixing!linear}
+Proportion $\alpha$ of
+output Density Matrix to be used for the input Density Matrix of
+next SCF cycle (linear mixing):
+$\rho^{n+1}_{in} = \alpha \rho^{n}_{out}
++(1 - \alpha) \rho^{n}_{in}$, for linear mixing kicks within the
+Pulay or Broyden mixing schemes.
+This mixing is done every \textbf{DM.NumberKick} cycles.
+
+\textit{Default value:} \texttt{0.50}
+
+
+\item[\textbf{SCF.Pulay.LinearMixing.Before}] (\textit{integer}):
+\index{SCF.Pulay.LinearMixing.Before@\textbf{SCF.Pulay.LinearMixing.Before}}
+\index{SCF!mixing!Pulay}
+
+Instead of instantly starting the Pulay mixing one can initiate several
+linear mix steps. This prohibits the initial steps in the Pulay history.
+
+This can be particularly useful when \emph{on-the-fly} switches between different solution
+methods.
+
+\textit{Default value:} \texttt{0}
+
+\item[\textbf{SCF.Pulay.MixingWeight.Before}] (\textit{real}):
+\index{SCF.Pulay.MixingWeight.Before@\textbf{SCF.Pulay.MixingWeight.Before}}
+\index{SCF!mixing!Pulay}
+
+Proportion $\alpha$ of output $X_{out}$ to be used for the input
+$X_{in}$ of next SCF cycle, for linear mixing steps after a Pulay
+mixing step if the option \textbf{SCF.LinearMixingAfterPulay} is
+activated.
+
+\textit{Default value:} \texttt{0.01}
+
+\item[\textbf{SCF.Pulay.LinearMixing.After}] (\textit{logical}):
+\index{SCF.Pulay.LinearMixing.After@\textbf{SCF.Pulay.LinearMixing.After}}
+\index{SCF!mixing!Pulay}
+
+The damping of the DIIS-predicted $X_{in}$ is done to avoid introducing
+linear dependencies into the Pulay history stack. Alternatively (or
+simultaneously) one can use the most recent $X_{in}$, $X_{out}$ pair in a
+linear mixing step, and use a possibly different mixing
+parameter. This would be akin to a ``kick'', but without removing all
+the history information.
+
+\textit{Default value:} \texttt{.false.}
+
+\item[\textbf{SCF.Pulay.MixingWeight.After}] (\textit{real}):
+\index{SCF.Pulay.MixingWeight.After@\textbf{SCF.Pulay.MixingWeight.After}}
+\index{SCF!mixing!Pulay}
+
+Proportion $\alpha$ of output Density Matrix to be used for the input
+Density Matrix of next SCF cycle, for linear mixing
+steps after a Pulay mixing step if the option \textbf{SCF.Pulay.LinearMixing.After} is activated.
+
+\textit{Default value:} \texttt{0.50}
+
+\item[\textbf{SCF.Pulay.UseSVD}] (\textit{logical}):
+  \index{SCF.Pulay.UseSVD@\textbf{SCF.Pulay.UseSVD}}\index{SCF!mixing!Pulay!SVD}
+
+Instead of a direct matrix inversion, the more robust SVD algorithm can
+be used to perform the DIIS extrapolation.
+
+\textit{Default value:} \texttt{.false.}
+
+\item[\textbf{SCF.Pulay.DebugSVD}] (\textit{logical}):
+\index{SCF.Pulay.DebugSVD@\textbf{SCF.Pulay.DebugSVD}}
+\index{SCF!mixing!Pulay!SVD}
+
+Print more information (effective rank, singular values) if the SVD algorithm
+isused to perform the DIIS extrapolation.
+
+\textit{Default value:} {\texttt{.true.} \textit{when using SVD}}
+
+\item[\textbf{SCF.Pulay.RcondSVD}] (\textit{real}):\index{SCF!mixing!Pulay!SVD}
+\index{SCF.Pulay.RcondSVD@\textbf{SCF.Pulay.RcondSVD}}
+\index{SCF!mixing!Pulay!SVD}
+
+Singular values which are smaller than \texttt{rcond} times the maximum
+singular value are effectively discarded in the SVD algorithm for
+solving the DIIS equations. This lowers the effective rank of the
+problem, and is a sign of (near) linear dependencies in the
+extrapolation data.
+
+\textit{Default value:} \texttt{10$^{-8}$}
+
+
+\item[\textbf{DM.PulayOnFile}] (\textit{logical}):
+\index{DM.PulayOnFile@\textbf{DM.PulayOnFile}}
+
+\textbf{NOTE:} This feature is temporarily disabled pending a proper
+implementation that works well in parallel.
+
+Store intermediate information of Pulay mixing in files
+(\texttt{.true.}) or in memory (\texttt{.false.}).
+Memory storage can increase considerably the
+memory requirements for large systems.
+If files are used, the filenames will be
+\texttt{SystemLabel}.P1 and
+\texttt{SystemLabel}.P2,
+where SystemLabel is the name associated
+to parameter \texttt{SystemLabel}.
+
+\textit{Default value:} \texttt{.false.}
+
+
+
+\item[\textbf{DM.NumberBroyden}] (\textit{integer}):\index{Broyden mixing}
+\index{DM.NumberBroyden@\textbf{DM.NumberBroyden}}\index{SCF!mixing!Broyden}
+It controls the Broyden-Vanderbilt-Louie-Johnson
+convergence accelerator, which is based on the use of past information
+(up to \textbf{DM.NumberBroyden} steps) to construct the input density
+matrix for the next iteration.
+
+See D.D. Johnson, Phys. Rev. B\textbf{38}, 12807 (1988), and references therein;
+Kresse and Furthmuller, Comp. Mat. Sci \textbf{6}, 15 (1996).
+
+If \textbf{DM.NumberBroyden} is 0, the program performs linear mixings,
+or, if requested, Pulay mixings.
+
+Broyden mixing takes precedence over Pulay mixing if both are
+specified in the input file.
+
+\textbf{Note:} The Broyden mixing algorithm is still in development,
+notably with regard to the effect of its various modes of operation, and
+the assigment of weights. In its default mode, its effectiveness is
+very similar to Pulay mixing. As memory usage is not yet optimized,
+casual users might want to stick with Pulay mixing for now.
+
+\textit{Default value:} \texttt{0}
+
+\item[\textbf{DM.Broyden.Cycle.On.Maxit}] (\textit{logical}):
+\index{DM.Broyden.Cycle.On.Maxit@\textbf{DM.Broyden.Cycle.On.Maxit}}
+\index{SCF!mixing!Broyden}
+Upon reaching the maximum number of historical data sets which are
+kept for Broyden mixing (see description of variable \fdf{DM.NumberBroyden}), throw away the oldest and shift the rest to make
+room for a new data set. This procedure tends, heuristically, to
+perform better than the alternative, which is to re-start the Broyden
+mixing algorithm from a first step of linear mixing.
+
+\textit{Default value:} \texttt{.true.}
+
+\item[\textbf{DM.Broyden.Variable.Weight}] (\textit{logical}):
+\index{DM.Broyden.Variable.Weight@\textbf{DM.Broyden.Variable.Weight}}
+\index{SCF!mixing!Broyden}
+If \texttt{.true.}, the different historical data sets used in
+the Broyden mixing (see description of variable \fdf{DM.NumberBroyden}) are assigned a weight depending on the
+norm of their residual $\rho^n_{out}-\rho^n_{in}$.
+
+\textit{Default value:} \texttt{.true.}
+
+
+\end{description}
+
+\fi
+
+
+\subsubsection{Mixing of the Charge Density}
+\index{SCF!mixing!Charge}
+
+See \fdf{SCF.Mix} on how to enable charge density mixing.  If charge
+density mixing is enabled the fourier components of the charge density
+are mixed, as done in some plane-wave codes. (See for example Kresse
+and Furthm\"uller, Comp. Mat. Sci. 6, 15-50 (1996), KF in what
+follows.)
+
+The charge mixing is implemented roughly as follows:
+\begin{itemize}
+  \item The charge density computed in dhscf is fourier-transformed
+  and stored in a new module. This is done both for
+  ``$\rho(\mathbf{G})(\mathrm{in})$'' and
+  ``$\rho(\mathbf{G})(\mathrm{out})$'' (the ``out'' charge is computed
+  during the extra call to dhscf for correction of the variational
+  character of the Kohn-Sham energy)
+
+  \item The ``in'' and ``out''
+  charges are mixed (see below), and the resulting ``in'' fourier
+  components are used by dhscf in successive iterations to reconstruct
+  the charge density.
+
+  \item The new arrays needed and the processing
+  of most new options is done in the new module m\_rhog.F90. The
+  fourier-transforms are carried out by code in rhofft.F.
+
+  \item
+  Following standard practice, two options for mixing are offered:
+  \begin{itemize}
+    \item A simple Kerker mixing, with an optional Thomas-Fermi wavevector to
+    damp the contributions for small G's. The overall mixing weight is
+    the same as for other kinds of mixing, read from \fdf{DM!MixingWeight}.
+
+    \item A DIIS (Pulay) procedure that takes into account a sub-set of
+    the G vectors (those within a smaller cutoff). Optionally, the
+    scalar product used for the construction of the DIIS matrix from
+    the residuals uses a weight factor.
+
+    The DIIS extrapolation is followed by a  Kerker mixing step.
+
+    The code is m\_diis.F90. The DIIS history is kept in a circular
+    stack, implemented using the new framework for reference-counted
+    types. This might be overkill for this particular use, and there
+    are a few rough edges, but it works well.
+
+  \end{itemize}
+
+\end{itemize}
+
+The default convergence criteria remains based on the differences in
+the density matrix, but in this case the differences are from step to
+step, not the more fundamental \texttt{DM\_out-DM\_in}. Perhaps some
+other criterion should be made the default (max $|\Delta rho(G)|$,
+convergence of the free-energy...)
+
+Note that with charge mixing the Harris energy as it is currently
+computed in \siesta\ loses its meaning, since there is no
+\texttt{DM\_in}. The program prints zeroes in the Harris energy field.
+
+Note that the KS energy is correctly computed throughout the scf
+cycle, as there is an extra step for the calculation of the charge
+stemming from \texttt{DM\_out}, which also updates the
+energies. Forces and final energies are correctly computed with the
+final \texttt{DM\_out}, regardless of the setting of the option for
+mixing after scf convergence.
+
+Initial tests suggest that charge mixing has some desirable properties
+and could be a drop-in replacement for density-matrix mixing, but many
+more tests are needed to calibrate its efficiency for different kinds
+of systems, and the heuristics for the (perhaps too many) parameters:
+
+
+\begin{fdfentry}{SCF.Kerker.q0sq}[energy]<$0\,\mathrm{Ry}$>
+
+  Determines the parameter $q_0^2$ featuring in the Kerker
+  preconditioning, which is always performed on all components of
+  $\rho(\mathbf{G})$, even those treated with the DIIS scheme.
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.RhoGMixingCutoff}[energy]<$9\,\mathrm{Ry}$>
+
+  Determines the sub-set of G vectors which will undergo the DIIS
+  procedure.  Only those with kinetic energies below this cutoff will
+  be considered.  The optimal extrapolation of the $\rho(\textbf{G})$
+  elements will be replaced in the fourier series before performing
+  the Kerker mixing.
+
+\end{fdfentry}
+
+\begin{fdfentry}{SCF.RhoG.DIIS.Depth}[integer]<0>
+
+  Determines the maximum number of previous steps considered in the DIIS
+  procedure.
+
+\end{fdfentry}
+
+
+\textbf{NOTE}: The information from the first scf step is not included in
+the DIIS history. There is no provision yet for any other kind of
+``kick-starting'' procedure. The logic is in m\_rhog (rhog\_mixing routine).
+
+\begin{fdfentry}{SCF.RhoG.Metric.Preconditioner.Cutoff}[energy]
+
+  Determines the value of $q_1^2$ in the weighing of the different \textbf{G}
+  components in the scalar products among residuals in the DIIS
+  procedure. Following the KF ansatz, this parameter is chosen so that
+  the smallest (non-zero) \textbf{G} has a weight 20 times larger than that of
+  the smallest G vector in the DIIS set.
+
+  The default is the result of the KF prescription.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{SCF.DebugRhoGMixing}
+  \index{SCF!mixing!Charge}
+
+  Controls the level of debugging output in the mixing procedure
+  (basically whether the first few stars worth of Fourier components are
+  printed). Note that this feature will only display the components in
+  the master node.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalF}{Debug!DIIS}
+  \index{SCF!mixing!Charge}
+
+  Controls the level of debugging output in the DIIS procedure. If set,
+  the program prints the DIIS matrix and the extrapolation coefficients.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{SCF.MixCharge!SCF1}
+  \index{SCF!mixing!Charge}
+
+
+  Logical variable to indicate whether or not the charge is mixed in the
+  first SCF cycle. Anecdotal evidence indicates that it might be
+  advantageous, at least for calculations started from scratch, to avoid
+  that first mixing, and retain the ``out'' charge density as ``in'' for
+  the next step.
+
+\end{fdflogicalF}
+
+
+
+\subsubsection{Initialization of the density-matrix}
+
+NOTE: The conditions and options for density-matrix re-use are quite
+varied and not completely orthogonal at this point. For further
+information, see routine \file{Src/m\_new\_dm.F}. What follows is a
+summary.
+
+The Density matrix can be:
+
+\begin{verbatim}
+    1. Synthesized directly from atomic occupations.
+       (See the options below for spin considerations)
+    2. Read from a .DM file (if the appropriate options are set)
+    3. Extrapolated from previous geometry steps
+       (this includes as a special case the re-use of the DM
+        of the previous geometry iteration)
+
+    In cases 2 and 3, the structure of the read or extrapolated DM
+    is automatically adjusted to the current sparsity pattern.
+
+    In what follows, "Initialization" of the DM means that the DM is
+    either read from file (if available) or synthesized from atomic
+    data. This is confusing, and better terminology should be used.
+
+
+    Special cases:
+
+           Harris functional: The matrix is always initialized
+
+           Force calculation: The DM should be written to disk
+                              at the time of the "no displacement"
+                              calculation and read from file at
+                              every subsequent step.
+
+           Variable-cell calculation:
+
+             If the auxiliary cell changes, the DM is forced to be
+             synthesized (conceivably one could rescue some important
+             information from an old DM, but it is too much trouble
+             for now). NOTE that this is a change in policy with respect
+             to previous versions of the program, in which a (blind?)
+             re-use was allowed, except if 'ReInitialiseDM' was 'true'.
+             Now 'ReInitialiseDM' is 'true' by default. Setting it to
+             'false' is not recommended.
+
+             In all other cases (including "server operation"), the
+             default is to allow DM re-use (with possible extrapolation)
+             from previous geometry steps.
+
+             For "CG" calculations, the default is not to extrapolate the
+             DM (unless requested by setting 'DM.AllowExtrapolation' to
+             "true"). The previous step's DM is reused.
+
+             The fdf variables 'DM.AllowReuse' and 'DM.AllowExtrapolation'
+             can be used to turn off DM re-use and extrapolation.
+
+\end{verbatim}
+
+
+\begin{fdflogicalT}{DM!UseSaveDM}
+  \index{reading saved data!density matrix}
+
+  Instructs to read the density matrix stored in file
+  \sysfile{DM} by a previous run.
+
+  \siesta\ will continue even if \sysfile*{DM} is not found.
+
+  \note That if the spin settings has changed \siesta\ allows reading
+  a \sysfile*{DM} from a similar calculation with different \fdf{Spin}
+  option. This may be advantageous when going from non-polarized
+  calculations to polarized, and beyond, see \fdf{Spin} for details.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalT}{DM!Init.Unfold}
+  \fdfdepend{DM!UseSaveDM}
+  \index{reading saved data!density matrix}
+
+  When reading the DM from a previous calculation there may be
+  inconsistencies in the auxiliary supercell. E.g. if the previous
+  calculation did not use an auxiliary supercell and the current
+  calculation does (adding $k$-point sampling). \siesta\ will
+  automatically \emph{unfold} the $\Gamma$-only DM to the auxiliary
+  supercell elements (if \fdftrue).
+
+  For \fdffalse\ the DM elements are assumed to originate from an
+  auxiliary supercell calculation and the sparse elements are not
+  unfolded but directly copied.
+
+  \note Generally this shouldn't not be touched, however, if the
+  initial DM is generated using \sisl\cite{sisl} and only on-site DM
+  elements are set, this should be set to \fdffalse.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{DM!FormattedFiles}
+  \index{reading saved data!density matrix}
+
+  Setting this alters the default for \fdf{DM!FormattedInput} and
+  \fdf{DM!FormattedOutput}.
+  Instructs to use formatted files for reading and writing
+  the density matrix. In this case, the files are labelled
+  \sysfile{DMF}.
+
+  Only usable if one has problems transferring files from one computer
+  to another.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{DM!FormattedInput}
+  \index{reading saved data!density matrix}
+
+  Instructs to use formatted files for reading the density
+  matrix.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{DM!FormattedOutput}
+  \index{reading saved data!density matrix}
+
+  Instructs to use formatted files for writing the density
+  matrix.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{DM!Init}<atomic>
+  \index{spin!initialization}%
+
+  Specify the initial density matrix composition. Methods are
+  compatible with a possible specification of \fdf{DM!InitSpin!AF}.
+  Only a single option is available now, but more could be
+  implemented. See also \fdf{DM!Init!RandomStates}.
+
+  \begin{fdfoptions}
+
+    \option[atomic]%
+    \fdfindex*{DM!Init!atomic}
+
+    Only initialize the diagonal (on-site) elements of the density matrix according
+    to the atomic ground-state populations of the atomic orbitals.
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+
+\begin{fdflogicalF}{DM!InitSpin!AF}
+  \index{spin!initialization}%
+  \index{ferromagnetic initial DM}%
+  \index{antiferromagnetic initial DM}
+
+  It defines the initial spin density for a spin polarized calculation.
+  The spin density is initially constructed with the maximum possible
+  spin polarization for each atom in its atomic configuration.
+  This variable defines the relative orientation of the atomic
+  spins:
+
+  If \fdffalse\ the initial spin-configuration is a ferromagnetic
+  order (all spins up).
+  %
+  If \fdftrue\ all odd atoms are initialized to spin-up, all even
+  atoms are initialized to spin-down.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{DM!InitSpin}[block]
+
+  Define the initial spin density for a spin polarized calculation
+  atom by atom. In the block there is one line per atom to be
+  spin-polarized, containing the atom index (integer, ordinal in the
+  block \fdf{AtomicCoordinatesAndAtomicSpecies}) and the desired
+  initial spin-polarization (real, positive for spin up, negative for
+  spin down). The spin polarization is actually meant to be the net
+  spin magnetic moment, in units of the Bohr magneton, and thus numerically
+  equal to the charge inbalance (in electrons) between spin up
+  and spin down channels (as the g-factor for the electron spin is very close
+  to 2, and the spin angular momentum is 1/2).
+  A value larger than possible will be reduced to the
+  maximum possible polarization, keeping its sign. Maximum
+  polarization can also be given by introducing the symbol \texttt{+}
+  or \texttt{-} instead of the polarization value. There is no need
+  to include a line for every atom, only for those to be
+  polarized. The atoms not contemplated in the block will be given
+  non-polarized initialization.
+
+  For non-collinear spin, the spin direction may be specified for each
+  atom by the polar angle $\theta$ and the azimuthal angle $\phi$
+  (using the physics ISO convention), given as the last two arguments
+  in degrees. If not specified, $\theta=0$ is assumed
+  ($z$-polarized). \fdf{Spin} must be set to use non-collinear or
+  spin-orbit for the directions to have effect.
+
+  Example:
+  \begin{fdfexample}
+     %block DM.InitSpin
+        5  -1.   90.   0.   # Atom index, spin, theta, phi (deg)
+        3   +    45. -90.
+        7   -
+     %endblock DM.InitSpin
+  \end{fdfexample}
+  In the above example, atom 5 is polarized in the $x$-direction.
+
+  If this block is defined, but empty, all atoms are not polarized.
+  This block has precedence over \fdf{DM!InitSpin!AF}.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DM!Init.RandomStates}[integer]<0>
+
+The program will 'remove' $N$ electrons from the initial density
+matrix and add $N$ electrons in randomized 'states' (i.e., $N$ random
+vectors which are normalized according to the S metric are used as
+``synthetic states''). These extra states are not orthogonal to the
+occupied manifold. The orbital coefficients of these states are scaled
+with the atomic charges, to avoid populating high-lying shells.
+
+This procedure is wholly experimental and meant to provide a kick to
+the DM. It is inspired by the ``random-wavefunction'' initialization
+used in some plane-wave codes. It is turned off by default.
+
+This option only has an effect if the density matrix is initialized from an
+atomic density and/or when using \fdf{DM!InitSpin}.
+
+In case it is used together with \fdf{DM!InitSpin} it also randomizes
+the spin-configuration, which may be undesirable.
+
+\note This option is currently experimental since the randomized states are
+not ensured to be orthogonal. This flag may be removed in later
+revisions or superseded by other options. If testing this, start with
+a value of $1$ to see if it has an effect; any higher numbers will
+probably be worse.
+
+\end{fdfentry}
+
+
+\begin{fdflogicalT}{DM!AllowReuse}
+
+  Controls whether density matrix information from previous geometry
+  iterations is re-used to start the new geometry's SCF cycle.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalT}{DM!AllowExtrapolation}
+
+  Controls whether the density matrix information from several
+  previous geometry iterations is extrapolated to start the new
+  geometry's SCF cycle.  This feature is useful for molecular dynamics
+  simulations and possibly also for geometry relaxations.  The number
+  of geometry steps saved is controlled by the variable
+  \fdf{DM!History.Depth}.
+
+  This is default \fdftrue\ for molecular-dynamics simulations, but
+  \fdffalse, for now, for geometry-relaxations (pending further tests
+  which users are kindly requested to perform).
+
+\end{fdflogicalT}
+
+
+\begin{fdfentry}{DM!History.Depth}[integer]<1>
+
+  Sets the number of geometry steps for which density-matrix information
+  is saved for extrapolation.
+
+\end{fdfentry}
+
+
+
+\subsubsection{Initialization of the SCF cycle with charge densities}
+
+
+\begin{fdflogicalF}{SCF.Read.Charge.NetCDF}
+  \index{reading saved data!charge density}
+
+  Instructs \siesta\ to read the charge density stored in the netCDF
+  file \file{Rho.IN.grid.nc}. This feature allows the easier re-use of
+  electronic-structure information from a previous run. It is not
+  necessary that the basis sets are ``similar'' (a requirement if
+  density-matrices are to be read in).
+
+  \note This is an experimental feature. Until robust checks are
+  implemented, care must be taken to make sure that the FFT grids in
+  the \sysfile*{grid.nc} file and in \siesta\ are the same.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalF}{SCF.Read.Deformation.Charge.NetCDF}
+  \index{reading saved data!deformation charge density}
+
+  Instructs \siesta\ to read the deformation charge density stored in
+  the netCDF file \file{DeltaRho.IN.grid.nc}. This feature allows the
+  easier re-use of electronic-structure information from a previous
+  run. It is not necessary that the basis sets are ``similar'' (a
+  requirement if density-matrices are to be read in). The deformation
+  charge is particularly useful to give a good starting point for
+  slightly different geometries.
+
+  \note This is an experimental feature. Until robust checks are
+  implemented, care must be taken to make sure that the FFT grids in
+  the \sysfile*{grid.nc} file and in \siesta\ are the same.
+
+\end{fdflogicalF}
+
+
+\subsubsection{Output of density matrix and Hamiltonian}
+\index{output!density matrix}
+
+\textbf{Performance Note}: For large-scale calculations, writing the DM
+at every scf step can have a severe impact on performance.
+The sparse-matrix I/O is undergoing a re-design, to facilitate the
+analysis of data and to increase the efficiency.
+
+\begin{fdflogicalF}{Use.Blocked.WriteMat}
+
+  By using blocks of orbitals (according to the underlying default
+  block-cyclic distribution), the sparse-matrix I/O can be speeded-up
+  significantly, both by saving MPI communication and by reducing the
+  number of file accesses. This is essential for large systems, for
+  which the I/O could take a significant fraction of the total
+  computation time.
+
+  To enable this ``blocked format'' (recommended for large-scale
+  calculations) use the option \fdf{Use.Blocked.WriteMat}
+  \fdftrue. Note that it is off by default.
+
+  The new format is not backwards compatible. A converter program
+  (\shell{Util/DensityMatrix/dmUnblock.F90}) has been written to
+  post-process those files intended for further analysis or re-use in
+  \siesta. This is the best option for now, since it allows liberal
+  checkpointing with a much smaller time consumption, and only incurs
+  costs when re-using or analyzing files.
+
+  Note that \tsiesta\ will continue to produce \sysfile{DM} files, in
+  the old format (See save\_density\_matrix.F)
+
+  % This should not be in the manual.
+  %To test the new features, the option \fdf{S.Only} \fdftrue\ can be
+  %used. It will produce three files: a standard one, another one with
+  %optimized MPI communications, and a third, blocked one.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalT}{Write!DM}
+
+  Control the creation of the current iterations density matrix to a
+  file for restart purposes and post-processing. If \fdffalse\ nothing
+  will be written.
+
+  If \fdf{Use.Blocked.WriteMat} is \fdffalse\ the \sysfile{DM} file
+  will be written. Otherwise these density matrix files will be
+  created; \file{DM\_MIXED.blocked} and \file{DM\_OUT.blocked} which
+  are the mixed and the diagonalization output, respectively.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{Write!DM.end.of.cycle}[logical]<\fdfvalue{Write!DM}>
+
+  Equivalent to \fdf{Write!DM}, but will only write at the end of each
+  SCF loop.
+
+  \note The file generated depends on \fdf{SCF.Mix!AfterConvergence}.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{Write!H}
+
+  Whether restart Hamiltonians should be written (not intrinsically
+  supported in 4.1).
+
+  If \fdftrue\ these files will be created; \file{H\_MIXED} or
+  \file{H\_DMGEN} which is the mixed or the generated Hamiltonian from
+  the current density matrix, respectively. If
+  \fdf{Use.Blocked.WriteMat} the just mentioned files will have the
+  additional suffix \fdf*{.blocked}.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{Write!H.end.of.cycle}[logical]<\fdfvalue{Write!H}>
+
+  Equivalent to \fdf{Write!H}, but will only write at the end of each
+  SCF loop.
+
+  \note The file generated depends on \fdf{SCF.Mix!AfterConvergence}.
+
+\end{fdfentry}
+
+The following options control the creation of netCDF files. The
+relevant routines have not been optimized yet for large-scale
+calculations, so in this case the options should not be turned on
+(they are off by default).
+
+
+\begin{fdflogicalT}{Write!DM.NetCDF}
+  \index{output!density matrix}
+
+  It determines whether the density matrix (after the mixing step) is
+  output as a \file{DM.nc} netCDF file or not.
+
+  The file is overwritten at every SCF step. Use the
+  \fdf{Write!DM.History.NetCDF} option if a complete history is
+  desired.
+
+  The \file{DM.nc} and standard DM file formats can be converted at
+  will with the programs in \texttt{Util/DensityMatrix}
+  directory. Note that the DM values in the \file{DM.nc} file are in
+  single precision.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalT}{Write!DMHS.NetCDF}
+  \index{output!density matrix}%
+  \index{output!Hamiltonian}%
+  \index{output!overlap matrix}
+
+
+  If true, the input density matrix, Hamiltonian, and output density
+  matrix, are stored in a netCDF file named \file{DMHS.nc}. The file
+  also contains the overlap matrix S.
+
+  The file is overwritten at every SCF step. Use the
+  \fdf{Write!DMHS.History.NetCDF} option if a complete history is
+  desired.
+
+\end{fdflogicalT}
+
+
+\begin{fdflogicalF}{Write!DM.History.NetCDF}
+  \index{output!density matrix}%
+  \index{output!density matrix history}
+
+  If \fdftrue, a series of netCDF files with names of the form
+  \file{DM-NNNN.nc} is created to hold the complete history of the
+  density matrix (after mixing). (See also \fdf{Write!DM.NetCDF}). Each
+  file corresponds to a geometry step.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{Write!DMHS.History.NetCDF}
+  \index{output!density matrix history}%
+  \index{output!Hamiltonian history}%
+  \index{output!overlap matrix}
+
+  If \fdftrue, a series of netCDF files with names of the form
+  \file{DMHS-NNNN.nc} is created to hold the complete history of the
+  input and output density matrix, and the Hamiltonian.  (See also
+  \fdf{Write!DMHS.NetCDF}). Each file corresponds to a geometry
+  step. The overlap matrix is stored only once per SCF cycle.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{Write!HS.History}
+  \index{output!Hamiltonian history}%
+  \index{output!overlap matrix history}%
+
+  If true, a series of \sysfile{HSX} files with names of the form
+  \sysfile{N.HSX} is created to hold the complete history of the
+  Hamiltonian and overlap matrix. Each file corresponds to a geometry
+  step.
+
+  If \fdf{MD!TypeOfRun:FC} the \sysfile{HSX} will be named \sysfile{ATOM-N.HSX}
+  where \code{ATOM} corresponds to the displaced atom, and \code{N} is between
+  $1$ and $6$ describing the $6$ Cartesian displacements.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{Write!TSHS.History}
+  \index{output!Hamiltonian history}%
+  \index{output!overlap matrix history}%
+
+  If true, a series of \sysfile{TSHS} files with names of the form
+  \sysfile{N.TSHS} is created to hold the complete history of the
+  Hamiltonian and overlap matrix. Each file corresponds to a geometry
+  step. This
+  option only works with \tsiesta.
+
+  \note This will default to be true for \fdf{MD!TypeOfRun:FC}
+  if \fdf{TS!HS.Save} is true as well.
+
+  \note This will be deprecated in favour of \fdf{Write!HS.History},
+  e.g. writing HSX files.
+
+\end{fdflogicalF}
+
+
+\subsubsection{Convergence criteria}
+\index{SCF convergence criteria}
+
+\textbf{NOTE}: The older options with a \fdf*{DM} prefix is still
+working for backwards compatibility. However, the following flags has
+precedence.
+
+Note that all convergence criteria are additive and may thus be used
+simultaneously for complete control.
+
+\begin{fdflogicalT}{SCF.DM!Converge}
+  \index{SCF!mixing!Density matrix convergence}
+
+  Logical variable to use the density matrix elements as monitor
+  of self-consistency.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{SCF.DM!Tolerance}[real]<$10^{-4}$>%
+  \fdfdepend{SCF.DM!Converge}
+  \fdfindex*{DM.Tolerance}
+
+  Tolerance of Density Matrix.
+  %
+  When the maximum difference between the output and the input on each
+  element of the DM in a SCF cycle is smaller than
+  \fdf{SCF.DM!Tolerance}, the self-consistency has been achieved.
+
+
+  \note \fdf{DM.Tolerance} is the actual default for this flag.
+
+\end{fdfentry}
+
+\begin{fdfentry}{DM.Normalization.Tolerance}[real]<$10^{-5}$>
+
+  Tolerance for unnormalized density matrices (typically the product
+  of solvers such as PEXSI which have a built-in electron-count
+  tolerance). If this tolerance is exceeded, the program stops. It is
+  understood as a fractional tolerance. For example, the default will
+  allow an excess or shorfall of 0.01 electrons in a 1000-electron
+  system.
+
+\end{fdfentry}
+
+
+
+\begin{fdflogicalT}{SCF.H!Converge}
+  \index{SCF!mixing!Hamiltonian convergence}
+
+  Logical variable to use the Hamiltonian matrix elements as monitor
+  of self-consistency: this is considered achieved when the maximum
+  absolute change (dHmax) in the H matrix elements is below
+  \fdf{SCF.H!Tolerance}. The actual meaning of dHmax depends on
+  whether DM or H mixing is in effect: if mixing the DM, dHmax refers
+  to the change in H(in) with respect to the previous step; if mixing
+  H, dHmax refers to H(out)-H(in) in the previous(?) step.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{SCF.H!Tolerance}[energy]<$10^{-3}\,\mathrm{eV}$>
+  \fdfdepend{SCF.H!Converge}
+
+  If \fdf{SCF.H!Converge} is \fdftrue, then self-consistency is
+  achieved when the maximum absolute change in the Hamiltonian matrix
+  elements is below this value.
+
+\end{fdfentry}
+
+
+\begin{fdflogicalT}{SCF.EDM!Converge}
+  \index{SCF!mixing!energy density matrix convergence}
+
+  Logical variable to use the energy density matrix elements as monitor
+  of self-consistency: this is considered achieved when the maximum
+  absolute change (dEmax) in the energy density matrix elements is below
+  \fdf{SCF.EDM!Tolerance}. The meaning of dEmax is equivalent to that
+  of \fdf{SCF.DM!Tolerance}.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{SCF.EDM!Tolerance}[energy]<$10^{-3}\,\mathrm{eV}$>
+  \fdfdepend{SCF.EDM!Converge}
+
+  If \fdf{SCF.EDM!Converge} is \fdftrue, then self-consistency is
+  achieved when the maximum absolute change in the energy density
+  matrix elements is below this value.
+
+\end{fdfentry}
+
+
+\begin{fdflogicalF}{SCF.FreeE!Converge}
+  \index{SCF!mixing!energy convergence}
+  \fdfindex*{DM.RequireEnergyConvergence}
+
+  Logical variable to request an additional requirement for
+  self-consistency: it is considered achieved when the change in the
+  total (free) energy between cycles of the SCF procedure is below
+  \fdf{SCF.FreeE!Tolerance} and the density matrix change criterion is
+  also satisfied.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{SCF.FreeE!Tolerance}[energy]<$10^{-4}\,\mathrm{eV}$>
+  \fdfdepend{SCF.FreeE!Converge}
+  \fdfindex*{DM.EnergyTolerance}
+
+  If \fdf{SCF.FreeE!Converge} is \fdftrue, then self-consistency is
+  achieved when the change in the total (free) energy between cycles
+  of the SCF procedure is below this value and the density matrix
+  change criterion is also satisfied.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{SCF.Harris!Converge}
+  \index{SCF!mixing!harris energy convergence}
+  \fdfindex*{DM.Require.Harris.Convergence}
+
+  Logical variable to use the Harris energy as monitor of
+  self-consistency: this is considered achieved when the change in the
+  Harris energy between cycles of the SCF procedure is below
+  \fdf{SCF.Harris!Tolerance}. This is useful if only
+  energies are needed, as the Harris energy tends to converge faster
+  than the Kohn-Sham energy. The user is responsible for using the
+  correct energies in further processing, e.g., the Harris energy if
+  the Harris criterion is used.
+
+  \note Setting this to \fdftrue\ makes \fdf{SCF.DM!Converge}
+  \fdf{SCF.H!Converge} default to \fdffalse.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{SCF.Harris!Tolerance}[energy]<$10^{-4}\,\mathrm{eV}$>
+  \fdfdepend{SCF.Harris!Converge}
+
+  If \fdf{SCF.Harris!Converge} is \fdftrue, then self-consistency is
+  achieved when the change in the Harris energy between cycles of the
+  SCF procedure is below this value. This is useful if only energies
+  are needed, as the Harris energy tends to converge faster than the
+  Kohn-Sham energy.
+
+\end{fdfentry}

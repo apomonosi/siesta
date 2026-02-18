@@ -1,0 +1,15 @@
+#
+# Use this gnuplot script to plot a Denchar 2D data file,
+# passing the file name as a command-line argument. For example:
+#
+#      gnuplot -persist -c surf.gplot Si.CON.DEL
+#
+set parametric
+set style data lines
+set hidden
+set contour base
+set cntrparam levels auto 10
+set title ARG1
+set xlabel 'x'
+set ylabel 'y'
+splot ARG1 using 1:2:3 with lines

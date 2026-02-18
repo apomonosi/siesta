@@ -1,0 +1,70 @@
+If \fdf{MD.TypeOfRun} is \fdf*{FC}, \siesta\ sets up a special outer
+geometry loop that displaces individual atoms along the coordinate
+directions to build the force-constant matrix.
+\index{output!molecular dynamics!Force Constants Matrix}
+
+The output (see below) can be analyzed to extract phonon frequencies
+and vectors with the VIBRA\index{VIBRA} package in the \program{Util/Vibra}
+directory. For computing the Born effective charges together with the
+force constants, see \fdf{BornCharge}.
+
+\begin{fdfentry}{FC!Displacement}[length]<$0.04\,\mathrm{Bohr}$>
+  \fdfdeprecates{MD!FCDispl}
+
+  Displacement to use for the computation of the force constant
+  matrix\index{Force Constants Matrix} for phonon calculations.
+
+\end{fdfentry}
+
+\begin{fdfentry}{FC!First}[integer]<$1$>
+  \fdfdeprecates{MD!FCFirst}
+
+  Index of first atom to displace for the computation of the force
+  constant matrix\index{Force Constants Matrix} for phonon
+  calculations.
+
+\end{fdfentry}
+
+\begin{fdfentry}{FC!Last}[integer]<\fdfvalue{FC!First}>
+  \fdfdeprecates{MD!FCLast}
+
+  Index of last atom to displace for the computation of the force
+  constant matrix\index{Force Constants Matrix} for phonon
+  calculations.
+
+\end{fdfentry}
+
+The force-constants matrix is written in file \sysfile{FC}.  The
+format is the following: for the displacement of each atom in each
+direction, the forces on each of the other atoms is writen (divided by
+the value of the displacement), in units of eV/\AA$^2$. Each line has
+the forces in the $x$, $y$ and $z$ direction for one of the atoms.
+
+If constraints are used, the file \sysfile{FCC} is also written.
+
+\begin{fdflogicalF}{FC!Save.dHS}
+
+    For \fdf{MD.TypeOfRun:FC}, if \fdftrue, SIESTA produces a single netCDF
+    file \sysfile*{dHSdR.nc} with the derivatives of the Hamiltonian and
+    overlap matrix for each displaced atom along each Cartesian direction. 
+    \textit{The derivatives are only calculated in the unit cell, not the 
+    auxiliary supercell}.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{FC!dHdR.Tolerance}[force]<$-1\,\mathrm{Ry/Bohr}$>
+
+  Threshold controlling which elements of the Hamiltonian derivative should be
+  stored in \sysfile*{dHSdR.nc}. All matrix elements smaller than the threshold
+  are discarded. If threshold is negative no elements are discarded.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{FC!dSdR.Tolerance}[inverse length]<$-1\,\mathrm{1/Bohr}$>
+
+    Threshold controlling which elements of the Hamiltonian derivative should be
+    stored in \sysfile*{dHSdR.nc}. All matrix elements smaller than the threshold
+    are discarded. If threshold is negative no elements are discarded.
+  
+\end{fdfentry}

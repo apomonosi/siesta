@@ -1,0 +1,53 @@
+#!
+SystemName   WaterDimer.siesta
+SystemLabel  WaterDimer.siesta
+WriteForces  T
+
+# Global system
+NetCharge        0.0D0
+
+LatticeConstant 1.0 Ang
+%block LatticeVectors
+ 20.0   0.0    0.0
+  0.0  20.0    0.0
+  0.0   0.0   20.0
+%endblock LatticeVectors
+
+# DFT Options
+MeshCutoff           50 Ry
+DM.MixingWeight      0.08
+DM.NumberPulay       3
+DM.UseSaveDM         F
+
+# MD Options
+MD.TypeOfRun          qmmm
+MD.FinalTimeStep      1
+MD.InitialTemperature 300.0 K
+
+# QM-Region relevant parameters
+NumberOfAtoms    3
+NumberOfSpecies  2
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   8  O
+%endblock ChemicalSpeciesLabel
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+    0.000   0.000   0.000   2
+    0.757   0.586   0.000   1
+   19.243   0.586   0.000   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+# MM-Region  relevant parameters.
+QMMM.Enabled T
+QMMM.Driver SIESTA_DRIVER
+QMMM.Driver.Type pipe
+QMMM.Driver.QMRegionFile WaterDimer.siesta.coords
+QMMM.Driver.MMChargeFile WaterDimer.siesta.pc
+QMMM.Driver.ForceOutFile WaterDimer.siesta.forces
+QMMM.Cutoff           8.0000000 Ang
+QMMM.DensityCut       0.0000010 Ang
+QMMM.CoulombType 1
+QMMM.Ewald.rcut     8.0000000 Ang
+WriteXML .false.

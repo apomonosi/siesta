@@ -1,0 +1,513 @@
+\begin{fdfentry}{NetCharge}[real]<$0$>%
+    \index{Charge of the system}
+    \index{Doping}%
+    \index{SCF!Doping}%
+  
+    Specify the net charge of the system (in units of $|e|$).  For
+    charged systems, the energy converges very slowly versus cell
+    size. For molecules or atoms, a Madelung correction term is applied
+    to the energy to make it converge much faster with cell size (this
+    is done only if the cell is SC, FCC or BCC). For other cells, or for
+    periodic systems (chains, slabs or bulk), this energy correction
+    term can not be applied, and the user is warned by the program. It
+    is not advised to do charged systems other than atoms and molecules
+    in SC, FCC or BCC cells, unless you know what you are doing.
+  
+    \textit{Use:} For example, the F$^-$ ion would have \fdf{NetCharge}
+    \fdf*{-1} , and the Na$^+$ ion would have \fdf{NetCharge} \fdf*{1}.
+    Fractional charges can also be used.
+  
+    \note Doing non-neutral charge calculations with
+    \fdf{Slab.DipoleCorrection} is discouraged.
+  
+  \end{fdfentry}
+  
+  
+  \begin{fdflogicalF}{SimulateDoping}
+    \index{Slabs with net charge}
+  
+    This option instructs the program to add a background charge density
+    to simulate doping.  The new ``doping'' routine calculates the net
+    charge of the system, and adds a compensating background charge that
+    makes the system neutral. This background charge is constant at
+    points of the mesh near the atoms, and zero at points far from the
+    atoms. This simulates situations like doped slabs, where the extra
+    electrons (holes) are compensated by opposite charges at the material
+    (the ionized dopant impurities), but not at the vacuum. This serves
+    to simulate properly doped systems in which there are large portions
+    of vacuum, such as doped slabs.
+  
+    See \shell{Tests/sic-slab}.
+  
+  \end{fdflogicalF}
+  
+  \begin{fdfentry}{ExternalElectricField}[block]
+  
+    It specifies an external electric field for molecules, chains and
+    slabs. The electric field should be orthogonal to ``bulk
+    directions'', like those parallel to a slab (bulk electric fields,
+    like in dielectrics or ferroelectrics, are not allowed). If it is
+    not, an error message is issued and the components of the field in
+    bulk directions are suppressed automatically. The input is a vector
+    in Cartesian coordinates, in the specified units. Example:
+    \begin{fdfexample}
+       %block ExternalElectricField
+          0.000  0.000  0.500  V/Ang
+       %endblock ExternalElectricField
+    \end{fdfexample}
+  
+    Starting with version 4.0, applying an electric field perpendicular
+    to a slab will by default enable the slab dipole correction, see
+    \fdf{Slab.DipoleCorrection}. To reproduce older calculations, set
+    this correction option explicitly to \fdffalse\ in the input file.
+  
+    When examining a variety of electric fields it may be highly
+    advantageous to re-use the \sysfile{DM} from a previous calculation
+    with an electric field close to the current one.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Slab.DipoleCorrection}[string]<?|\fdftrue|\fdffalse|charge|vacuum|none>
+    \fdfdepend{ExternalElectricField}%
+  
+    If not \fdffalse, \siesta\ calculates the electric field required to
+    compensate the dipole of the system at every iteration of the
+    self-consistent cycle.
+  
+    The dipole correction only works for Fourier transformed Poisson
+    solutions of the Hartree potential since that will introduce a
+    compensating field in the vacuum region to counter any inherent
+    dipole in the system. Do not use this option together with
+    \fdf{NetCharge} (charged systems).
+  
+    There are two ways of calculating the dipole of the system:
+    \begin{fdfoptions}
+  
+      \option[charge|\fdftrue]%
+      \fdfindex*{Slab.DipoleCorrection:charge}%
+  
+      The dipole of the system is calculated via
+      \begin{equation}
+        \mathbf D = - e \int(\mathbf r - \mathbf r_0) \delta\boldsymbol\rho(\mathbf r)
+      \end{equation}
+      where $\mathbf r_0$ is the dipole origin, see \fdf{Slab.DipoleCorrection!Origin},
+      and $\delta\boldsymbol\rho$ is valence pseudocharge density minus
+      the atomic valence pseudocharge densities.
+  
+      \option[vacuum]%
+      \fdfindex*{Slab.DipoleCorrection:vacuum}%
+  
+      The electric field of the system is calculated via
+      \begin{equation}
+        \mathbf E \propto \left.\iint \mathrm d \mathbf r_{\perp \mathbf D} V(\mathbf
+          r)\right|_{\mathbf r_{\mathrm{vacuum}}}
+      \end{equation}
+      where $\mathbf r_{\mathrm{vacuum}}$ is a point located in the
+      vacuum region, see \fdf{Slab.DipoleCorrection!Vacuum}. Once the field is
+      determined it is converted to an intrinsic system dipole.
+  
+      This feature is mainly intended for \fdf{Geometry!Charge}
+      calculations where \fdf{Slab.DipoleCorrection:charge} may fail if the dipole
+      center is determined incorrectly.
+  
+      For regular systems both this and \fdf*{charge} should yield
+      approximately (down to numeric precision) the same dipole moments.
+  
+    \end{fdfoptions}
+  
+    The dipole correction should exactly compensate the electric field
+    at the vacuum level thus allowing one to treat asymmetric slabs
+    (including systems with an adsorbate on one surface) and compute
+    properties such as the work funcion of each of the surfaces.
+  
+    \note If the program is fed a starting density matrix from an
+    uncorrected calculation (i.e., with an exagerated dipole), the first
+    iteration might use a compensating field that is too big, with the
+    risk of taking the system out of the convergence basin. In that
+    case, it is advisable to use the \fdf{SCF.Mix!First}\index{Slab
+        dipole correction} option to request a mix of the input and
+    output density matrices after that first iteration.
+  
+    \note \fdf*{charge} and \fdf*{vacuum} will for many systems yield
+    the same result. If in doubt try both and see which one gives the
+    best result.
+  
+    See \shell{Tests/sic-slab}, \shell{Tests/h2o\_2\_dipol\_gate}.
+  
+    This will default to \fdftrue\ if an external field is applied to a
+    slab calculation, otherwise it will default to \fdffalse.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Slab.DipoleCorrection!Origin}[block]
+    \fdfdepend{Slab.DipoleCorrection:charge}
+  
+    Specify the origin of the dipole in the calculation of the dipole
+    from the charge distribution.
+  
+    Its format is
+    \begin{fdfexample}
+       %block Slab.DipoleCorrection.Origin
+          0.000  10.000  0.500  Ang
+       %endblock
+    \end{fdfexample}
+  
+    If this block is not specified the origin of the dipole will be the
+    average position of the atoms.
+  
+    \note this will only be read if \fdf{Slab.DipoleCorrection:charge}
+    is used.
+    %
+    \note this should only affect calculations with
+    \fdf{Geometry!Charge} due to the non-trivial dipole origin, see
+    e.g. \shell{Tests/h2o\_2\_dipol\_gate} and try and see if you can
+    manually place the dipole origin to achieve similar results as the
+    vacuum method.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Slab.DipoleCorrection!Vacuum}[block]
+    \fdfdepend{Slab.DipoleCorrection:vacuum}
+  
+    Options for the vacuum field determination.
+  
+    \begin{fdfoptions}
+  
+      \option[direction]%
+  
+      Mandatory input for chain and molecule calculations.
+  
+      Specify along which direction we should determine the electric
+      field/dipole.
+  
+      For slabs this defaults to the non-bulk direction.
+  
+      \option[position]%
+  
+      Specify a point in the vacuum region.
+  
+      Defaults to the vacuum region based on the atomic coordinates.
+  
+      \option[tolerance]%
+  
+      Tolerance for determining whether we are in a vacuum region.
+      The premise of the electric field calculation in the vacuum region
+      is that the derivative of the potential ($\mathbf E$) is
+      flat. When the electric field changes by more than this tolerance
+      the region is not vacuum anymore and the point is disregarded.
+  
+      Defaults to $10^{-4}\,\mathrm{eV/Ang/e}$.
+  
+    \end{fdfoptions}
+  
+    Its format is
+    \begin{fdfexample}
+       %block Slab.DipoleCorrection.Vacuum
+          # this is optional
+          # default position is the center of system + 0.5 lattice vector
+          # along 'direction'
+          position 0.000  10.000  0.500  Ang
+          # this is optional
+          # default is 1e-4 eV/Ang/e
+          tolerance 0.001 eV/Ang/e
+          # this is mandatory
+          direction 0.000  1.000  0.
+       %endblock
+    \end{fdfexample}
+  
+    \note this will only be read if \fdf{Slab.DipoleCorrection:vacuum} is used.
+  
+  \end{fdfentry}
+  
+  
+  \begin{fdfentry}{Geometry!Hartree}[block]%
+    \index{SCF!Potential}%
+    \index{Gate}%
+  
+    Allows introduction of regions with changed Hartree
+    potential. Introducing a potential can act as a repulsion
+    (positive value) or attraction (negative value) region.
+  
+    The regions are defined as geometrical objects and there are no
+    limits to the number of defined geometries.
+  
+    Details regarding this implementation may be found in
+    \citet{Papior2016a}.
+  
+    Currently 4 different kinds of geometries are allowed:
+    \begin{fdfoptions}
+  
+  
+       \option[Infinite plane]%
+      \index{Gate!infinite plane}%
+  
+      Define a geometry by an infinite plane which cuts the unit-cell.
+  
+      This geometry is defined by a single point which is in the plane
+      and a vector normal to the plane.
+  
+      This geometry has 3 different settings:
+      \begin{fdfoptions}
+        \option[delta] %
+        An infinite plane with $\delta$-height.
+  
+        \option[gauss] %
+        An infinite plane with a Gaussian distributed height profile.
+  
+        \option[exp] %
+        An infinite plane with an exponentially distributed height
+        profile.
+  
+      \end{fdfoptions}
+  
+  
+      \option[Bounded plane] %
+      \index{Gate!bounded plane}%
+  
+      Define a geometric plane which is bounded, i.e. not infinite.
+  
+      This geometry is defined by an origo of the bounded plane and two
+      vectors which span the plane, both originating in the respective
+      origo.
+  
+      This geometry has 3 different settings:
+      \begin{fdfoptions}
+  
+        \option[delta] %
+        A plane with $\delta$-height.
+  
+        \option[gauss] %
+        A plane with a Gaussian distributed height profile.
+  
+        \option[exp] %
+        A plane with an exponentially distributed height profile.
+  
+      \end{fdfoptions}
+  
+  
+      \option[Box]%
+      \index{Gate!box}%
+  
+      This geometry is defined by an origo of the box and three vectors
+      which span the box, all originating from the respective origo.
+  
+      This geometry has 1 setting:
+      \begin{fdfoptions}
+        \option[delta] %
+        No decay-region outside the box.
+  
+      \end{fdfoptions}
+  
+  
+      \option[Spheres]%
+      \index{Gate!spheres}%
+  
+      This geometry is defined by a list of spheres and a common radii.
+  
+      This geometry has 2 settings:
+      \begin{fdfoptions}
+  
+        \option[gauss] %
+        All spheres have an gaussian distribution about their centre.
+  
+        \option[exp] %
+        All spheres have an exponential decay.
+  
+      \end{fdfoptions}
+  
+    \end{fdfoptions}
+  
+    Here is a list of all options combined in one block:
+    \begin{fdfexample}
+  %block Geometry.Hartree
+   plane   1. eV       # The lifting potential on the geometry
+     delta
+      1.0 1.0 1.0 Ang  # An intersection point, in the plane
+      1.0 0.5 0.2      # The normal vector to the plane
+   plane  -1. eV       # The lifting potential on the geometry
+     gauss 1. 2.  Ang  # the std. and the cut-off length
+      1.0 1.0 1.0 Ang  # An intersection point, in the plane
+      1.0 0.5 0.2      # The normal vector to the plane
+   plane   1. eV       # The lifting potential on the geometry
+     exp 1. 2. Ang     # the half-length and the cut-off length
+      1.0 1.0 1.0 Ang  # An intersection point, in the plane
+      1.0 0.5 0.2      # The normal vector to the plane
+   square  1. eV       # The lifting potential on the geometry
+     delta
+      1.0 1.0 1.0 Ang  # The starting point of the square
+      2.0 0.5 0.2 Ang  # The first spanning vector
+      0.0 2.5 0.2 Ang  # The second spanning vector
+   square  1. eV       # The lifting potential on the geometry
+     gauss 1. 2. Ang   # the std. and the cut-off length
+      1.0 1.0 1.0 Ang  # The starting point of the square
+      2.0 0.5 0.2 Ang  # The first spanning vector
+      0.0 2.5 0.2 Ang  # The second spanning vector
+   square  1. eV       # The lifting potential on the geometry
+     exp 1. 2. Ang     # the half-length and the cut-off length
+      1.0 1.0 1.0 Ang  # The starting point of the square
+      2.0 0.5 0.2 Ang  # The first spanning vector
+      0.0 2.5 0.2 Ang  # The second spanning vector
+   box  1. eV          # The lifting potential on the geometry
+     delta
+      1.0 1.0 1.0 Ang  # Origo of the box
+      2.0 0.5 0.2 Ang  # The first spanning vector
+      0.0 2.5 0.2 Ang  # The second spanning vector
+      0.0 0.5 3.2 Ang  # The third spanning vector
+   coords 1. eV        # The lifting potential on the geometry
+      gauss 2. 4. Ang  # First is std. deviation, second is cut-off radii
+         2 spheres     # How many spheres in the following lines
+         0.0 4. 2. Ang # The centre coordinate of 1. sphere
+         1.3 4. 2. Ang # The centre coordinate of 2. sphere
+   coords 1. eV        # The lifting potential on the geometry
+      exp 2. 4. Ang    # First is half-length, second is cut-off radii
+         2 spheres     # How many spheres in the following lines
+         0.0 4. 2. Ang # The centre coordinate of 1. sphere
+         1.3 4. 2. Ang # The centre coordinate of 2. sphere
+  %endblock Geometry.Hartree
+       \end{fdfexample}
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Geometry!Charge}[block]%
+    \index{SCF!Doping}%
+    \index{Doping}%
+    \index{Charge of the system}%
+  
+    This is similar to the \fdf{Geometry!Hartree} block. However,
+    instead of specifying a potential, one defines the total charge that
+    is spread on the geometry.
+  
+    To see how the input should be formatted, see
+    \fdf{Geometry!Hartree} and remove the unit-specification. Note that
+    the input value is number of electrons (similar to \fdf{NetCharge},
+    however this method ensures charge-neutrality).
+  
+    Details regarding this implementation may be found in
+    \citet{Papior2016a}.
+  
+  \end{fdfentry}
+  
+  
+  \subsubsection{Bulk current}
+  
+  \siesta\ enables a crude way of calculating a bulk current. The basic
+  principle may be understood from basic condensed matter physics by
+  filling all right-moving states up to $E_F + V/2$ and emptying all
+  left-moving states down to $E_F - V/2$ (for a positively defined
+  $V$).
+  
+  When using this method the resulting eigenvalue spectrum in
+  \sysfile{EIG} contains the shifted eigenvalues corresponding to
+  whether they are left/right movers.
+  
+  The occupation function for left/right movers uses that provided in
+  \fdf{OccupationFunction}.
+  
+  \begin{fdfentry}{BulkBias!Voltage}[energy]<$0.\,\mathrm{eV}$>
+    \fdfdepend{BulkBias!Direction,Diag!ParallelOverK,TimeReversalSymmetryForKpoints}
+  
+    The applied bias shift in the band-structure. All right-moving
+    states will be shifted halve this value down in energy (more
+    filled), while all left-moving states will be shifted halve this
+    value up in energy (less filled).
+  
+    Since states are filled differently close to the Fermi level it is
+    imperative that the $\mathbf k$-point sampling is very high to
+    discretize the integration around the Fermi level sufficiently.
+  
+    \note this requires \fdf{Diag!ParallelOverK} to be set to \fdftrue,
+    and \fdf{TimeReversalSymmetryForKpoints} to be set to \fdffalse.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{BulkBias!Direction}[block]
+    \fdfdepend{BulkBias!Tolerance}
+  
+    The direction in which the electrons are moving. All electrons having
+    velocities with a positive projection onto this direction are
+    considered ``right-movers'' while all having a negative projection
+    are considered ``left-movers'':
+    \begin{equation}
+      \label{eq:bulk-bias:projection}
+      p = \mathbf v \cdot \hat{\mathbf V},
+    \end{equation}
+    where $\mathbf v$ is the band velocity and $\hat{\mathbf V}$ is the
+    bias unit vector.
+  
+    An example of a direction pointing along the diagonal $xy$
+    direction. Internally the direction will be normalized.
+    \begin{fdfexample}
+      %block BulkBias.Direction
+        1. 1. 0.
+      %endblock
+    \end{fdfexample}
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{BulkBias!Tolerance}[real]<$10^{-15}$>
+  
+    The tolerance used for determining whether the velocity projection
+    is positive or negative. States with projections below this tolerance
+    value will not be shifted.
+  
+    This value may be regarded as the velocity in atomic units and thus
+    having a larger value will only shift eigenstates with higher
+    velocities projected onto the potential-direction. The current value
+    corresponds roughly to a velocity of
+    $1\cdot10^{-11}\,\mathrm{Ang}/\mathrm{ps}$.
+  
+  \end{fdfentry}
+  
+  \begin{fdflogicalT}{BulkBias!Current}
+  
+    Calculate and print out the bulk-bias current during each SCF and
+    also correct the total energy with respect to the applied bias.
+    The calculated current is given by the expression:
+    \begin{align}
+      p_{\mathbf k,i} &=\mathbf{v}_{\mathbf k,i}\cdot \hat{\mathbf V}
+      \\
+      \label{eq:bulk-bias:current}
+      I(V) &= \frac{2e}{\Omega}\sum_i\int\!\!\mathrm{d}\mathbf k\,\,
+      p_{\mathbf k,i} \Theta(p_{\mathbf k,i})
+      \left[ n_F(\epsilon_{\mathbf k,i} - V/2) - n_F(\epsilon_{\mathbf k,i} + V/2)\right],
+    \end{align}
+    where $\mathbf{v}_{\mathbf k,i}$ is the velocity of the $i$th
+    eigenstate at $\mathbf k$, $\hat{\mathbf V}$ is the velocity unit
+    vector describing the direction of the field. $\Theta(x)$ is the
+    heaviside step function. Finally $\Omega$ is the Brillouin zone
+    volume which depends on the dimensionality of the system:
+    \begin{description}
+      \item[1D] $\Omega$ has unit length, and the resulting current is
+      in $\mathrm A$,
+  
+      \item[2D] $\Omega$ has unit area, and the resulting current is
+      $\mathrm A/\AA$,
+  
+      \item[3D] $\Omega$ has unit volume, and the resulting current is
+      $\mathrm A/\AA^2$.
+  
+    \end{description}
+    The factor $2$ comes from spin degeneracy and is neglected in
+    polarized and non-colinear calculations.
+  
+    When this is \fdftrue\ the free energy will be corrected with the
+    following:
+    \begin{equation}
+      \label{eq:EbV}
+      E_{\mathrm{bV}} = - V/2 ( q^+ - q^-),
+    \end{equation}
+    where $q^{+/-}$ refer to the charges positively/negatively along the
+    applied bias. If this option is \fdffalse\ \siesta\ cannot calculate the
+    energy correction and $E_{\mathrm{bV}} = 0$. Users are encouraged to
+    have this to \fdftrue\ but may for parameter searches turn this off
+    to speed up calculations.
+  
+    For non-colinear calculations the spin-alignment of the current is
+    also calculated.
+  
+    \note there is a slight performance penalty of calculating the
+    current in the SCF. It requires the calculation of the velocities
+    one more time, however, it should be a relatively small overhead.
+  
+  \end{fdflogicalT}
+  

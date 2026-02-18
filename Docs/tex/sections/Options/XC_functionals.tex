@@ -1,0 +1,220 @@
+
+(Apart from the built-in functionals, \siesta\ can use the functionals
+provided by the LibXC library, if support for it is compiled-in in the
+libGridXC library. See the description of the \fdf{XC.mix} block
+below for the appropriate syntax. \index{LibXC library})
+
+\begin{fdfentry}{XC!Functional}[string]<LDA>
+
+  Exchange-correlation functional type. May be \fdf*{LDA} (local
+  density approximation, equivalent to \fdf*{LSD}), \fdf*{GGA}
+  (Generalized Gradient Approximation), or \fdf*{VDW} (van der
+  Waals).
+
+\end{fdfentry}
+
+\begin{fdfentry}{XC!Authors}[string]<PZ>
+  \newcommand\xcidx[1]{\index{exchange-correlation!#1}}
+
+  Particular parametrization of the exchange-correlation
+  functional. Options are:
+  \begin{itemize}
+    \item%
+    \fdf*{CA} (equivalent to \fdf*{PZ}): \xcidx{CA} \xcidx{PZ}
+    (Spin) local density approximation (LDA/LSD). \xcidx{LDA}
+    \xcidx{LSD} Quantum Monte Carlo calculation of the homogeneous
+    electron gas by D. M. Ceperley and B. J. Alder,
+    Phys. Rev. Lett. \textbf{45},566 (1980), as parametrized by
+    J. P. Perdew and A. Zunger, Phys. Rev B \textbf{23}, 5075 (1981)
+
+    \item%
+    \fdf*{PW92}: \xcidx{PW92}
+    LDA/LSD, as parametrized by
+    J. P. Perdew and Y. Wang, Phys. Rev B, \textbf{45}, 13244 (1992)
+
+    \item%
+    \fdf*{PW91}: \xcidx{PW91}%
+    Generalized gradients approximation (GGA) \xcidx{GGA} of Perdew and Wang.
+    Ref: P\&W, J. Chem. Phys., \textbf{100}, 1290 (1994)
+
+    \item%
+    \fdf*{PBE}: \xcidx{PBE}%
+    GGA of J. P. Perdew, K. Burke and M. Ernzerhof,
+    Phys. Rev. Lett. \textbf{77}, 3865 (1996)
+
+    \item%
+    \fdf*{revPBE}: \xcidx{revPBE}%
+    Modified GGA-PBE functional of Y. Zhang and W. Yang,
+    Phys. Rev. Lett. \textbf{80}, 890 (1998)
+
+    \item%
+    \fdf*{RPBE}: \xcidx{RPBE}%
+    Modified GGA-PBE functional of
+    B. Hammer, L. B. Hansen and J. K. Norskov Phys. Rev. B \textbf{59}, 7413 (1999)
+
+    \item%
+    \fdf*{WC}: \xcidx{WC}%
+    Modified GGA-PBE functional of
+    Z. Wu and R. E. Cohen, Phys. Rev. B \textbf{73}, 235116 (2006)
+
+    \item%
+    \fdf*{AM05}: \xcidx{AM05}%
+    Modified GGA-PBE functional of
+    R. Armiento and A. E. Mattsson, Phys. Rev. B \textbf{72}, 085108 (2005)
+
+    \item%
+    \fdf*{PBEsol}: \xcidx{PBEsol}%
+    Modified GGA-PBE functional of
+    J. P. Perdew et al, Phys. Rev. Lett. \textbf{100}, 136406 (2008)
+
+    \item%
+    \fdf*{PBEJsJrLO}: \xcidx{PBEJsJrLO}%
+    GGA-PBE functional with parameters $\beta, \mu$, and $\kappa$ fixed by
+    the jellium surface (Js), jellium response (Jr),
+    and Lieb-Oxford bound (LO) criteria, respectively, as described by
+    L. S. Pedroza, A. J. R. da Silva, and K. Capelle,
+    Phys. Rev. B \textbf{79}, 201106(R) (2009), and by
+    M. M. Odashima, K. Capelle, and S. B. Trickey,
+    J. Chem. Theory Comput. \textbf{5}, 798 (2009)
+
+    \item%
+    \fdf*{PBEJsJrHEG}: \xcidx{PBEJsJrHEG}%
+    Same as PBEJsJrLO, with parameter $\kappa$ fixed by the  Lieb-Oxford bound
+    for the low density limit of the homogeneous electron gas (HEG)
+
+    \item%
+    \fdf*{PBEGcGxLO}: \xcidx{PBEGcGxLO}%
+    Same as PBEJsJrLO, with parameters $\beta$ and $\mu$ fixed by the
+    gradient expansion of correlation (Gc) and exchange (Gx), respectively
+
+    \item%
+    \fdf*{PBEGcGxHEG}: \xcidx{PBEGcGxHEG}%
+    Same as previous ones, with parameters $\beta,\mu$, and $\kappa$ fixed by
+    the Gc, Gx, and HEG criteria, respectively.
+
+    \item%
+    \fdf*{BLYP} (equivalent to \fdf*{LYP}): \xcidx{BLYP}%
+    GGA with Becke exchange (A. D. Becke, Phys. Rev. A \textbf{38}, 3098 (1988))
+    and Lee-Yang-Parr correlation
+    (C. Lee, W. Yang, R. G. Parr, Phys. Rev. B \textbf{37}, 785 (1988)),
+    as modified by B. Miehlich, A. Savin, H. Stoll, and H. Preuss,
+    Chem. Phys. Lett. \textbf{157}, 200 (1989).
+    See also B. G. Johnson, P. M. W. Gill and J. A. Pople,
+    J. Chem. Phys. \textbf{98}, 5612 (1993). (Some errors were detected in this
+    last paper, so not all of their expressions correspond exactly to those
+    implemented in \siesta)
+
+    \item%
+    \fdf*{DRSLL} (equivalent to \fdf*{DF1}): \xcidx{vdW-DF1}
+    \xcidx{DRSLL}%
+    van der Waals \xcidx{vdW} density functional (vdW-DF) \xcidx{vdW-DF}
+    of M. Dion, H. Rydberg, E. Schr\"{o}der, D. C. Langreth, and B. I. Lundqvist,
+    Phys. Rev. Lett. \textbf{92}, 246401 (2004), with the efficient implementation of
+    G. Rom\'an-P\'erez and J. M. Soler, Phys. Rev. Lett. \textbf{103},  096102 (2009)
+
+    \item%
+    \fdf*{LMKLL} (equivalent to \fdf*{DF2}): \xcidx{vdW-DF2} \xcidx{LMKLL}%
+    vdW-DF functional of Dion \textit{et al} (same as DRSLL)
+    reparametrized by K. Lee, E. Murray, L. Kong, B. I. Lundqvist and
+    D. C. Langreth, Phys. Rev. B \textbf{82}, 081101 (2010)
+
+    \item%
+    \fdf*{KBM}: \xcidx{KBM}%
+    vdW-DF functional of Dion \textit{et al} (same as DRSLL)
+    with exchange modified by J. Klimes, D. R. Bowler, and A. Michaelides,
+    J. Phys.: Condens. Matter \textbf{22}, 022201 (2010) (optB88-vdW version)
+
+    \item%
+    \fdf*{C09}: \xcidx{C09}%
+    vdW-DF functional of Dion \textit{et al} (same as DRSLL)
+    with exchange modified by V. R. Cooper, Phys. Rev. B \textbf{81}, 161104 (2010)
+
+    \item%
+    \fdf*{BH}: \xcidx{BH}%
+    vdW-DF functional of Dion \textit{et al} (same as DRSLL)
+    with exchange modified by
+    K. Berland and P. Hyldgaard, Phys. Rev. B 89, 035412 (2014)
+
+    \item%
+    \fdf*{VV}: \xcidx{VV}%
+    vdW-DF functional of O. A. Vydrov and T. Van Voorhis,
+    J. Chem. Phys. \textbf{133}, 244103 (2010)
+
+  \end{itemize}
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{XC!Mix}[block]
+
+  This data block allows the user to create a ``cocktail'' functional by
+  mixing the desired amounts of exchange and correlation from each of
+the functionals described under XC.authors.
+
+  The first line of the block must contain the number of functionals to
+  be mixed. On the subsequent lines the values of XC.functl and
+  XC.authors must be given and then the weights for the exchange and
+  correlation, in that order. If only one number is given then the same
+  weight is applied to both exchange and correlation.
+
+  The following is an example in which a 75:25 mixture of Ceperley-Alder
+  and PBE correlation is made, with an equal split of the exchange
+  energy:
+
+  \begin{fdfexample}
+     %block XC.mix
+        2
+        LDA CA  0.5 0.75
+        GGA PBE 0.5 0.25
+     %endblock XC.mix
+  \end{fdfexample}
+
+These blocks can also be used to request the use of LibXC functionals
+(if the version of libGridXC in use is 0.7 or later and was compiled
+with LibXC support).  \index{LibXC library} For example:
+
+\begin{fdfexample}
+     %block XC.mix
+     2
+     GGA LIBXC-00-GGA_X_PBE 1.0 0.0
+     GGA LIBXC-00-GGA_C_PBE 0.0 1.0
+     %endblock XC.mix
+\end{fdfexample}
+
+The weights reflect the ``exchange'' or ``correlation''
+character of each individual functional. In the above example we use
+mnemonic symbols for the functionals and leave the numerical
+functional id field as zero. It is also possible to use only the
+numerical id:
+
+\begin{fdfexample}
+     %block XC.mix
+     2
+     GGA LIBXC-101 1.0 0.0
+     GGA LIBXC-130 0.0 1.0
+     %endblock XC.mix
+\end{fdfexample}
+
+
+If both fields are used the information must be compatible. Also, the
+``family'' field (GGA, LDA) must be compatible with the functional
+specified.
+
+\textbf{NOTE:} In previous versions of the program this block was named,
+confusingly, \textbf{XC.Hybrid}, and in some other versions,
+\textbf{XC.Cocktail}. Those names are still allowed, but are deprecated.
+
+\textit{Default value:} If the block is not present, the XC
+information is read from the fdf variables above.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{XC!Use.BSC.CellXC}
+  \index{exchange-correlation!cellXC}
+
+  If \fdftrue, the version of \texttt{cellXC} from the BSC's mesh
+  suite is used instead of the default SiestaXC version. BSC's version
+  might be slightly better for GGA operations. SiestaXC's version is
+  mandatory when dealing with van der Waals functionals.
+
+\end{fdflogicalF}

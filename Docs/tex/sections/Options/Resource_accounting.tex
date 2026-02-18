@@ -1,0 +1,101 @@
+\begin{fdfentry}{AllocReportLevel}[integer]<$0$>
+
+    Sets the level of the allocation report, printed in file
+    \sysfile{alloc}. However, not all the allocated arrays are included
+    in the report (this will be corrected in future versions). The
+    allowed values are:
+    \begin{itemize}
+      \item%
+      level 0 : no report at all (the default)
+      \item%
+      level 1 : only total memory peak and where it occurred
+      \item%
+      level 2 : detailed report printed only at
+      normal program termination
+      \item%
+      level 3 : detailed report printed at every new memory peak
+      \item%
+      level 4 : print every individual (re)allocation or deallocation
+    \end{itemize}
+  
+    \note In MPI runs, only node-0 peak reports are produced.
+  
+  \end{fdfentry}
+  
+  
+  \begin{fdfentry}{AllocReportThreshold}[real]<$0.$>
+  
+  Sets the minimum size (in bytes) of the arrays whose memory use is
+  individually printed in the detailed allocation reports (levels 2 and
+  3). It does not affect the reported memory sums and peaks, which
+  always include all arrays.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{TimerReportThreshold}[real]<$0.$>
+  
+    Sets the minimum fraction, of total CPU time, of the subroutines or
+    code sections whose CPU time is individually printed in the detailed
+    timer reports. To obtain the accounting of MPI communication times
+    in parallel executions, you must compile with option
+    \shell{-DMPI\_TIMING}\index{compile!pre-processor!-DMPI\_TIMING}.
+    In serial execution, the CPU times are printed at the end of the
+    output file. In parallel execution, they are reported in a separated
+    file named \sysfile{times}.
+  
+  \end{fdfentry}
+  
+  \begin{fdflogicalF}{UseTreeTimer}
+  
+    Enable an experimental timer which is based on wall time on the
+    master node and is aware of the tree-structure of the timed
+    sections. At the end of the program, a report is generated in the
+    output file, and a \file{time.json} file in JSON format is also
+    written. \index{JSON timing report} This file can be used by
+    third-party scripts to process timing data.
+  
+    \note, if used with the PEXSI solver (see Sec.~\ref{SolverPEXSI})
+    this defaults to \fdftrue.
+  
+  \end{fdflogicalF}
+  
+  
+  \begin{fdflogicalT}{UseParallelTimer}
+  
+    Determine whether timings are performed in parallel. This may
+    introduce slight overhead.
+  
+    \note, if used with the PEXSI solver (see Sec.~\ref{SolverPEXSI})
+    this defaults to \fdffalse.
+  
+  \end{fdflogicalT}
+  
+  \begin{fdflogicalF}{TimingSplitScfSteps}
+  
+    The timings for individual scf steps will be recorded separately.
+  
+    NOTE: The 'tree' timer should be used to make meaningful use of this
+    information. It is enabled by default if this variable is \fdftrue.
+  
+  \end{fdflogicalF}
+  
+  \begin{fdfentry}{MaxWalltime}[real time]<Infinity>
+  
+    Set an internal limit to the wall time allotted to the
+    program's execution. Typically this is related to the external limit
+    imposed by queuing systems. The code checks its wall time periodically
+    and will abort if nearing the limit, with some slack left for clean-up
+    operations (proper closing of files, emergency output...), as determined
+    by \fdf{MaxWalltime!Slack}. See Sec.~\ref{sec:fdf-units} for available
+    units of time (\textbf{s}, \textbf{mins}, \textbf{hours}, \textbf{days}).
+  
+  \end{fdfentry}
+  
+  
+  \begin{fdfentry}{MaxWalltime!Slack}[real time]<5 s>
+  
+    The code checks its wall time $T_{\mathrm{wall}}$ periodically and will
+    abort if $T_{\mathrm{wall}} > T_{\mathrm{max}} - T_{\mathrm{slack}}$, so that
+    some slack is left for any clean-up operations.
+  
+  \end{fdfentry}

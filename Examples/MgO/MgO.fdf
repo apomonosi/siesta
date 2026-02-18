@@ -1,0 +1,42 @@
+SystemName  Magnesium Oxide Crystal
+SystemLabel MgO
+
+NumberOfAtoms           2
+NumberOfSpecies         2
+
+%block Chemical_Species_Label
+  1   12   Mg
+  2    8    O
+%endblock Chemical_Species_Label
+
+AtomicCoordinatesFormat ScaledCartesian
+AtomicCoorFormatOut     Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   .000   .000   .000   1
+   .500   .500   .500   2
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+LatticeConstant    4.10 Ang
+%block LatticeVectors
+  0.000  0.500  0.500
+  0.500  0.000  0.500
+  0.500  0.500  0.000
+%endblock LatticeVectors
+kgrid_cutoff        7.0 Ang
+
+XC.functional           LDA
+XC.authors              CA
+MeshCutoff              200.0 Ry
+
+MaxSCFIterations        100
+SCF.Mixer.History       3
+SCF.Mixer.Weight        0.3
+ElectronicTemperature   5 K
+
+WriteCoorInitial     T
+WriteCoorStep        T
+WriteForces          T
+WriteMullikenPop     1
+SaveRho              T
+SaveDeltaRho         T
+WriteDenchar         T

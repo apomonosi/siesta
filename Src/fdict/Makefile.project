@@ -1,0 +1,75 @@
+_SMEKA_project = 1
+
+# Contains specific default information for this project
+
+# Step this version upon new versions
+PROJECT_MAJOR = 0
+PROJECT_MINOR = 8
+PROJECT_MICRO = 1
+PROJECT_VERSION = $(PROJECT_MAJOR).$(PROJECT_MINOR).$(PROJECT_MICRO)
+
+# These are constant default
+PROJECT_NAME = fdict
+
+# Create the list of libraries
+FDICT_LIB ?= fdict$(LIB_SUFFIX)
+FDICT_LIB_STATIC ?= lib$(FDICT_LIB).a
+FDICT_LIB_SHARED ?= lib$(FDICT_LIB).so
+
+# Define custom options for fdict
+STATIC ?= 1
+# If the library was built previously,
+# we default to building the shared library.
+ifneq ("$(wildcard $(FDICT_LIB_SHARED))","")
+ SHARED ?= 1
+else
+ SHARED ?= 0
+endif
+
+# Create the list of libraries
+ifeq ($(STATIC),1)
+  LIBRARIES += $(FDICT_LIB_STATIC)
+endif
+ifeq ($(SHARED),1)
+  LIBRARIES += $(FDICT_LIB_SHARED)
+  # Forcefully denote that objects should have
+  # position independent code
+  # THIS IS A SMEKA SETTING
+  PIC = 1
+endif
+
+
+# Create custom installation of modules
+.NOTPARALLEL: install-mod
+smeka-install: install-mod
+install-mod: $(F_MODS)
+	$(INSTALL) -m $(_OCT_rwxrxrx) -d $(DESTDIR)$(FMOD_DIR)
+	$(INSTALL) -m $(_OCT_rwrr) $(F_MODS) $(DESTDIR)$(FMOD_DIR)
+
+.NOTPARALLEL: install-settings
+smeka-install: install-settings
+install-settings: settings.bash smeka-install-init-dir
+	$(INSTALL) -m $(_OCT_rwrr) settings.bash $(DESTDIR)$(BIN_DIR)
+
+.NOTPARALLEL: install-header
+smeka-install: install-header
+install-header: fdict.inc smeka-install-init-dir
+	$(INSTALL) -m $(_OCT_rwrr) fdict.inc $(DESTDIR)$(INC_DIR)
+
+
+# Force the deletion of both libraries
+clean:
+	-$(RM) $(RM_FLAG_FORCE) $(FDICT_LIB_STATIC) $(FDICT_LIB_SHARED) settings.bash fdict.inc
+
+
+settings.bash:
+	VPATH="$(TOP_DIR)" $(TOP_DIR)/setup.sh --default
+
+.PHONY: doc
+doc: source
+	ford ford_doc.md
+
+
+# Local Variables:
+#  mode: makefile-gmake
+# End:

@@ -1,0 +1,77 @@
+SystemName       linkatom
+SystemLabel      linkatom
+
+# Global system
+NetCharge 0.0
+
+# MD Options
+MD.TypeOfRun         cg
+MD.NumCGsteps         4
+MD.VariableCell       F
+MD.MaxForceTol        0.01 eV/Ang
+
+# Output Options
+WriteCoordinates   10
+WriteForces        T
+WriteCoorStep      T
+WriteMDHistory     T
+WriteCoorXmol      T
+WriteDenchar       T
+
+# QMMM Interaction
+MM.Cutoff      10.0 Ang
+QMMM.Cutoff    10.0 Ang
+
+# QM Region
+NumberOfAtoms    11
+NumberOfSpecies  2
+
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   6  C
+%endblock ChemicalSpeciesLabel
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   13.668  15.768  15.000   2
+   14.899  16.450  15.000   2
+   16.118  15.739  15.000   2
+   13.686  14.361  15.000   2
+   14.908  13.655  15.000   2
+   16.174  14.313  15.000   2
+   12.711  16.324  15.000   1
+   12.736  13.792  15.000   1
+   14.805  12.555  15.000   1
+   14.922  17.557  15.000   1
+   17.023  16.374  15.000   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block QM.AtomTypes
+C#
+C#
+C#
+C#
+C#
+C#
+H#
+H#
+H#
+H#
+H#
+%endblock QM.AtomTypes
+
+## MM Region
+NumberOfMMAtoms 11
+%block MM.Atoms
+ATOM      1  C#  GRAP    1    19.910  13.554  15.000
+ATOM      2  C#  GRAP    2    19.913  12.139  15.000
+ATOM      3  C#  GRAP    3    18.682  11.441  15.000
+ATOM      4  C#  GRAP    4    17.454  12.154  15.000
+ATOM      5  C#  GRAP    5    17.425  13.585  15.000
+ATOM      6  C#  GRAP    6    18.683  14.269  15.000
+ATOM      7  H#  GRAH    7    20.845  14.095  15.000
+ATOM      8  H#  GRAH    8    20.847  11.596  15.000
+ATOM      9  H#  GRAH    9    18.675  10.361  15.000
+ATOM     10  H#  GRAH   10    16.554  11.566  15.000
+ATOM     11  H#  GRAH   11    18.748  15.342  15.000
+%endblock MM.Atoms

@@ -1,0 +1,56 @@
+[tool.towncrier]
+# currently casing is inconsistent when using package
+# see https://github.com/twisted/towncrier/issues/686
+package = "SIESTA"
+name = "SIESTA"
+single_file = false
+package_dir = "."
+directory = "Changes/"
+template = "Docs/release/template.md"
+filename = "Docs/release/{version}-notes.md"
+issue_format = "[{issue}](https://gitlab.com/siesta-project/siesta/-/merge_requests/{issue})"
+title_format = "# {name} {version} Release Notes ({project_date})"
+all_bullets = true
+orphan_prefix = "orphan."
+
+
+    [[tool.towncrier.section]]
+    name = ""
+    # In top-level changes directory
+    path = ""
+
+    [[tool.towncrier.section]]
+    name = "Utilities"
+    # Nested in changes/toolbox
+    path = "utility"
+
+
+    [[tool.towncrier.type]]
+    directory = "highlight"
+    name = "Highlights"
+    showcontent = true
+
+    [[tool.towncrier.type]]
+    directory = "feat"
+    name = "New features"
+    showcontent = true
+
+    [[tool.towncrier.type]]
+    directory = "change"
+    name = "Changes and improvements"
+    showcontent = true
+
+    [[tool.towncrier.type]]
+    directory = "fix"
+    name = "Bugfixes"
+    showcontent = true
+
+    [[tool.towncrier.type]]
+    directory = "build"
+    name = "Build related"
+    showcontent = true
+
+    [[tool.towncrier.type]]
+    directory = "doc"
+    name = "Documentation"
+    showcontent = true

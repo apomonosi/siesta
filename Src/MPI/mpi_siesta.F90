@@ -1,0 +1,268 @@
+! ---
+! Copyright (C) 1996-2025	The SIESTA group
+!  This file is distributed under the terms of the
+!  GNU General Public License: see COPYING in the top directory
+!  or http://www.gnu.org/copyleft/gpl.txt .
+! See Docs/Contributors.txt for a list of contributors.
+! ---
+#include "mpi_macros.f"
+
+MODULE MPI_SIESTA
+!
+! This module embodies three different things:
+!
+!  - MPI interfaces for the subset of routines and types needed in Siesta
+!  - A trick to make mpi_comm_world into a variable that can be reset
+!    inside the code.
+!  - Time-profiling of a few key MPI routines
+!
+
+#ifdef MPI_INTERFACE_F08
+  use mpi_f08, true_MPI_Comm_World => MPI_Comm_World
+#endif
+#ifdef MPI_INTERFACE_NONE
+  use mpi, true_MPI_Comm_World => MPI_Comm_World
+#endif
+
+
+#ifdef MPI_INTERFACE_LEGACY
+!
+! This is an interface to supplant some MPI routines called by siesta,
+! in order to time-profile them. J.M.Soler. May.2009
+!
+  USE MPI_INTERFACES,  &
+    trueMPI_BARRIER    => MPI_BARRIER,    & ! Renamed to avoid conflicts
+    trueMPI_COMM_RANK  => MPI_COMM_RANK,  &
+    trueMPI_COMM_SIZE  => MPI_COMM_SIZE,  &
+    trueMPI_COMM_SPLIT => MPI_COMM_SPLIT, &
+    trueMPI_GET_COUNT  => MPI_GET_COUNT,  &
+    trueMPI_INIT       => MPI_INIT,       &
+    trueMPI_WAIT       => MPI_WAIT,       &
+    trueMPI_WAITALL    => MPI_WAITALL,    &
+    true_MPI_Comm_World => MPI_Comm_World      ! Note
+
+#endif /* MPI_INTERFACE_LEGACY */
+
+  ! The reason to define true_MPI_Comm_World as a pointer to the
+  ! (inmutable) MPI_Comm_World parameter in the MPI module is to keep
+  ! it as reference.  The MPI_Comm_World *variable* defined below can
+  ! be redefined at will.  This practice is needed because most Siesta
+  ! routines have hard-wired references to MPI_Comm_World as their
+  ! communicator. Instead of generalizing the interfaces and pass the
+  ! communicator as an argument (work in progress), we use the kludge
+  ! of re-defining MPI_Comm_World.
+  
+! The following construction allows to supplant MPI_Comm_World within SIESTA,
+! and to use it as a subroutine with its own internal MPI communicator.
+
+  ! Siesta-instances should refer to MPI_Comm_DFT
+  ! This is the case, for example, when a driver program splits the
+  ! global communicator to dispatch several simultaneous Siesta instances
+  ! Typically, comm_world = comm_dft, but not for calculations (PEXSI, ELSI)
+  ! for which only a subset of processors carry out the core Siesta operations
+  ! that have hard-wired references to mpi_comm_world
+  
+  MPI_COMM_TYPE, public :: MPI_Comm_World = true_MPI_Comm_World
+  MPI_COMM_TYPE, public :: MPI_Comm_DFT = true_MPI_Comm_World
+
+  public    :: true_MPI_Comm_World
+
+
+#ifdef GRID_SP
+        MPI_DATA_TYPE :: MPI_grid_real   = MPI_real
+#elif defined(GRID_DP)
+        MPI_DATA_TYPE :: MPI_grid_real   = MPI_double_precision
+#else
+        MPI_DATA_TYPE :: MPI_grid_real   = MPI_double_precision
+#endif
+
+!
+!   Export explicitly some symbols to help some versions of
+!   the PGI compiler, which do not consider them public by default
+!
+        public :: mpi_real
+        public :: mpi_complex
+        public :: mpi_double_complex
+        public :: mpi_double_precision
+        public :: mpi_2double_precision
+        public :: mpi_integer, mpi_character, mpi_logical
+        public :: mpi_integer8
+        public :: mpi_packed
+        public :: mpi_maxloc, mpi_sum, mpi_max, mpi_lor
+        public :: mpi_status_size
+        public :: mpi_comm_self
+        public :: mpi_grid_real
+        public :: mpi_finalize
+        public :: mpi_group_null, mpi_comm_null, mpi_proc_null
+!        public :: mpi_thread_single
+        public :: mpi_thread_funneled
+        public :: mpi_thread_serialized
+
+  interface
+     subroutine timer_mpi_interf( prog, iOpt )
+       character(len=*),intent(in):: prog   ! Name of program to time
+       integer,         intent(in):: iOpt   ! Action option
+     end subroutine timer_mpi_interf
+  end interface
+
+  procedure(timer_mpi_interf), pointer :: timer_mpi => dummy_timer_mpi
+  public :: set_mpi_timer_handler
+
+#ifdef MPI_INTERFACE_LEGACY
+  
+  PUBLIC :: MPI_BARRIER
+  INTERFACE MPI_BARRIER
+    MODULE PROCEDURE myMPI_BARRIER
+  END INTERFACE
+
+  PUBLIC :: MPI_COMM_RANK
+  INTERFACE MPI_COMM_RANK
+    MODULE PROCEDURE myMPI_COMM_RANK
+  END INTERFACE
+
+  PUBLIC :: MPI_COMM_SIZE
+  INTERFACE MPI_COMM_SIZE
+    MODULE PROCEDURE myMPI_COMM_SIZE
+  END INTERFACE
+
+  PUBLIC :: MPI_COMM_SPLIT
+  INTERFACE MPI_COMM_SPLIT
+    MODULE PROCEDURE myMPI_COMM_SPLIT
+  END INTERFACE
+
+  PUBLIC :: MPI_GET_COUNT
+  INTERFACE MPI_GET_COUNT
+    MODULE PROCEDURE myMPI_GET_COUNT
+  END INTERFACE
+
+  PUBLIC :: MPI_INIT
+  INTERFACE MPI_INIT
+    MODULE PROCEDURE myMPI_INIT
+  END INTERFACE
+
+  PUBLIC :: MPI_WAIT
+  INTERFACE MPI_WAIT
+    MODULE PROCEDURE myMPI_WAIT
+  END INTERFACE
+
+  PUBLIC :: MPI_WAITALL
+  INTERFACE MPI_WAITALL
+    MODULE PROCEDURE myMPI_WAITALL
+  END INTERFACE
+
+#endif
+  
+CONTAINS
+
+  subroutine set_mpi_timer_handler(func)
+    procedure(timer_mpi_interf) :: func
+    timer_mpi => func
+  end subroutine set_mpi_timer_handler
+    
+  subroutine dummy_timer_mpi( prog, iOpt )
+    character(len=*),intent(in):: prog   ! Name of program to time
+    integer,         intent(in):: iOpt   ! Action option
+    ! do nothing
+  end subroutine dummy_timer_mpi
+
+#ifdef MPI_INTERFACE_LEGACY
+  SUBROUTINE myMPI_BARRIER(COMM, IERROR) 
+    INTEGER, INTENT(IN)  :: COMM
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_BARRIER
+    call timer_mpi('MPI_BARRIER',1)
+    call MPI_BARRIER(COMM, IERROR)
+    call timer_mpi('MPI_BARRIER',2)
+  END SUBROUTINE myMPI_BARRIER
+          
+  SUBROUTINE myMPI_COMM_RANK(COMM, RANK, IERROR)
+    INTEGER, INTENT(IN)  :: COMM
+    INTEGER, INTENT(OUT) :: RANK
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_COMM_RANK
+    call timer_mpi('MPI_COMM_RANK',1)
+    call MPI_COMM_RANK(COMM, RANK, IERROR)
+    call timer_mpi('MPI_COMM_RANK',2)
+  END SUBROUTINE myMPI_COMM_RANK
+          
+  SUBROUTINE myMPI_COMM_SIZE(COMM, SIZE, IERROR)
+    INTEGER, INTENT(IN)  :: COMM
+    INTEGER, INTENT(OUT) :: SIZE
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_COMM_SIZE
+    call timer_mpi('MPI_COMM_SIZE',1)
+    call MPI_COMM_SIZE(COMM, SIZE, IERROR)
+    call timer_mpi('MPI_COMM_SIZE',2)
+  END SUBROUTINE myMPI_COMM_SIZE
+          
+  SUBROUTINE myMPI_COMM_SPLIT(COMM, COLOR, KEY, NEWCOMM, IERROR)
+    INTEGER, INTENT(IN)  :: COMM
+    INTEGER, INTENT(IN)  :: COLOR
+    INTEGER, INTENT(IN)  :: KEY
+    INTEGER, INTENT(OUT) :: NEWCOMM
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_COMM_SPLIT
+    call timer_mpi('MPI_COMM_SPLIT',1)
+    call MPI_COMM_SPLIT(COMM, COLOR, KEY, NEWCOMM, IERROR)
+    call timer_mpi('MPI_COMM_SPLIT',2)
+  END SUBROUTINE myMPI_COMM_SPLIT
+          
+  SUBROUTINE myMPI_GET_COUNT(STATUS, DATATYPE, COUNT, IERROR)
+    USE MPI__INCLUDE, ONLY: MPI_STATUS_SIZE
+    INTEGER, INTENT(IN)  :: STATUS(MPI_STATUS_SIZE)
+    INTEGER, INTENT(IN)  :: DATATYPE
+    INTEGER, INTENT(OUT) :: COUNT
+    INTEGER, INTENT(OUT) :: IERROR
+    external MPI_GET_COUNT
+    call timer_mpi('MPI_GET_COUNT',1)
+    call MPI_GET_COUNT(STATUS, DATATYPE, COUNT, IERROR)
+    call timer_mpi('MPI_GET_COUNT',2)
+  END SUBROUTINE myMPI_GET_COUNT
+          
+  SUBROUTINE myMPI_INIT(IERROR)
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_INIT
+    call timer_mpi('MPI_INIT',1)
+    call MPI_INIT(IERROR)
+    call timer_mpi('MPI_INIT',2)
+  END SUBROUTINE myMPI_INIT
+          
+  SUBROUTINE myMPI_WAIT(REQUEST, STATUS, IERROR)
+    USE MPI__INCLUDE, ONLY: MPI_STATUS_SIZE
+    INTEGER, INTENT(INOUT) :: REQUEST
+    INTEGER, INTENT(OUT) :: STATUS(MPI_STATUS_SIZE)
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_WAIT
+    call timer_mpi('MPI_WAIT',1)
+    call MPI_WAIT(REQUEST, STATUS, IERROR)
+    call timer_mpi('MPI_WAIT',2)
+  END SUBROUTINE myMPI_WAIT
+          
+  SUBROUTINE myMPI_WAITALL( &
+    COUNT, ARRAY_OF_REQUESTS, ARRAY_OF_STATUSES, IERROR)
+    USE MPI__INCLUDE, ONLY: MPI_STATUS_SIZE
+    INTEGER, INTENT(IN)  :: COUNT
+    INTEGER, INTENT(INOUT) :: ARRAY_OF_REQUESTS(*)
+    INTEGER, INTENT(OUT) :: ARRAY_OF_STATUSES(MPI_STATUS_SIZE,*)
+    INTEGER, INTENT(OUT) :: IERROR 
+    external MPI_WAITALL
+    call timer_mpi('MPI_WAITALL',1)
+    call MPI_WAITALL(COUNT, ARRAY_OF_REQUESTS, ARRAY_OF_STATUSES, IERROR)
+    call timer_mpi('MPI_WAITALL',2)
+  END SUBROUTINE myMPI_WAITALL
+          
+#endif /* ! MPI_INTERFACE_LEGACY */
+END MODULE MPI_SIESTA
+
+!
+! external version
+!
+SUBROUTINE timer_mpi( name, opt )
+  use mpi_siesta, timer_mpi_module => timer_mpi
+  character(len=*), intent(in):: name
+  integer,          intent(in):: opt
+
+  call timer_mpi_module( name, opt )
+
+END SUBROUTINE timer_mpi
+

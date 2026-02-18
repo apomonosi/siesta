@@ -1,0 +1,94 @@
+\subsection{Standard output} \index{output!main output file}
+
+\siesta\ writes a log of its workings to standard output (unit 6),
+which is usually redirected to an ``output file''.
+
+A brief description follows. See the example cases in the
+siesta/Tests directory for illustration.
+
+The program starts writing the version of the code which is
+used. Then, the input \fdflib\ file is dumped into the output file as is
+(except for empty lines). The program does part of the reading and
+digesting of the data at the beginning within the \program{redata}
+subroutine. It prints some of the information it digests. It is
+important to note that it is only part of it, some other information
+being accessed by the different subroutines when they need it during
+the run (in the spirit of \fdflib\ input).  A complete list of the input
+used by the code can be found at the end in the file \file{fdf.log},
+including defaults used by the code in the run.
+
+After that, the program reads the pseudopotentials, factorizes them
+into Kleinman-Bylander form, and generates (or reads) the atomic basis
+set to be used in the simulation. These stages are documented in the
+output file.
+
+The simulation begins after that, the output showing information of
+the MD (or CG) steps and the SCF cycles within.  Basic descriptions of
+the process and results are presented. The user has the option to
+customize it, however,\index{output!customization} by defining
+different options that control the printing of informations like
+coordinates, forces, $\vec k$ points, etc.  The options are discussed
+in the appropriate sections, but take into account the behavior of the
+legacy \fdf{LongOutput} option, as in the current implementation might
+silently activate output to the main .out file at the expense of
+auxiliary files.
+
+\begin{fdflogicalF}{LongOutput}
+  \index{output!long}
+
+  \siesta\ can write to standard output different data sets depending
+  on the values for output options described below.  By default
+  \siesta\ will not write most of them. They can be large for large
+  systems (coordinates, eigenvalues, forces, etc.)  and, if written to
+  standard output, they accumulate for all the steps of the
+  dynamics. \siesta\ writes the information in other files (see Output
+  Files) in addition to the standard output, and these can be
+  cumulative or not.
+
+  Setting \fdf{LongOutput} to \fdftrue\ changes the default of some
+  options, obtaining more information in the output (verbose).  In
+  particular, it redefines the defaults for the following:
+
+  \begin{itemize}
+
+    \item \fdf{WriteKpoints}%
+    \index{output!grid $\vec k$ points}
+
+    \item \fdf{WriteKbands}%
+    \index{output!band $\vec k$ points}
+
+    \item \fdf{WriteCoorStep}%
+    \index{output!atomic coordinates!in a dynamics step}
+
+    \item \fdf{WriteForces}%
+    \index{output!forces}
+
+    \item \fdf{WriteEigenvalues}%
+    \index{output!eigenvalues}
+
+    \item \fdf{WriteWaveFunctions}%
+    \index{output!wave functions}
+
+    \item \fdf{WriteMullikenPop}%
+    \index{output!Mulliken analysis}%
+    \index{Mulliken population analysis}%
+    (it sets it to 1)
+
+  \end{itemize}
+
+  The specific changing of any of these options has precedence.
+
+\end{fdflogicalF}
+
+
+\subsection{Output to dedicated files}%
+\index{output!dedicated files}
+
+\siesta\ can produce a wealth of information in dedicated files,
+with specific formats, that can be used for further analysis. See the
+appropriate sections, and the appendix on file formats.
+Please take into account the behavior of
+\fdf{LongOutput}, as in the current implementation might silently
+activate output to the main .out file at the expense of auxiliary
+files.
+

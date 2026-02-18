@@ -1,0 +1,463 @@
+Please see the file \shell{INSTALL.md} in the top
+directory of the \siesta\ distribution for basic instructions
+on how to use CMake ($\ge$3.20) to build \siesta\ and the utility
+programs.
+
+A set of Spack recipes is also available to handle some dependencies
+and multiple build configurations automatically.
+
+\subsection{Notes on compiler flags}
+
+\note Intel compilers default to high optimizations which tend to
+break \siesta. We advice to use \shell{-fp-model source} flag and to
+avoid optimizations higher than \shell{-O2}.
+\\
+
+
+\note Since \shell{gfortran} version 10.x the interfaces are strictly
+checked. Currently one has to add \shell{-fallow-argument-mismatch}
+to the compiler flags to turn errors into warnings. These warnings are
+safe to ignore and will look something like:
+\begin{shellexample}[xleftmargin=1ex,fontsize=\footnotesize]
+  .../siesta/Src/fsiesta_mpi.F90:441:18:
+
+  440 |   call MPI_Bcast( n, 1, MPI_Integer, 0, MPI_Comm_Siesta, error )
+      |                  2
+  441 |   call MPI_Bcast( x, 3*na, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
+      |                  1
+Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
+\end{shellexample}
+The CMake system takes care of adding the extra flag automatically.
+Note that compilations with \shell{-pedantic} flag are no longer possible.
+\\
+
+
+\subsubsection{Debug options}
+\label{sec:build:debug}
+
+Being able to build \siesta\ in debug mode is crucial for finding bugs
+and debugging builds.
+
+For GFortran, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -Wall -fcheck=all -fbacktrace -Warray-bounds -Wunused -Wuninitialized
+\end{shellexample}
+
+For Intel, use the following flags:
+\begin{shellexample}
+  FFLAGS = -Og -g -check bounds -traceback -fp-model strict
+\end{shellexample}
+
+This will make \siesta\ run significantly slower. Please report any
+crashes to the developer team at
+\url{https://gitlab.com/siesta-project/siesta/-/issues}.
+
+
+\subsection{Parallel operation}
+\label{sec:parallel}
+
+To achieve a parallel build of \siesta\ one should first determine
+which type of parallelism one requires. It is advised to use MPI for
+calculations with moderate number of cores. If one requires extra
+parallelism \siesta\ provides hybrid parallelism using both MPI and
+OpenMP.
+
+
+\subsubsection{MPI}
+\index{External library!MPI}
+\index{compile!MPI}
+\index{compile!cmake!-DSIESTA\_WITH\_MPI}
+
+MPI is a message-passing interface which enables communication between
+equivalently executed binaries. This library will thus duplicate all
+non-distributed data such as local variables etc.
+
+MPI is compiled-in by default in \siesta\ , as long as the appropriate libraries
+can be found. If MPI is not desired, simply set
+
+\begin{shellexample}
+  -DSIESTA_WITH_MPI=OFF
+\end{shellexample}
+\index{compile!pre-processor!-DMPI}
+
+in the CMake invocation.
+
+Subsequently one may run \siesta\ using the
+\shell{mpirun}/\shell{mpiexec} commands:
+\begin{shellexample}
+  mpirun -np <> siesta RUN.fdf
+\end{shellexample}
+where \shell{<>} is the number of cores used. Note that the actual commands and syntax are system-dependent.
+
+
+\subsubsection{OpenMP}
+\index{External library!OpenMP}
+\index{compile!OpenMP}
+\index{compile!cmake!-DSIESTA\_WITH\_OPENMP}
+
+OpenMP is shared memory parallelism. It typically does not incur any
+memory overhead and may be used if memory is scarce and the regular
+MPI compilation is crashing due to insufficient memory, or is not
+efficient due to the communication overhead.
+
+To enable OpenMP, simply add this to your CMake invocation
+\begin{shellexample}
+  -DSIESTA_WITH_OPENMP=ON
+\end{shellexample}
+
+The above will yield the most basic parallelism using OpenMP. However,
+the BLAS/LAPACK libraries, which are the most time-consuming part of
+\siesta\ are also required to be threaded, please see Sec.~\ref{sec:libs}
+for correct linking.
+
+The minimum required version of OpenMP is 3.0
+(internally identified by the YYYYMM date string \shell{200805}).
+
+Subsequently one may run \siesta\ using OpenMP through the environment
+variable \shell{OMP\_NUM\_THREADS} which determine the number of
+threads/cores used in the execution.
+\begin{shellexample}
+  OMP_NUM_THREADS=<> siesta RUN.fdf
+  # or (bash)
+  export OMP_NUM_THREADS=<>
+  siesta RUN.fdf
+  # or (csh)
+  setenv OMP_NUM_THREADS <>
+  siesta RUN.fdf
+\end{shellexample}
+where \shell{<>} is the number of threads/cores used.
+
+If \siesta\ is also compiled using MPI it is more difficult to obtain
+a good performance. Please refer to your local cluster documentation for how to
+correctly call MPI with hybrid parallelism.
+%
+An example for running \siesta\ with good performance using OpenMPI >
+1.8.2 \emph{and} OpenMP on a machine with 2 sockets and 8 cores per
+socket, one may do:
+\begin{shellexample}
+  # MPI = 2 cores, OpenMP = 8 threads per core (total=16)
+  mpirun --map-by ppr:1:socket:pe=8 \
+     -x OMP_NUM_THREADS=8 \
+     -x OMP_PROC_BIND=true siesta RUN.fdf
+
+  # MPI = 4 cores, OpenMP = 4 threads per core (total=16)
+  mpirun --map-by ppr:2:socket:pe=4 \
+     -x OMP_NUM_THREADS=4 \
+     -x OMP_PROC_BIND=true siesta RUN.fdf
+
+  # MPI = 8 cores, OpenMP = 2 threads per core (total=16)
+  mpirun --map-by ppr:4:socket:pe=2 \
+     -x OMP_NUM_THREADS=2 \
+     -x OMP_PROC_BIND=true siesta RUN.fdf
+\end{shellexample}
+If using only 1 thread per MPI core it is advised to compile \siesta\
+without OpenMP. As such it may be advantageous to compile \siesta\ in
+3 variants; OpenMP-only (small systems), MPI-only (medium to large
+systems) and MPI$+$OpenMP (large$>$ systems).
+
+The variable \shell{OMP\_PROC\_BIND} may heavily influence the
+performance of the executable! Please perform tests for the
+architecture used.
+
+
+\subsection{Library dependencies}
+\label{sec:libs}
+\index{compile!libraries}
+
+{\bf NOTE:} The \emph{required} libraries: \program{xmlf90},
+\program{libPSML}, \program{libfdf}, and \program{libGridXC}, can be
+installed automatically on-the-fly during the \siesta\ compilation process.
+
+They can also be pre-installed, using their own CMake-based building
+systems. In that case their installation paths can be added to
+\program{CMAKE\_PREFIX\_PATH} for the \siesta\ compilation.
+
+
+\begin{description}
+
+  \item[XMLF90] %
+  \index{External library!xmlf90}%
+  is required as a prerequisite for \program{libPSML}, and to produce XML and CML output.
+  (\url{https://gitlab.com/siesta-project/libraries/xmlf90}).
+
+  \item[libPSML] %
+  \index{External library!libPSML}%
+  is required to use pseudopotentials in PSML format
+  (\url{https://gitlab.com/siesta-project/libraries/libpsml})
+
+  \item[libfdf] %
+  \index{External library!libfdf}%
+  is required to parse fdf files and handle the options in them.
+  (\url{https://gitlab.com/siesta-project/libraries/libfdf})
+
+  \item[libGridXC] %
+  \index{External library!libGridXC}%
+  is required.
+  (\url{https://gitlab.com/siesta-project/libraries/libgridxc})
+
+  \item[libXC] %
+  \index{External library!libXC}%
+  is optional. libGridXC can use it if present.
+  (\url{https://gitlab.com/libxc/libxc})
+
+  \item[BLAS] %
+  \index{External library!BLAS}%
+  it is recommended to use a high-performance library
+  (\href{https://github.com/xianyi/OpenBLAS}{OpenBLAS} or MKL
+  library from Intel, or BLIS)
+
+
+  \item[LAPACK]%
+  \index{External library!LAPACK}%
+  it is recommended to use a high-performance library
+  (\href{https://github.com/xianyi/OpenBLAS}{OpenBLAS}\footnote{OpenBLAS
+      enables the inclusion of the LAPACK routines. This is advised.}
+  or MKL library from Intel)
+
+    \note If you use your *nix distribution package manager to install
+    BLAS/LAPACK you are bound to have a poor performance. Please try and use
+    performance libraries, whenever possible!
+
+  The CMake building system will search for the BLAS/LAPACK libraries
+  (maybe with help, by setting the BLAS\_LIBRARY or LAPACK\_LIBRARY CMake
+  variables) and set the appropriate linking options.
+
+  \item[ScaLAPACK]%
+  \index{External library!ScaLAPACK}%
+  \index{compile!cmake!-DSIESTA\_WITH\_MPI}
+  \emph{Only required for MPI compilation.}
+
+  Here one may rely on the NetLIB\footnote{ScaLAPACK's
+      performance is mainly governed by BLAS and LAPACK.} version of
+  ScaLAPACK.
+
+\end{description}
+
+Additionally \siesta\ may be compiled with support for several other
+libraries
+\begin{description}
+
+  \item[\href{https://github.com/zerothi/fdict}{fdict}] %
+  \index{External library!fdict}%
+  This library is shipped with \siesta\ and compiled automatically when needed.
+
+  \item[\href{https://www.unidata.ucar.edu/software/netcdf}{NetCDF}] %
+  \index{NetCDF format}%
+  \index{External library!NetCDF}%
+  \index{compile!cmake!-DSIESTA\_WITH\_NETCDF}
+  \index{compile!pre-processor!-DCDF}
+  It is advised to compile NetCDF in CDF4 compliant mode (thus
+  also linking with HDF5) as this enables more advanced IO. If you
+  only link against a CDF3 compliant library you will not get the
+  complete feature set of \siesta.
+
+
+NetCDF (both the C and Fortran interfaces)
+are typically already installed in supercomputer centers and can be
+installed in most systems using package managers.  As a temporary
+convenience, \siesta\ is shipped with the installation script
+\shell{Docs/install\_netcdf4.bash}, which installs NetCDF with full
+CDF4 support. Thus it installs zlib, hdf5 \emph{and} NetCDF C and
+Fortran.
+
+
+  \item[\href{https://github.com/zerothi/ncdf}{ncdf}] %
+  \index{External library!ncdf}%
+  \index{compile!cmake!-DSIESTA\_WITH\_NCDF}
+  \index{compile!pre-processor!-DCDF4}
+  \index{compile!pre-processor!-DNCDF}
+  This library is shipped with \siesta\ and is compiled automatically
+  if NetCDF (v4) is enabled, unless the user sets \program{-DSIESTA\_WITH\_NCDF=OFF}.
+
+  If the NetCDF library is compiled with parallel support one may
+  take advantage of parallel IO by \program{-DSIESTA\_WITH\_NCDF\_PARALLEL=ON}
+
+
+  \item[\href{http://elpa.mpcdf.mpg.de}{ELPA}]%
+  \index{ELPA}%
+  \index{External library!ELPA}%
+  \index{compile!cmake!-DSIESTA\_WITH\_ELPA}
+  The ELPA\cite{ELPA,ELPA-1} library provides faster diagonalization routines.
+
+  The version of ELPA \emph{must} be 2017.05.003 or later, since the
+  new ELPA API is used.
+
+  ELPA is used by default if found during the configuration phase of the CMake run.
+
+  \note ELPA can only be used in the parallel version of \siesta.
+
+  \item[\href{http://glaros.dtc.umn.edu/gkhome/metis/metis/overview}{Metis}]%
+  \index{Metis}%
+  \index{External library!Metis}%
+  The Metis library may be used with \tsiesta.
+
+  Currently there is no full support in CMake to build the Metis
+  library. It has to be pre-compiled, and the options passed to CMake
+  in the form:
+
+  \begin{shellexample}
+    cmake [.....] -DFortran_FLAGS="-DSIESTA__METIS -L/opt/metis/lib -lmetis"
+  \end{shellexample}
+  \index{compile!pre-processor!-DSIESTA\_\_METIS}
+
+  \item[\href{http://mumps.enseeiht.fr}{MUMPS}]%
+  \index{MUMPS}%
+  \index{External library!MUMPS}%
+  The MUMPS library may currently be used with \tsiesta.
+
+  Currently there is no full support in CMake to build the MUMPS
+  library. It has to be pre-compiled, and the options passed to CMake
+  in the form:
+
+  \begin{shellexample}
+    cmake [.....] \
+    -DFortran_FLAGS="-DSIESTA__MUMPS -L/opt/mumps/lib -lzmumps -lmumps_common <>"
+  \end{shellexample}
+  \index{compile!pre-processor!-DSIESTA\_\_MUMPS}
+  where \shell{<>} are any libraries that MUMPS depends on.
+
+
+  \item[\href{http://pexsi.org}{PEXSI}]%
+  \index{PEXSI}%
+  \index{External library!PEXSI}%
+  \index{compile!cmake!-DSIESTA\_WITH\_PEXSI}
+  The PEXSI library may be used with this version of \siesta\ for massively-parallel
+  calculations, see Sec.~\ref{SolverPEXSI}.
+
+  There are two PEXSI interfaces in this version. The first is the original native interface, using the heuristics
+  developed for \siesta\ in collaboration with the PEXSI developers, with the following
+  features and limitations:
+  %
+  \begin{itemize}
+    \item It works only for the Gamma point (i.e. real matrices H and S). This is not
+      really a major limitation, since the PEXSI method is typically used for large systems.
+    \item It works for (collinear) spin-polarized systems.
+    \item It can compute the DOS through inertia counting, and the local DOS using selected inversion.
+    \item It determines the Fermi level using a Newton algorithm.
+    \item It offers two levels of parallelization: over poles, and over orbitals.
+  \end{itemize}
+
+  The second is the PEXSI interface provided by the ELSI library, which offers
+  %
+  \begin{itemize}
+    \item Support for (collinear) spin-polarized systems.
+    \item Determination of the Fermi level using a parallel interpolation procedure.
+    \item Three levels of parallelization: over poles, over orbitals,
+          and over interpolation points.
+    \item Arbitrary sampling of the Brillouin Zone (both real and
+      complex H,S)
+  \end{itemize}
+
+  The PEXSI library routines used by the native interface in \siesta\ are
+  offered both by the PEXSI library itself (versions 2.0 and higher), and by the ELSI library
+  (if compiled with PEXSI support). A special fortran interface file has been used to allow
+  the compilation of \siesta\ with any one of these libraries.
+
+  \item[\href{http://elsi-interchange.org}{ELSI}]%
+  \index{ELSI}%
+  \index{External library!ELSI}%
+  \index{compile!cmake!-DSIESTA\_WITH\_ELSI}
+  The ELSI library may be used with \siesta\ for access to a range of
+  solvers, see Sec.~\ref{SolverELSI}. Currently the interface is
+  implemented (tested) for ELSI 2.2.0 to 2.10. If
+  newer versions retain the same interface they may also be used.
+
+  To enable ELSI support, add \shell{-DSIESTA\_WITH\_ELSI=ON} in the CMake
+  configuration step. More details in \file{INSTALL.md} and in
+  the documentation in \file{External/ELSI}.
+
+  \item[CheSS]%
+  \index{CheSS}%
+  \index{External library!CheSS}%
+  \index{compile!cmake!-DSIESTA\_WITH\_CHESS}
+
+  \siesta\ allows calculation of the electronic structure through the
+  use of the Order-N method \program{CheSS}\footnote{See
+      \url{https://launchpad.net/chess}.}. To enable this solver (see
+  \fdf{SolutionMethod}) one needs to first compile the
+  \program{CheSS}-suite and subsequently use:
+
+\begin{shellexample}
+  cmake [.....] -DSIESTA_WITH_CHESS=ON
+\end{shellexample}
+
+  \note This feature is experimental, and the developers are working
+  on streamlining the integration of this library into the CMake build
+  system.
+
+  \item[\href{https://github.com/electronicstructurelibrary/flook}{flook}]%
+  \index{flook}%
+  \index{External library!flook}%
+  \siesta\ allows external control via the LUA scripting language.
+  Using this library one may do advanced MD simulations and much more
+  \emph{without} changing any code in \siesta.
+
+  This library is compiled automatically if found during the configuration process.
+
+  See \program{Tests/Dependency\_Tests/h2o\_lua}\index{Tests!lua} for an example on the LUA interface.
+
+  \item[\href{https://github.com/awvwgk/simple-dftd3}{DFT-D3}]%
+  \index{DFT-D3}%
+  \index{External library!dft-d3}
+  \index{compile!cmake!-DSIESTA\_WITH\_DFTD3}
+  %
+  This library is required in order to add Grimme's D3 dispersion
+  corrections to \siesta. It is compiled on the fly (controlled by
+  \program{-DSIESTA\_WITH\_DFTD3=ON/OFF}) if the directories
+  under \program{External/DFTD3} are populated (through the use of git
+  submodules or otherwise).
+
+\end{description}
+
+
+\subsection{Known Issues}
+\label{sec:installissues}
+\index{compile!issues}
+
+\begin{description}
+  \item[Cray]%
+  There are few known issues when compiling \siesta\ with Cray compilers.
+
+  \begin{itemize}
+    \item Compilation with debug information "-g" fails for Cray Compiler
+          versions lower than 14.0.3.
+
+    \item For Cray versions 15.0 or higher available on certain systems,
+    it might be mandatory to manually add a compiler flag for OpenMP
+    compilations. For example:
+
+      \begin{shellexample}
+        cmake -B _build ...[Your Options Here]... -DFortran_FLAGS="-fopenmp"
+      \end{shellexample}
+  \end{itemize}
+
+  \item[ScalaPACK]
+  In some Linux-native versions of the ScaLAPACK distribution, CMake detection
+  might fail with the following message:
+
+  \begin{shellexample}[xleftmargin=1ex,fontsize=\footnotesize]
+    CMake Warning at CMakeLists.txt:63 (message):
+    MPI is found, but ScaLAPACK library cannot be found (or compiled against).
+
+    If parallel support is required please supply the ScaLAPACK library with
+    appropriate flags:
+
+    -DSCALAPACK_LIBRARY=<lib>
+  \end{shellexample}
+
+  In order to fix this, the cmake variable \shell{-DSCALAPACK\_LIBRARY} must be
+  explicitly set to \shell{-DSCALAPACK\_LIBRARY=-lscalapack-openmpi} (or the
+  appropriate ScaLAPACK version in your system).
+\end{description}
+
+
+\subsection{Installing git-enabled versions}
+When installing versions of \siesta\ via \shell{git clone} or similar approaches,
+one can take advantage of git to automatically setup all of \siesta\'s internal
+dependencies, using:
+
+\begin{shellexample}[xleftmargin=1ex,fontsize=\footnotesize]
+  git submodule update --init --recursive
+\end{shellexample}
+
+\note Note that this requires git versions of \textbf{2.13 and above}.

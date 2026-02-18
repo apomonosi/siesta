@@ -1,0 +1,920 @@
+\siesta\ can use three qualitatively different methods to determine
+the electronic structure of the system. The first is standard
+diagonalization, which works for all systems and has a cubic scaling
+with the size. The second is based on
+the direct minimization of a special functional over a set of
+trial orbitals. These orbitals can either extend over the entire system,
+resulting in a cubic scaling algorithm, or be constrained within a
+localization radius, resulting in a linear scaling algorithm. The former
+is a recent implementation (described in \ref{SolverOMM}), that can
+be viewed as an equivalent approach to diagonalization in terms of the
+accuracy of the solution; the latter is the historical O(N) method used by
+\siesta\ (described in \ref{SolverON}); it scales in principle
+linearly with the size of the system (only if the size is larger than
+the radial cutoff for the local solution wave-functions), but is quite
+fragile and substantially more difficult to use, and only works for
+systems with clearly separated occupied and empty states. The default is
+to use diagonalization. The third method (PEXSI) is based on the
+pole expansion of the Fermi-Dirac function and the direct computation
+of the density matrix via an efficient scheme of selected
+inversion (see Sec~\ref{SolverPEXSI}).
+
+Additionally, \siesta\ can use the ELSI library of solvers (see
+Sec.~\ref{SolverELSI}), which provides its own versions of OMM
+and PEXSI, in addition to diagonalization and other solvers, and the new linear-scaling
+CheSS library (see Sec.~\ref{SolverCheSS})
+
+The calculation of the H and S matrix elements is always done with an
+O(N) method. The actual scaling is not linear for small systems, but
+it becomes O(N) when the system dimensions are larger than the scale
+of orbital r$_c$'s.
+
+The relative importance of both parts of the computation (matrix
+elements and solution) depends on the size and quality of the
+calculation. The mesh cutoff affects only the matrix-element
+calculation; orbital cutoff radii affect the matrix elements and all
+solvers except diagonalization; the need for \textbf{k}-point sampling
+affects the solvers only, and the number of basis orbitals affects
+them all.
+
+In practice, the vast majority of users employ diagonalization (or the
+OMM method) for the calculation of the electronic structure. This is
+so because the vast majority of calculations (done for intermediate
+system sizes) would not benefit from the O(N) or PEXSI solvers.
+
+\begin{fdfentry}{SolutionMethod}[string]<diagon>
+
+  Character string to choose among diagonalization (\fdf*{diagon}),
+  cubic-scaling minimization (\fdf*{OMM}), Order-N (\fdf*{OrderN})
+  solution of the Kohn-Sham Hamiltonian, \fdf*{transiesta} or \fdf*{NEGF}, the
+  PEXSI method (\fdf*{PEXSI}), ELSI family of solvers (\fdf*{ELSI}) or the \fdf*{CheSS} solver.
+  In addition, the \fdf*{Dummy} solver will just return a
+  slightly perturbed density-matrix without actually solving for
+  the electronic structure. This is useful for timing other routines.
+
+
+\end{fdfentry}
+
+
+\subsubsection{Diagonalization options}
+
+\begin{fdfentry}{NumberOfEigenStates}[integer]<\nonvalue{all orbitals}>
+  \fdfdepend{Diag!Algorithm}
+
+  This parameter allows the user to reduce the number of eigenstates
+  that are calculated from the maximum possible. The benefit is that,
+  for any calculation, the cost of the diagonalization is reduced by
+  finding fewer eigenvalues/eigenvectors. For example, during a
+  geometry optimisation, only the occupied states are required rather
+  than the full set of virtual orbitals. Note, that if the electronic
+  temperature is greater than zero then the number of partially
+  occupied states increases, depending on the band gap. The value
+  specified must be greater than the number of occupied states and
+  less than the number of basis functions.
+
+  If a \emph{negative} number is passed it corresponds to the number
+  of orbitals above the total charge of the system. In effect it
+  corresponds to the number of orbitals above the Fermi level for zero
+  temperature. I.e. if $-2$ is specified for a system with $20$
+  orbitals and $10$ electrons it is equivalent to $12$.
+
+  Using this option can \emph{greatly} speed up your calculations if
+  used correctly.
+
+  \note If experiencing \shell{PDORMTR} errors in $\Gamma$
+  calculations with \fdf*{MRRR} algorithm, it is because of a buggy
+  ScaLAPACK implementation, simply use another algorithm.
+
+  \note This only affects the \fdf*{MRRR}, \fdf*{ELPA} and
+  \fdf*{Expert} diagonalization routines.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{Diag!WFS.Cache}[string]<none|cdf>
+  \fdfdeprecates{UseNewDiagk}
+
+  Specify whether \siesta\ should cache wavefunctions in the
+  diagonalization routine. Without a cache, a standard two-pass
+  procedure is used. First eigenvalues are obtained to determine the
+  Fermi level, and then the wavefunctions are computed to build the
+  density matrix.
+
+  Using a cache one can do everything in one go. However, this
+  requires substantial IO and performance may vary.
+
+  \begin{fdfoptions}
+
+    \option[none]%
+    \fdfindex*{Diag!WFS.Cache:none}%
+
+    The wavefunctions will not be cached and the standard two-pass
+    diagonalization method is used.
+
+    \option[cdf]%
+    \fdfindex*{Diag!WFS.Cache:cdf}%
+
+    The wavefunctions are stored in \file{WFS.nc} (NetCDF format) and
+    created from a single root node. This requires NetCDF support, see
+    Sec.~\ref{sec:libs}.
+
+    \note This is an experimental feature.
+
+    \note It is not compatible with the \fdf{Diag!ParallelOverK}
+    option.
+
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+
+\begin{fdflogicalT}{Diag!Use2D}
+
+  Determine whether a 1D or 2D data decomposition should be used when
+  calling ScaLAPACK. The use of 2D leads to superior scaling on large
+  numbers of processors and is therefore the default. This option only
+  influences the parallel performance.
+
+  If \fdf{Diag!BlockSize} is different from \fdf{BlockSize} this flag
+  defaults to \fdftrue, else if \fdf{Diag!ProcessorY} is $1$ or the
+  total number of processors, then this flag will default to
+  \fdffalse.
+
+\end{fdflogicalT}
+
+\begin{fdfentry}{Diag!ProcessorY}[integer]<$\sim \sqrt{\mathrm N}$>
+  \fdfdepend{Diag!Use2D}
+
+  Set the number of processors in the 2D distribution along the rows.
+  Its default is equal to the lowest multiple of $\mathrm N$ (number
+  of MPI cores) below $\sqrt{\mathrm N}$ such that, ideally, the
+  distribution will be a square grid.
+
+  The input is required to be a multiple of the total number of MPI
+  cores but \siesta\ will reduce the input value such that it
+  coincides with this.
+
+  Once the lowest multiple closest to $\sqrt{\mathrm N}$, or the input, is
+  determined the 2D distribution will be
+  $\mathrm{ProcessorY}\times\mathrm{N}/\mathrm{ProcessorY}$,
+  rows $\times$ columns.
+
+  \note If the automatic correction (lowest multiple of MPI cores) is
+  $1$ the default of \fdf{Diag!Use2D} will be \fdffalse.
+
+\end{fdfentry}
+
+\begin{fdfentry}{Diag!BlockSize}[integer]<\fdfvalue{BlockSize}>
+  \fdfdepend{Diag!Use2D}
+
+  The block-size used for the 2D distribution in the ScaLAPACK calls.
+  This number greatly affects the performance of ScaLAPACK.
+
+  If the ScaLAPACK library is threaded this parameter should not be
+  too small. In any case it may be advantageous to run a few tests to
+  find a suitable value.
+
+  \note If \fdf{Diag!Use2D} is set to \fdffalse\ this flag is not
+  used.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{Diag!Algorithm}[string]<Divide-and-Conquer|...>
+  \fdfdeprecates{Diag!DivideAndConquer,Diag!MRRR,Diag!ELPA,Diag!NoExpert}
+
+  Select the algorithm when calculating the eigenvalues and/or
+  eigenvectors.
+
+  The fastest routines are typically MRRR or ELPA which may be
+  significantly faster by specifying a suitable
+  \fdf{NumberOfEigenStates} value.
+
+  Currently the implemented solvers are:
+
+  \begin{fdfoptions}
+
+    \option[divide-and-Conquer]%
+    \fdfindex*{Diag!Algorithm:Divide-and-Conquer}
+
+    Use the divide-and-conquer algorithm.
+
+    \option[divide-and-Conquer-2stage]%
+    \fdfindex*{Diag!Algorithm:Divide-and-Conquer-2stage}
+
+    Use the divide-and-conquer 2stage algorithm (fall-back to the
+    divide-and-conquer if not available).
+
+
+    \option[MRRR]%
+    \fdfindex*{Diag!Algorithm:MRRR}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the multiple relatively robust algorithm.
+
+    \note The MRRR method is defaulted not to be compiled in, however,
+    if your ScaLAPACK library does contain the relevant sources one
+    may add this pre-processor flag \texttt{-DSIESTA\_\_MRRR}.
+    \index{compile!pre-processor!-DSIESTA\_\_MRRR}
+
+    \option[MRRR-2stage]%
+    \fdfindex*{Diag!Algorithm:MRRR-2stage}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the 2-stage multiple relatively robust algorithm.
+
+
+    \option[expert]%
+    \fdfindex*{Diag!Algorithm:Expert}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the expert algorithm which allows calculating a subset of the
+    eigenvalues/eigenvectors.
+
+
+    \option[expert-2stage]%
+    \fdfindex*{Diag!Algorithm:Expert-2stage}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the 2-stage expert algorithm which allows calculating a subset
+    of the eigenvalues/eigenvectors.
+
+
+    \option[noexpert|QR]%
+    \fdfindex*{Diag!Algorithm:NoExpert}%
+    \fdfindex*{Diag!Algorithm:QR}%
+
+    Use the QR algorithm.
+
+    \option[noexpert-2stage|QR-2stage]%
+    \fdfindex*{Diag!Algorithm:NoExpert-2stage}%
+
+    Use the 2-stage QR algorithm.
+
+
+    \option[ELPA-1stage]%
+    \fdfindex*{Diag!Algorithm:ELPA-1stage}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the ELPA\cite{ELPA,ELPA-1} 1-stage solver. Requires compilation
+    of \siesta\ with ELPA, see Sec.~\ref{sec:libs}.
+
+    This option is not compatible with \fdf{Diag!ParallelOverK}. In
+    addition, when using a GPU-enabled version of ELPA it is important
+    to verify that \fdf{Diag.BlockSize} is a power of 2; if not,
+    ELPA will only run on CPU.
+
+    \option[ELPA|ELPA-2stage]%
+    \fdfindex*{Diag!Algorithm:ELPA-2stage}%
+    \fdfdepend{NumberOfEigenStates}
+
+    Use the ELPA\cite{ELPA,ELPA-1} 2-stage solver. Requires compilation
+    of \siesta\ with ELPA, see Sec.~\ref{sec:libs}.
+
+    This option is not compatible with \fdf{Diag!ParallelOverK}. In
+    addition, when using a GPU-enabled version of ELPA it is important
+    to verify that \fdf{Diag.BlockSize} is a power of 2; if not,
+    ELPA will only run on CPU.
+
+  \end{fdfoptions}
+
+  \note All the 2-stage solvers are (as of July 2017) only
+  implemented in the LAPACK library, so they will only be usable in
+  serial or when using \fdf{Diag!ParallelOverK}.
+
+  If found by CMake in the LAPACK library, 2-stage solvers will be enabled automatically,
+  by setting the preprocessor variable
+  \index{compile!pre-processor!-DSIESTA\_\_DIAG\_2STAGE}
+  \begin{shellexample}
+    -DSIESTA__DIAG_2STAGE
+  \end{shellexample}
+
+  Previous versions of \siesta\ shipped a copy of the relevant LAPACK
+  files, including the 2-stage solvers. That might no longer be the case, and
+  there is no direct support for compiling those files with CMake.
+
+  \note This flag has precedence over the deprecated flags:
+  \fdf{Diag!DivideAndConquer}, \fdf{Diag!MRRR}, \fdf{Diag!ELPA} and
+  \fdf{Diag!NoExpert}. However, the default is taken from the
+  deprecated flags.
+
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{Diag!ELPA!GPU}
+
+  Newer versions of the ELPA library have optional support for GPUs.
+  This flag will request that GPU-specific code be used by the
+  library.
+
+  To use this feature, GPU support has to be explicitly enabled during
+  compilation of the ELPA library. At present, detection of GPU
+  support in the code is not fool-proof, so this flag should only be
+  enabled if GPU support is indeed available.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{Diag!ELPA!GPU!String}[string]<nvidia-gpu>
+
+  Newer versions of the ELPA library have optional support for GPUs.
+  This string will be used as the key to set the GPU feature in the ELPA interface.
+
+  Traditionally it was just ``gpu'', but recent versions use
+  ``nvidia-gpu'', or ``amd-gpu'', etc. This setting can still be
+  overridden by the value of the environment variable
+  \texttt{SIESTA\_ELPA\_GPU\_STRING}.  Its default value can be set at build
+  time to match the characteristics of the ELPA library and the host
+  architecture, using the CMake variable \texttt{SIESTA\_ELPA\_GPU\_STRING}.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{Diag!ParallelOverK}
+
+  For the diagonalization there is a choice in strategy about whether
+  to parallelise over the $\mathbf k$ points (\fdftrue) or over the
+  orbitals (\fdffalse). $\mathbf k$ point diagonalization is close to
+  perfectly parallel but is only useful where the number of
+  $\mathbf k$ points is much larger than the number of processors and
+  therefore orbital parallelisation is generally preferred. The
+  exception is for metals where the unit cell is small, but the number
+  of $\mathbf k$ points to be sampled is very large. In this last case
+  it is recommend that this option be used.
+
+  \note This scheme is not used for the diagonalizations involved in
+  the generation of the band-structure (as specified with
+  \fdf{BandLines} or \fdf{BandPoints}) or in the generation of
+  wave-function information (as specified with
+  \fdf{WaveFuncKPoints}). In these cases the program falls back to
+  using parallelization over orbitals.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{Diag!AbsTol}[real]<$10^{-16}$>
+
+  The absolute tolerance for the orthogonality of the eigenvectors.
+  This tolerance is only applicable for the solvers:
+
+  \fdf*{expert} for both the serial and parallel solvers.
+
+  \fdf*{mrrr} for the serial solver.
+
+\end{fdfentry}
+
+\begin{fdfentry}{Diag!OrFac}[real]<$10^{-3}$>
+
+  Re-orthogonalization factor to determine when the eigenvectors
+  should be re-orthogonalized.
+
+  Only applicable for the \fdf*{expert} serial and parallel solvers.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{Diag!Memory}[real]<$1$>
+
+  Whether the parallel diagonalization of a matrix is successful or
+  not can depend on how much workspace is available to the routine
+  when there are clusters of eigenvalues. \fdf{Diag!Memory} allows
+  the user to increase the memory available, when necessary, to
+  achieve successful diagonalization and is a scale factor relative to
+  the minimum amount of memory that ScaLAPACK might need.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{Diag!UpperLower}[string]<lower|upper>
+
+  Which part of the symmetric triangular part should be used in the
+  solvers.
+
+  \note Do not change this variable unless you are performing
+  benchmarks. It should be fastest with the \fdf*{lower} part.
+
+\end{fdfentry}
+
+\paragraph{Deprecated diagonalization options}
+
+
+\begin{fdflogicalF}{Diag!MRRR}
+  \fdfdepend{NumberOfEigenStates}
+
+  Use the MRRR method in ScaLAPACK for diagonalization. Specifying a
+  number of eigenvectors to store is possible through the symbol
+  \fdf{NumberOfEigenStates} (see above).
+
+  \note The MRRR method is defaulted not to be compiled in, however,
+  if your ScaLAPACK library does contain the relevant sources one
+  may add this pre-processor flag \texttt{-DSIESTA\_\_MRRR}.
+  \index{compile!pre-processor!-DSIESTA\_\_MRRR}
+
+  \note Use \fdf{Diag!Algorithm} instead.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalT}{Diag!DivideAndConquer}
+
+  Logical to select whether the normal or Divide and Conquer
+  algorithms are used within the ScaLAPACK/LAPACK diagonalization
+  routines.
+
+  \note Use \fdf{Diag!Algorithm} instead.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{Diag!ELPA}
+  \fdfdepend{NumberOfEigenStates}
+
+  See the ELPA articles\cite{ELPA,ELPA-1} for additional information.
+
+  \note It is not compatible with the \fdf{Diag!ParallelOverK}
+  option.
+
+  \note Use \fdf{Diag!Algorithm} instead.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalF}{Diag!NoExpert}
+
+  Logical to select whether the simple or expert versions of the
+  ScaLAPACK/LAPACK routines are used. Usually the expert routines are
+  faster, but may require slightly more memory.
+
+  \note Use \fdf{Diag!Algorithm} instead.
+
+\end{fdflogicalF}
+
+
+
+\subsubsection{Output of eigenvalues and wavefunctions}
+
+This section focuses on the output of eigenvalues and wavefunctions
+produced during the (last) iteration of the self-consistent cycle,
+and associated to the appropriate k-point sampling.
+
+For band-structure calculations (which typically use a different set
+of k-points) and specific requests for wavefunctions, see
+Secs.~\ref{sec:band-structure} and~\ref{sec:wf-output-user}, respectively.
+
+The complete set of wavefunctions obtained during the last
+iteration of the SCF loop will be written to a NetCDF file
+\file{WFS.nc} if the \fdf{Diag!WFS.Cache:cdf} option is in effect.
+
+The complete set of wavefunctions obtained during the last
+iteration of the SCF loop will be written to \sysfile{fullBZ.WFSX}
+if the \fdf{COOP.Write} option is in effect.
+
+
+\begin{fdflogicalF}{WriteEigenvalues}
+  \index{output!eigenvalues}
+
+  If \fdftrue\ it writes the Hamiltonian eigenvalues for the sampling
+  $\vec k$ points, in the main output file.  If \fdffalse, it
+  writes them in the file \sysfile{EIG}, which can be used
+  by the \program{Eig2DOS}\index{Eig2DOS@\textsc{Eig2DOS}}
+  postprocessing utility (in the \shell{Util/Eig2DOS} directory) for obtaining
+  the density of states.\index{density of states}
+
+  \note this option only works for \fdf{SolutionMethod} which
+  calculates the eigenvalues.
+
+\end{fdflogicalF}
+
+
+\subsubsection{Occupation of electronic states and Fermi level}
+\label{electronic-occupation}
+
+
+\begin{fdfentry}{OccupationFunction}[string]<FD>
+
+  String variable to select the function that determines the
+  occupation of the electronic states. These options are available:
+  \begin{fdfoptions}
+    \option[FD]%
+    The usual Fermi-Dirac occupation function is used.
+
+    \option[MP]%
+    The occupation function proposed by Methfessel and
+    Paxton (Phys. Rev. B, \textbf{40}, 3616 (1989)), is used.
+
+    \option[Cold]%
+    The occupation function proposed by Marzari, Vanderbilt et. al
+    (PRL, \textbf{82}, 16 (1999)), is used, this is commonly referred
+    to as \emph{cold smearing}.
+
+  \end{fdfoptions}
+  The smearing of the electronic occupations is done, in all cases,
+  using an energy width defined by the \fdf{ElectronicTemperature}
+  variable. Note that, while in the case of Fermi-Dirac, the
+  occupations correspond to the physical ones if the electronic
+  temperature is set to the physical temperature of the system, this
+  is not the case in the Methfessel-Paxton function. In this case, the
+  tempeature is just a mathematical artifact to obtain a more accurate
+  integration of the physical quantities at a lower cost. In
+  particular, the Methfessel-Paxton scheme has the advantage that,
+  even for quite large smearing temperatures, the obtained energy is
+  very close to the physical energy at $T=0$. Also, it allows a much
+  faster convergence with respect to $k$-points, specially for
+  metals. Finally, the convergence to selfconsistency is very much
+  improved (allowing the use of larger mixing coefficients).
+
+  For the Methfessel-Paxton case, and similarly for cold smearing, one
+  can use relatively large values for the \fdf{ElectronicTemperature}
+  parameter. How large depends on the specific system. A guide can be
+  found in the article by J. Kresse and J. Furthm\"uller,
+  Comp. Mat. Sci. \textbf{6}, 15 (1996).
+
+  If Methfessel-Paxton smearing is used, the order of the
+  corresponding Hermite polynomial expansion must also be chosen (see
+  description of variable \fdf{OccupationMPOrder}).
+
+  We finally note that, in both cases (FD and MP), once a finite
+  temperature has been chosen, the relevant energy is not the
+  Kohn-Sham energy, but the Free energy. In particular, the atomic
+  forces are derivatives of the Free energy, not the KS energy. See
+  R. Wentzcovitch \textit{et al.}, Phys. Rev. B \textbf{45}, 11372
+  (1992); S. de Gironcoli, Phys. Rev. B \textbf{51}, 6773 (1995);
+  J. Kresse and J. Furthm\"uller, Comp. Mat. Sci.  \textbf{6}, 15
+  (1996), for details.
+
+\end{fdfentry}
+
+\begin{fdfentry}{OccupationMPOrder}[integer]<1>
+
+  Order of the Hermite-Gauss polynomial expansion for the electronic
+  occupation functions in the Methfessel-Paxton scheme (see
+  Phys. Rev. B \textbf{40}, 3616 (1989)).  Specially for metals,
+  higher order expansions provide better convergence to the ground
+  state result, even with larger smearing temperatures, and provide
+  also better convergence with k-points.
+
+  \note only used if \fdf{OccupationFunction} is \fdf*{MP}.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{ElectronicTemperature}[temperature/energy]<$300\,\mathrm{K}$>
+
+  Temperature for occupation function. Useful specially for metals,
+  and to accelerate selfconsistency in some cases.
+
+\end{fdfentry}
+
+
+
+\subsubsection{Orbital minimization method (OMM)}
+\label{SolverOMM}
+
+The OMM is an alternative cubic-scaling solver that uses a
+minimization algorithm instead of direct diagonalization to find the
+occupied subspace.  The main advantage over diagonalization is the
+possibility of iteratively reusing the solution from each SCF/MD step
+as the starting guess of the following one, thus greatly reducing the
+time to solution. Typically, therefore, the first few SCF cycles of
+the first MD step of a simulation will be slower than diagonalization,
+but the rest will be faster. The main disadvantages are that
+individual Kohn-Sham eigenvalues are not computed, and that only a
+fixed, integer number of electrons at each k point/spin is
+allowed. Therefore, only spin-polarized calculations with
+\fdf{Spin!Fix} are allowed, and \fdf{Spin!Total} must be chosen
+appropriately. For non-$\Gamma$ point calculations, the number of
+electrons is set to be equal at all k points. Non-collinear
+calculations (see \fdf{Spin}) are not supported at present.
+The OMM implementation was initially developed by Fabiano Corsetti.
+
+It is important to note that the OMM requires all occupied Kohn-Sham
+eigenvalues to be negative; this can be achieved by applying a shift
+to the eigenspectrum, controlled by \fdf{ON.eta} (in this case,
+\fdf{ON.eta} simply needs to be higher than the HOMO level). If the
+OMM exhibits a pathologically slow or unstable convergence, this is
+almost certainly due to the fact that the default value of
+\fdf{ON.eta} (\fdf*{0.0 eV}) is too low, and should be raised by
+a few eV.
+
+\begin{fdflogicalT}{OMM!UseCholesky}
+
+  Select whether to perform a Cholesky factorization of the
+  generalized eigenvalue problem; this removes the overlap matrix from
+  the problem but also destroys the sparsity of the Hamiltonian
+  matrix.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalT}{OMM!Use2D}
+
+  Select whether to use a 2D data decomposition of the matrices for
+  parallel calculations. This generally leads to superior scaling for
+  large numbers of MPI processes.
+
+\end{fdflogicalT}
+
+\begin{fdflogicalF}{OMM!UseSparse}
+
+  Select whether to make use of the sparsity of the Hamiltonian and
+  overlap matrices where possible when performing matrix-matrix
+  multiplications (these operations are thus reduced from $O(N^3)$ to
+  $O(N^2)$ without loss of accuracy).
+
+  \note not compatible with \fdf{OMM!UseCholesky},
+  \fdf{OMM!Use2D}, or non-$\Gamma$ point calculations
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{OMM!Precon}[integer]<-1>
+
+  Number of SCF steps for \emph{all} MD steps for which to apply a
+  preconditioning scheme based on the overlap and kinetic energy
+  matrices; for negative values the preconditioning is always
+  applied. Preconditioning is usually essential for fast and accurate
+  convergence (note, however, that it is not needed if a Cholesky
+  factorization is performed; in such cases this variable will have no
+  effect on the calculation).
+
+  \note cannot be used with \fdf{OMM!UseCholesky}.
+
+\end{fdfentry}
+
+
+\begin{fdfentry}{OMM!PreconFirstStep}[integer]<\fdfvalue{OMM!Precon}>
+
+  Number of SCF steps in the \emph{first} MD step for which to apply
+  the preconditioning scheme; if present, this will overwrite the
+  value given in \fdf{OMM!Precon} for the first MD step only.
+
+\end{fdfentry}
+
+\begin{fdfentry}{OMM!Diagon}[integer]<0>
+
+  Number of SCF steps for \emph{all} MD steps for which to use a
+  standard diagonalization before switching to the OMM; for negative
+  values diagonalization is always used, and so the calculation is
+  effectively equivalent to \fdf{SolutionMethod} \fdf*{diagon}.
+  In general, selecting the first few SCF steps can speed up the
+  calculation by removing the costly initial minimization (at present
+  this works best for $\Gamma$ point calculations).
+
+\end{fdfentry}
+
+\begin{fdfentry}{OMM!DiagonFirstStep}[integer]<\fdfvalue{OMM!Diagon}>
+
+  Number of SCF steps in the \emph{first} MD step for which to use a
+  standard diagonalization before switching to the OMM; if present,
+  this will overwrite the value given in \fdf{OMM!Diagon} for the
+  first MD step only.
+
+\end{fdfentry}
+
+\begin{fdfentry}{OMM!BlockSize}[integer]<\fdfvalue{BlockSize}>
+
+  Blocksize used for distributing the elements of the matrix over MPI
+  processes. Specifically, this variable controls the dimension
+  relating to the trial orbitals used in the minimization (equal to
+  the number of occupied states at each k point/spin); the equivalent
+  variable for the dimension relating to the underlying basis orbitals
+  is controlled by \fdf{BlockSize}.
+
+\end{fdfentry}
+
+\begin{fdfentry}{OMM!TPreconScale}[energy]<$10\,\mathrm{Ry}$>
+
+  Scale of the kinetic energy preconditioning (see C.~K.~Gan \emph{et
+      al.}, Comput. Phys. Commun.  \textbf{134}, 33 (2001)). A smaller
+  value indicates more aggressive kinetic energy preconditioning,
+  while an infinite value indicates no kinetic energy
+  preconditioning. In general, the kinetic energy preconditioning is
+  much less important than the tensorial correction brought about by
+  the overlap matrix, and so this value will have fairly little impact
+  on the overall performace of the preconditioner; however, too
+  aggressive kinetic energy preconditioning can have a detrimental
+  effect on performance and accuracy.
+
+\end{fdfentry}
+
+\begin{fdfentry}{OMM!RelTol}[real]<$10^{-9}$>
+
+  Relative tolerance in the conjugate gradients minimization of the
+  Kohn-Sham band energy (see \fdf{ON!Etol}).
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{OMM!Eigenvalues}
+
+  Select whether to perform a diagonalization at the end of each MD
+  step to obtain the Kohn-Sham eigenvalues.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{OMM!WriteCoeffs}
+
+  Select whether to write the coefficients of the solution orbitals to
+  file at the end of each MD step.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{OMM!ReadCoeffs}
+
+  Select whether to read the coefficients of the solution orbitals
+  from file at the beginning of a new calculation. Useful for
+  restarting an interrupted calculation, especially when used in
+  conjuction with \fdf{DM.UseSaveDM}. Note that the same number of
+  MPI processes and values of \fdf{OMM!Use2D},
+  \fdf{OMM!BlockSize}, and \fdf{BlockSize} must be used when
+  restarting.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalF}{OMM!LongOutput}
+
+  Select whether to output detailed information of the conjugate
+  gradients minimization for each SCF step.
+
+\end{fdflogicalF}
+
+
+\subsubsection{Order(N) calculations}
+\label{SolverON}
+
+The Ordern(N) subsystem is quite fragile and only works for systems
+with clearly separated occupied and empty states. Note also that the
+option to compute the chemical potential automatically does not yet
+work in parallel.
+
+NOTE: Since it is used less often, bugs creeping into the O(N) solver have
+been more resilient than in more popular bits of the code.  Work is
+ongoing to clean and automate the O(N) process, to make the solver
+more user-friendly and robust.
+
+\begin{fdfentry}{ON.functional}[string]<Kim>
+
+  Choice of order-N minimization functionals:
+  \begin{fdfoptions}
+    \option[Kim]%
+    Functional of Kim, Mauri and Galli, PRB 52, 1640 (1995).
+
+    \option[Ordejon-Mauri]%
+    Functional of Ordej\'on et al, or Mauri et al, see PRB 51, 1456
+    (1995).  The number of localized wave functions (LWFs) used must
+    coincide with $N_{el}/2$ (unless spin polarized).  For the initial
+    assignment of LWF centers to atoms, atoms with even number of
+    electrons, $n$, get $n/2$ LWFs. Odd atoms get $(n+1)/2$ and
+    $(n-1)/2$ in an alternating sequence, ir order of appearance
+    (controlled by the input in the atomic coordinates block).
+
+    \option[files]%
+    Reads localized-function information from a file and chooses
+    automatically the functional to be used.
+  \end{fdfoptions}
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.MaxNumIter}[integer]<1000>
+
+  Maximum number of iterations in the conjugate minimization of the
+  electronic energy, in each SCF cycle.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.Etol}[real]<$10^{-8}$>
+
+  Relative-energy tolerance in the conjugate minimization of the
+  electronic energy. The minimization finishes if
+  $2 (E_n - E_{n-1}) / (E_n + E_{n-1}) \leq $ \fdf{ON.Etol}.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.eta}[energy]<$0\,\mathrm{eV}$>
+
+  Fermi level parameter of Kim \textit{et al.}. This should be in the
+  energy gap, and tuned to obtain the correct number of electrons. If
+  the calculation is spin polarised, then separate Fermi levels for
+  each spin can be specified.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.eta.alpha}[energy]<$0\,\mathrm{eV}$>
+
+  Fermi level parameter of Kim \textit{et al.} for alpha spin
+  electrons.  This should be in the energy gap, and tuned to obtain
+  the correct number of electrons. Note that if the Fermi level is not
+  specified individually for each spin then the same global eta will
+  be used.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.eta.beta}[energy]<$0\,\mathrm{eV}$>
+
+  Fermi level parameter of Kim \textit{et al.} for beta spin
+  electrons.  This should be in the energy gap, and tuned to obtain
+  the correct number of electrons. Note that if the Fermi level is not
+  specified individually for each spin then the same global eta will
+  be used.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.RcLWF}[length]<$9.5\,\mathrm{Bohr}$>
+  \index{Localized Wave Functions}
+
+  Localization redius for the Localized Wave Functions (LWF's).
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{ON.ChemicalPotential}
+  \index{Chemical Potential}
+
+  Specifies whether to calculate an order-$N$ estimate of the Chemical
+  Potential, by the projection method (Goedecker and Teter, PRB
+  \textbf{51}, 9455 (1995); Stephan, Drabold and Martin, PRB
+  \textbf{58}, 13472 (1998)). This is done by expanding the Fermi
+  function (or density matrix) at a given temperature, by means of
+  Chebyshev polynomials\index{Chebyshev Polynomials}, and imposing a
+  real space truncation on the density matrix.  To obtain a realistic
+  estimate, the temperature should be small enough (typically, smaller
+  than the energy gap), the localization range large enough (of the
+  order of the one you would use for the Localized Wannier Functions),
+  and the order of the polynomial expansion sufficiently large (how
+  large depends on the temperature; typically, 50-100).
+
+
+  \note this option does not work in parallel. An alternative is to
+  obtain the approximate value of the chemical potential using an
+  initial diagonalization.
+
+\end{fdflogicalF}
+
+
+\begin{fdflogicalF}{ON.ChemicalPotential.Use}
+  \index{Chemical Potential}
+
+  Specifies whether to use the calculated estimate of the Chemical
+  Potential, instead of the parameter
+  \fdf{ON.eta} for the
+  order-$N$ energy functional minimization.  This is useful if
+  you do not know the position of the Fermi level, typically in the
+  beginning of an order-$N$ run.
+
+  \note this overrides the value of \fdf{ON.eta} and \fdf{ON.ChemicalPotential}.
+  Also, this option does not work in parallel. An alternative
+  is to obtain the approximate value of the chemical potential using
+  an initial diagonalization.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{ON.ChemicalPotential.Rc}[length]<$9.5\,\mathrm{Bohr}$>
+  \index{Chemical Potential}
+
+  Defines the cutoff radius for the density matrix or Fermi operator
+  in the calculation of the estimate of the Chemical Potential.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.ChemicalPotential.Temperature}[temperature/energy]<$0.05\,\mathrm{Ry}$>
+  \index{Chemical Potential}
+
+  Defines the temperature to be used in the Fermi function expansion
+  in the calculation of the estimate of the Chemical Potential.  To
+  have an accurate results, this temperature should be smaller than
+  the gap of the system.
+
+\end{fdfentry}
+
+\begin{fdfentry}{ON.ChemicalPotential.Order}[integer]<$100$>
+  \index{Chemical Potential}
+
+  Order of the Chebishev expansion to calculate the estimate of the
+  Chemical Potential.
+
+\end{fdfentry}
+
+\begin{fdflogicalF}{ON.LowerMemory}
+  \index{Lower order N memory}
+
+  If \fdftrue, then a slightly reduced memory algorithm is used in the
+  3-point line search during the order N minimisation. Only affects
+  parallel runs.
+
+\end{fdflogicalF}
+
+
+\paragraph{Output of localized wavefunctions}
+\index{Localized Wave Functions}
+
+At the end of each conjugate gradient minimization of the energy
+functional, the LWF's are stored on disk. These can be used as an
+input for the same system in a restart, or in case something goes
+wrong.  The LWF's are stored in sparse form in file SystemLabel.LWF
+
+It is important to keep very good care of this file, since the first
+minimizations can take MANY steps. Loosing them will mean performing
+the whole minimization again. It is also a good practice to save it
+periodically during the simulation, in case a mid-run restart is
+necessary.
+
+\begin{fdflogicalF}{ON.UseSaveLWF}
+  \index{reading saved data!localized wave functions (order-$N$)}
+  \index{Restart of O(N) calculations}
+
+  Instructs to read the localized wave functions stored in file
+  \sysfile{LWF} by a previous run.
+
+\end{fdflogicalF}

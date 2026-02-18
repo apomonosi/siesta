@@ -1,0 +1,156 @@
+This calculation of the band structure is performed optionally after
+the geometry loop finishes, and the output information written
+to the \sysfile{bands} file (see below for the format).
+
+\begin{fdfentry}{BandLinesScale}[string]<pi/a>
+
+  Specifies the scale of the $k$ vectors given in \fdf{BandLines}
+  and \fdf{BandPoints} below.  The options are:
+  \begin{fdfoptions}
+    \option[pi/a]%
+    k-vector coordinates are given in Cartesian coordinates, in units
+    of $\pi/a$, where $a$ is the lattice constant. NOTE: this results
+    in a k-cell that is orthorhombic, so it might not be useful for systems
+    in which the unit cell itself is non-orthorhombic.
+
+    \option[ReciprocalLatticeVectors]%
+    $k$ vectors are given in reciprocal-lattice-vector coordinates
+  \end{fdfoptions}
+
+  \note you might need to define explicitly a LatticeConstant tag in
+  your fdf file if you do not already have one, and make it consistent
+  with the scale of the k-points and any unit-cell vectors you might
+  have already defined.
+
+\end{fdfentry}
+
+\begin{fdfentry}{BandLines}[block]
+
+  Specifies the lines along which band energies are calculated
+  (usually along high-symmetry directions).  An example for an FCC
+  lattice is:
+  \begin{fdfexample}
+     %block BandLines
+       1  1.000  1.000  1.000  L        # Begin at L
+      20  0.000  0.000  0.000  \Gamma   # 20 points from L to gamma
+      25  2.000  0.000  0.000  X        # 25 points from gamma to X
+      30  2.000  2.000  2.000  \Gamma   # 30 points from X to gamma
+     %endblock BandLines
+  \end{fdfexample}
+  where the last column is an optional \LaTeX\ label for use in the
+  band plot. If only given points (not lines) are required, simply
+  specify 1 in the first column of each line. The first column of the
+  first line must be always 1.
+
+  \note this block is not used if \fdf{BandPoints} is present.
+
+\end{fdfentry}
+
+\begin{fdfentry}{BandPoints}[block]
+
+  Band energies are calculated for the list of arbitrary $k$ points
+  given in the block. Units defined by \fdf{BandLinesScale} as for
+  \fdf{BandLines}. The generated \sysfile{bands} file will contain the
+  $k$ point coordinates (in a.u.) and the corresponding band energies
+  (in eV). Example:
+  \begin{fdfexample}
+     %block BandPoints
+        0.000  0.000  0.000   # This is a comment. eg this is gamma
+        1.000  0.000  0.000
+        0.500  0.500  0.500
+     %endblock BandPoints
+  \end{fdfexample}
+
+  See also \fdf{BandLines}.
+\end{fdfentry}
+
+
+\begin{fdflogicalF}{WriteKbands}
+  \index{output!band $\vec k$ points}
+
+  If \fdftrue, it writes the coordinates of the $\vec k$ vectors
+  defined for band plotting, to the main output file.
+
+\end{fdflogicalF}
+
+\begin{fdflogicalF}{WriteBands}
+  \index{output!band structure}%
+  \index{band structure}
+
+  If \fdftrue, it writes the Hamiltonian eigenvalues corresponding to
+  the $\vec k$ vectors defined for band plotting, in the main output
+  file.
+
+\end{fdflogicalF}
+
+
+\subsubsection{Format of the .bands file}
+
+\begin{verbatim}
+
+FermiEnergy (all energies in eV) \\
+kmin, kmax (along the k-lines path, i.e. range of k in the band plot) \\
+Emin, Emax (range of all eigenvalues) \\
+NumberOfBands, NumberOfSpins (1 or 2), NumberOfkPoints \\
+k1, ((ek(iband,ispin,1),iband=1,NumberOfBands),ispin=1,NumberOfSpins) \\
+k2, ek \\
+ . \\
+ . \\
+ . \\
+klast, ek \\
+NumberOfkLines \\
+kAtBegOfLine1, kPointLabel \\
+kAtEndOfLine1, kPointLabel \\
+  . \\
+  . \\
+  . \\
+kAtEndOfLastLine, kPointLabel \\
+\end{verbatim}
+
+\noindent
+The \program{gnubands}\index{gnubands@\texttt{gnubands}} postprocessing
+utility program (found in the \shell{Util/Bands} directory) reads the
+\sysfile{bands} for plotting.  See the \fdf{BandLines} data
+descriptor above for more information.
+
+
+\subsubsection{Output of wavefunctions associated to bands}
+\label{sec:wf-bands}
+
+The user can optionally request that the wavefunctions corresponding
+to the computed bands be written to file.  They are written to the
+\sysfile{bands.WFSX} file.
+The relevant options are:
+
+\begin{fdflogicalF}{WFS.Write.For.Bands}
+  \index{output of wave functions for bands}
+
+  Instructs the program to compute and write the wave functions
+  associated to the bands specified (by a \fdf{BandLines} or a
+  \fdf{BandPoints} block) to the file \sysfile{WFSX}.
+
+  The information in this file might be useful, among other things, to
+  generate ``fatbands'' plots, in which both band eigenvalues and
+  information about orbital projections is presented.
+  \index{fatbands} See the \program{fat} program in the
+  \texttt{Util/COOP} directory for details.
+
+\end{fdflogicalF}
+
+\begin{fdfentry}{WFS.Band.Min}[integer]<1>
+  \index{output of wave functions for bands}
+
+  Specifies the lowest band index of the wave-functions to be written
+  to the file \sysfile{WFSX} for each $k$-point (all $k$-points in the
+  band set are affected).
+
+\end{fdfentry}
+
+\begin{fdfentry}{WFS.Band.Max}[integer]<number of orbitals>
+  \index{output of wave functions for bands}
+
+  Specifies the highest band index of the wave-functions to be written
+  to the file \sysfile{WFSX} for each $k$-point (all $k$-points in the
+  band set are affected).
+
+\end{fdfentry}

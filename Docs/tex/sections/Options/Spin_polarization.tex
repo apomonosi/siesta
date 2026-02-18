@@ -1,0 +1,120 @@
+
+
+\begin{fdfentry}{Spin}[string]<non-polarized>
+    \fdfdeprecates{SpinPolarized,NonCollinearSpin,SpinOrbit}
+  
+    Choose the spin-components in the simulation.
+  
+    \note This flag has precedence over \fdf*{SpinOrbit}, \fdf*{NonCollinearSpin} and
+    \fdf*{SpinPolarized} while these deprecated flags may still be used.
+    \begin{fdfoptions}
+  
+      \option[non-polarized]%
+      \fdfindex*{Spin:non-polarized}%
+      Perform a calculation with spin-degeneracy (only one component).
+  
+      \option[polarized]%
+      \fdfindex*{SpinPolarized}%
+      \fdfindex*{Spin:polarized}%
+      Perform a calculation with colinear spin (two spin components).
+  
+      \option[non-colinear]%
+      \fdfindex*{NonCollinearSpin}%
+      \fdfindex*{Spin:non-colinear}%
+      Perform a calculation with non-colinear spin (4 spin components),
+      up-down and angles.
+  
+      Refs: T. Oda et al, PRL, \textbf{80}, 3622 (1998);
+      V. M. Garc\'{\i}a-Su\'arez et al, Eur. Phys. Jour. B \textbf{40}, 371 (2004);
+      V. M. Garc\'{\i}a-Su\'arez et al, Journal of
+      Phys: Cond. Matt \textbf{16}, 5453 (2004).
+  
+      \option[spin-orbit]%
+      \fdfindex*{SpinOrbit}%
+      \fdfindex*{Spin:spin-orbit}%
+      Performs calculations including the spin-orbit coupling. By default the
+      full SO option is set. To perform an on-site SO calculation (see~\ref{sec:onsite-SOC})
+      this option has to be \fdf*{spin-orbit+onsite}. This requires the
+      pseudopotentials to be relativistic.
+  
+      See Sect.~\ref{sec:spin-orbit} for further specific spin-orbit options.
+  
+    \end{fdfoptions}
+  
+    \siesta\ can read a \sysfile*{DM} with different spin structure by
+    adapting the information to the currently selected spin
+    multiplicity, averaging or splitting the spin components equally, as
+    needed. This may be used to greatly increase convergence.
+  
+    Certain options may not be used together with specific
+    parallelization routines.
+  
+  \end{fdfentry}
+  
+  \begin{fdflogicalF}{Spin!Fix}
+    \index{fixed spin state}\index{LSD}
+    \fdfindex*{FixSpin}[|Spin!Fix]%
+  
+    If \fdftrue, the calculation is done with a fixed value of the spin
+    of the system, defined by variable \fdf{Spin!Total}. This option can
+    only be used for colinear spin polarized calculations.
+  
+  \end{fdflogicalF}
+  
+  \begin{fdfentry}{Spin!Total}[real]<$0$>
+    \index{fixed spin state}\index{LSD}
+    \index{spin}
+    \fdfindex*{TotalSpin}[|Spin!Total]
+  
+    Value of the imposed total spin polarization of the system (in units
+    of the electron spin, 1/2). It is only used if \fdf{Spin!Fix} \fdftrue.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Spin!Spiral}[block]
+    \fdfdepend{Spin}
+  
+    Specify the spiral $q$ vector for the non-collinear spin.
+  
+    \begin{fdfexample}
+      Spin.Spiral.Scale ReciprocalLatticeVectors
+      %block Spin.Spiral
+        0. 0. 0.5
+      %endblock
+    \end{fdfexample}
+  
+    \note this option only applies for non-collinear spin (not for
+    spin-orbit).
+  
+    \note this part of the code has not been tested, we would welcome
+    any person who could assert its correctness and provide tests. Use
+    with \emph{extreme} care.
+  
+  \end{fdfentry}
+  
+  \begin{fdfentry}{Spin!Spiral.Scale}[string]
+    \fdfdepend{Spin!Spiral}
+  
+    Specifies the scale of the spiral vector $q$ vectors given in \fdf{Spin!Spiral}.
+    The options are:
+    \begin{fdfoptions}
+      \option[pi/a]%
+      vector is given in Cartesian coordinates, in units
+      of $\pi/a$, where $a$ is the lattice constant (\fdf{LatticeConstant})
+  
+      \option[ReciprocalLatticeVectors]%
+      vector is given in reciprocal-lattice-vector coordinates
+  
+    \end{fdfoptions}
+  
+  \end{fdfentry}
+  
+  \begin{fdflogicalF}{SingleExcitation}
+  
+    If \fdftrue, \siesta\ calculates a very rough approximation to the
+    lowest excited state by swapping the populations of the HOMO and the
+    LUMO. If there is no spin polarisation, it is half swap only.  It is
+    done for the first spin component (up) and first $k$ vector.
+  
+  \end{fdflogicalF}
+  

@@ -1,0 +1,425 @@
+QMMM-driver Version: QMMM_DRIVER_VERSION
+Siesta Library Version: SIESTA_VERSION
+Architecture  : SIESTA_ARCH
+Compiler flags: FFLAGS
+PARALLEL version
+NetCDF support
+
+siesta-qmmm: Running in serial mode
+>> Start of run:  28-AUG-2024  12:22:03
+
+                           ****************************  
+                           *  WELCOME TO SIESTA-QMMM  *  
+                           ****************************  
+
+qmmm_reinit: Reading from standard input
+************************** Dump of input data file.****************************
+SystemName       QMonly
+SystemLabel      QMonly
+# Global system
+NetCharge 0.0
+# MD Options
+MD.TypeOfRun         cg
+MD.NumCGsteps         2
+MD.VariableCell       F
+MD.MaxForceTol        0.01 eV/Ang
+# Output Options
+WriteCoordinates   10
+WriteForces        T
+WriteCoorStep      T
+WriteMDHistory     T
+WriteCoorXmol      T
+WriteDenchar       T
+# QMMM Interaction
+MM.Cutoff      10.0 Ang
+QMMM.Cutoff    10.0 Ang
+# QM Region
+NumberOfAtoms    12
+NumberOfSpecies  2
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   6  C
+%endblock ChemicalSpeciesLabel
+LatticeConstant   1.0 Ang
+%block LatticeVectors
+15.0     0.0     0.0
+ 0.0    15.0     0.0
+ 0.0     0.0    10.0
+%endblock LatticeVectors
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   3.668  5.768  0.000   2
+   4.899  6.450  0.000   2
+   6.118  5.739  0.000   2
+   3.686  4.361  0.000   2
+   4.908  3.655  0.000   2
+   6.174  4.313  0.000   2
+   2.711  6.324  0.000   1
+   2.736  3.792  0.000   1
+   4.805  2.555  0.000   1
+   4.922  7.557  0.000   1
+   7.023  6.374  0.000   1
+   7.425  3.585  0.000   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+%block QM.AtomTypes
+C#
+C#
+C#
+C#
+C#
+C#
+H#
+H#
+H#
+H#
+H#
+H#
+%endblock QM.AtomTypes
+************************** End of input data file.*****************************
+
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Name: QMonly
+qmmm_reinit: -----------------------------------------------------------------------
+qmmm_reinit: System Label: QMonly                                                                                                                                                                                                                          
+qmmm_reinit: -----------------------------------------------------------------------
+
+read: *************************************************************************
+
+read: *************************************************************************
+qmmm_read: Atomic-coordinates input format  =     Cartesian coordinates (in Ang)
+qmmm_read: Total number of electrons        =    30
+
+siesta-qmmm: Running with no MM atoms
+read: Write coordinates each           =    10  steps
+read: MM x QM steps                    =     1
+read: *************************************************************************
+
+ --- Initializing libsiesta data structures --- 
+
+
+* Running in serial mode with MPI.
+Species number:   1 Atomic number:    1 Label: H
+Species number:   2 Atomic number:    6 Label: C
+
+
+siestaqmmm: Atomic coordinates (Bohr) and species
+siestaqmmm:      6.93152  10.89994   0.00000  2        1
+siestaqmmm:      9.25777  12.18873   0.00000  2        2
+siestaqmmm:     11.56134  10.84514   0.00000  2        3
+siestaqmmm:      6.96553   8.24110   0.00000  2        4
+siestaqmmm:      9.27478   6.90695   0.00000  2        5
+siestaqmmm:     11.66717   8.15039   0.00000  2        6
+siestaqmmm:      5.12305  11.95063   0.00000  1        7
+siestaqmmm:      5.17029   7.16584   0.00000  1        8
+siestaqmmm:      9.08013   4.82825   0.00000  1        9
+siestaqmmm:      9.30123  14.28066   0.00000  1       10
+siestaqmmm:     13.27155  12.04511   0.00000  1       11
+siestaqmmm:     14.03122   6.77467   0.00000  1       12
+
+siesta: ******************** Simulation parameters ****************************
+siesta:
+siesta: The following are some of the parameters of the simulation.
+siesta: A complete list of the parameters used, including default values,
+siesta: can be found in file out.fdf
+siesta:
+redata: Long output                                 =   F
+redata: Number of Atomic Species                    =        3
+redata: Charge density info will appear in .RHO file
+redata: Write Mulliken Pop.                         = NO
+redata: Matel table size (NRTAB)                    =     1024
+redata: Mesh Cutoff                                 =   300.0000 Ry
+redata: Net charge of the system                    =     0.0000 |e|
+redata: Min. number of SCF Iter                     =        0
+redata: Max. number of SCF Iter                     =     1000
+redata: SCF convergence failure will abort job
+redata: SCF mix quantity                            = Hamiltonian
+redata: Mix DM or H after convergence               =   F
+redata: Recompute H after scf cycle                 =   F
+redata: Mix DM in first SCF step                    =   T
+redata: Write Pulay info on disk                    =   F
+redata: New DM Occupancy tolerance                  = 0.000000000001
+redata: No kicks to SCF
+redata: DM Mixing Weight for Kicks                  =     0.5000
+redata: Require Harris convergence for SCF          =   F
+redata: Harris energy tolerance for SCF             =     0.000100 eV
+redata: Require DM convergence for SCF              =   T
+redata: DM tolerance for SCF                        =     0.000100
+redata: Require EDM convergence for SCF             =   F
+redata: EDM tolerance for SCF                       =     0.001000 eV
+redata: Require H convergence for SCF               =   T
+redata: Hamiltonian tolerance for SCF               =     0.001000 eV
+redata: Require (free) Energy convergence for SCF   =   F
+redata: (free) Energy tolerance for SCF             =     0.000100 eV
+redata: Using DFT-D3 dispersion                     =   F
+redata: Using Saved Data (generic)                  =   F
+redata: Use continuation files for DM               =   T
+redata: Neglect nonoverlap interactions             =   F
+redata: Method of Calculation                       = Diagonalization
+redata: Electronic Temperature                      =   299.9863 K
+redata: Fix the spin of the system                  =   F
+redata: Max. number of TDED Iter                    =        1
+redata: Number of TDED substeps                     =        3
+redata: Dynamics option                             = CG coord. optimization
+redata: Variable cell                               =   F
+redata: Use continuation files for CG               =   F
+redata: Max atomic displ per move                   =     0.1058 Ang
+redata: Maximum number of optimization moves        =        2
+redata: Force tolerance                             =     0.0100 eV/Ang
+redata: Save all siesta data in one NC              =   F
+redata: ***********************************************************************
+Total number of electrons:     0.000000
+siesta-qmmm: unit cell vectors (Ang) from siesta run:    
+   15.000000    0.000000    0.000000
+    0.000000   15.000000    0.000000
+    0.000000    0.000000   10.000000
+
+
+       ********************************
+         siesta-qmmm:  Begin Step=        0
+       ********************************
+
+
+
+siesta_send_coordinates: label = ./QMonly.siesta
+siesta_send_coordinates: cell (Bohr) =
+   28.345892    0.000000    0.000000
+    0.000000   28.345892    0.000000
+    0.000000    0.000000   18.897261
+siesta_send_coordinates: rqm (Bohr) =
+    6.931515   10.899940    0.000000
+    9.257768   12.188734    0.000000
+   11.561344   10.845138    0.000000
+    6.965530    8.241096    0.000000
+    9.274776    6.906949    0.000000
+   11.667169    8.150389    0.000000
+    5.123048   11.950628    0.000000
+    5.170291    7.165841    0.000000
+    9.080134    4.828250    0.000000
+    9.301232   14.280660    0.000000
+   13.271547   12.045114    0.000000
+   14.031216    6.774668    0.000000
+siesta_send_coordinates: rlink (Bohr) =
+
+ ##################################################
+
+siesta_receive_forces: label = ./QMonly.siesta
+ ##################################################
+siesta_receive_forces: energy (Ry) =  -75.167409
+siesta_receive_forces: stress (Ry/Bohr**3) =
+    0.000046   -0.000017    0.000000
+   -0.000017    0.000027   -0.000000
+    0.000000   -0.000000   -0.000000
+siesta_receive_forces: forces (Ry/Bohr) =
+    0.031069   -0.009560    0.000000
+   -0.000922   -0.030444    0.000000
+   -0.002094   -0.020528    0.000000
+    0.030798    0.021816    0.000000
+    0.021931    0.013973    0.000000
+    0.063478   -0.044008    0.000000
+    0.002120   -0.000136   -0.000000
+    0.002055   -0.000229   -0.000000
+    0.013468   -0.005884   -0.000000
+    0.001038   -0.000835   -0.000000
+    0.010803   -0.009228   -0.000000
+   -0.161853    0.094373   -0.000000
+
+
+siesta-qmmm: Energy Decomposition (eV):
+Esiesta:      -1022.704698
+Etot:        -1022.704698
+
+siesta-qmmm: Total Free (Unconstrained) Atoms:     12
+
+qmmm: Atomic forces (eV/Ang):
+     1    0.798812   -0.245804    0.000000
+     2   -0.023718   -0.782740    0.000000
+     3   -0.053838   -0.527805    0.000000
+     4    0.791847    0.560921    0.000000
+     5    0.563870    0.359264    0.000000
+     6    1.632077   -1.131486    0.000000
+     7    0.054519   -0.003490   -0.000000
+     8    0.052835   -0.005900   -0.000000
+     9    0.346267   -0.151282   -0.000000
+    10    0.026688   -0.021468   -0.000000
+    11    0.277765   -0.237252   -0.000000
+    12   -4.161408    2.426415   -0.000000
+----------------------------------------
+   Tot    0.305716    0.239371    0.000000
+----------------------------------------
+   Max    4.161408
+   Res    0.919146    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    4.161408    constrained
+
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):        6.72        3.93       -0.06       -0.00        0.00       -2.51
+(Free)E + p*V (eV/cell)       -4.9568
+Target enthalpy (eV/cell)        0.0000
+
+
+       ********************************
+         siesta-qmmm:  Begin Step=        1
+       ********************************
+
+
+
+siesta_send_coordinates: label = ./QMonly.siesta
+siesta_send_coordinates: cell (Bohr) =
+   28.345892    0.000000    0.000000
+    0.000000   28.345892    0.000000
+    0.000000    0.000000   18.897261
+siesta_send_coordinates: rqm (Bohr) =
+    6.960485   10.891026    0.000000
+    9.256908   12.160347    0.000000
+   11.559392   10.825997    0.000000
+    6.994247    8.261438    0.000000
+    9.295225    6.919978    0.000000
+   11.726357    8.109355    0.000000
+    5.125025   11.950501   -0.000000
+    5.172207    7.165627   -0.000000
+    9.092692    4.822764   -0.000000
+    9.302200   14.279882   -0.000000
+   13.281620   12.036510   -0.000000
+   13.880301    6.862663   -0.000000
+siesta_send_coordinates: rlink (Bohr) =
+
+ ##################################################
+
+siesta_receive_forces: label = ./QMonly.siesta
+ ##################################################
+siesta_receive_forces: energy (Ry) =  -75.205114
+siesta_receive_forces: stress (Ry/Bohr**3) =
+    0.000042   -0.000017    0.000000
+   -0.000017    0.000025    0.000000
+    0.000000   -0.000000   -0.000000
+siesta_receive_forces: forces (Ry/Bohr) =
+   -0.011309    0.007698    0.000000
+    0.025890    0.003265    0.000000
+    0.021254   -0.029633    0.000000
+    0.010050   -0.014475   -0.000000
+    0.029404   -0.007250   -0.000000
+    0.026339   -0.011445   -0.000000
+    0.017712   -0.008594   -0.000000
+    0.020665    0.010847    0.000000
+    0.011923    0.006068   -0.000000
+    0.001385   -0.018719   -0.000000
+    0.001569   -0.012816    0.000000
+   -0.139682    0.081011   -0.000000
+
+
+siesta-qmmm: Energy Decomposition (eV):
+Esiesta:      -1023.217705
+Etot:        -1023.217705
+
+qmmm: Atomic forces (eV/Ang):
+     1   -0.290777    0.197924    0.000000
+     2    0.665646    0.083956    0.000000
+     3    0.546471   -0.761898    0.000000
+     4    0.258401   -0.372160   -0.000000
+     5    0.755994   -0.186418   -0.000000
+     6    0.677208   -0.294272   -0.000000
+     7    0.455404   -0.220967   -0.000000
+     8    0.531314    0.278886    0.000000
+     9    0.306554    0.156018   -0.000000
+    10    0.035598   -0.481282   -0.000000
+    11    0.040333   -0.329513    0.000000
+    12   -3.591364    2.082874   -0.000000
+----------------------------------------
+   Tot    0.390783    0.153148   -0.000000
+----------------------------------------
+   Max    3.591364
+   Res    0.766009    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    3.591364    constrained
+
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):        6.17        3.72       -0.06       -0.00        0.00       -2.56
+(Free)E + p*V (eV/cell)       -4.6032
+Target enthalpy (eV/cell)        0.0000
+
+
+       ********************************
+         siesta-qmmm:  Begin Step=        2
+       ********************************
+
+
+
+siesta_send_coordinates: label = ./QMonly.siesta
+siesta_send_coordinates: cell (Bohr) =
+   28.345892    0.000000    0.000000
+    0.000000   28.345892    0.000000
+    0.000000    0.000000   18.897261
+siesta_send_coordinates: rqm (Bohr) =
+    6.998876   10.879213    0.000000
+    9.255768   12.122728    0.000000
+   11.556804   10.800630    0.000000
+    7.032304    8.288396    0.000000
+    9.322325    6.937244    0.000000
+   11.804796    8.054975    0.000000
+    5.127645   11.950334   -0.000000
+    5.174746    7.165344   -0.000000
+    9.109333    4.815493   -0.000000
+    9.303482   14.278850   -0.000000
+   13.294969   12.025108   -0.000000
+   13.680301    6.979279   -0.000000
+siesta_send_coordinates: rlink (Bohr) =
+
+ ##################################################
+
+siesta_receive_forces: label = ./QMonly.siesta
+ ##################################################
+siesta_receive_forces: energy (Ry) =  -75.226425
+siesta_receive_forces: stress (Ry/Bohr**3) =
+    0.000029   -0.000014    0.000000
+   -0.000014    0.000020   -0.000000
+   -0.000000   -0.000000   -0.000000
+siesta_receive_forces: forces (Ry/Bohr) =
+   -0.071966    0.030160   -0.000000
+    0.065673    0.049049    0.000000
+    0.053602   -0.041745   -0.000000
+   -0.016305   -0.064892   -0.000000
+    0.041630   -0.035280   -0.000000
+   -0.091804    0.072844   -0.000000
+    0.036442   -0.018539    0.000000
+    0.042543    0.023847   -0.000000
+    0.009816    0.020780    0.000000
+    0.001950   -0.040170   -0.000000
+   -0.010094   -0.017138    0.000000
+   -0.043814    0.024110    0.000000
+
+
+siesta-qmmm: Energy Decomposition (eV):
+Esiesta:      -1023.507657
+Etot:        -1023.507657
+
+qmmm: Atomic forces (eV/Ang):
+     1   -1.850320    0.775435   -0.000000
+     2    1.688533    1.261105    0.000000
+     3    1.378152   -1.073309   -0.000000
+     4   -0.419211   -1.668443   -0.000000
+     5    1.070348   -0.907083   -0.000000
+     6   -2.360370    1.872898   -0.000000
+     7    0.936972   -0.476660    0.000000
+     8    1.093833    0.613131   -0.000000
+     9    0.252386    0.534280    0.000000
+    10    0.050138   -1.032806   -0.000000
+    11   -0.259517   -0.440632    0.000000
+    12   -1.126507    0.619886    0.000000
+----------------------------------------
+   Tot    0.454437    0.077803    0.000000
+----------------------------------------
+   Max    2.360370
+   Res    0.935940    sqrt( Sum f_i^2 / 3N )
+----------------------------------------
+   Max    2.360370    constrained
+
+Stress tensor Voigt[x,y,z,yz,xz,xy] (kbar):        4.28        2.94       -0.06       -0.00       -0.00       -2.11
+(Free)E + p*V (eV/cell)       -3.3534
+Target enthalpy (eV/cell)        0.0000
+
+timer: CPU execution times (min):
+timer:  Routine       Calls   Time/call    Tot.time        %
+timer:  Siesta-qmm        1       0.021       0.021   100.00
+timer:  Setup             1       0.000       0.000     0.32
+timer:  IterMD            3       0.007       0.021    99.68
+timer:  Siesta            3       0.007       0.021    99.45
+  
+>> End of run:  28-AUG-2024  12:22:04

@@ -1,0 +1,95 @@
+# Experimental coordinates taken from J. Res. Ntl. Bur. Stand. 71, 119, 1967;
+# as cited in the Supplementary Material of Y. Ping, G. Galli, and W. A. Goddard, III
+# The Journal of Physical Chemistry C 119, 11570 (2015) 
+
+SystemName      (IrO2) Tetragonal structure
+SystemLabel	IrO2_dftu_so
+NumberOfSpecies 2
+NumberOfAtoms	6
+
+%block ChemicalSpeciesLabel
+  1 77 Ir_dftu_so
+  2  8 O_dftu_so
+%endblock ChemicalSpeciesLabel
+
+LatticeConstant 1.0 Ang
+%block LatticeVectors  
+   4.50694600000000   0.00000000000000   0.00000000000000
+   0.00000000000000   4.50694600000000   0.00000000000000
+   0.00000000000000   0.00000000000000   3.15894500000000
+%endblock LatticeVectors
+
+AtomicCoordinatesFormat Fractional
+%block AtomicCoordinatesAndAtomicSpecies
+   0.00000000000000   0.00000000000000   0.00000000000000  1    
+   0.50000000000000   0.50000000000000   0.50000000000000  1    
+   0.30811525000000   0.30811525000000   0.00000000000000  2     
+   0.69188475000000   0.69188475000000   0.00000000000000  2     
+   0.19188475000000   0.80811525000000   0.50000000000000  2     
+   0.80811525000000   0.19188475000000   0.50000000000000  2  
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+%block kgrid_Monkhorst_Pack
+   4  0  0   0.5
+   0  4  0   0.5
+   0  0  3   0.5
+%endblock kgrid_Monkhorst_Pack
+
+MaxSCFIterations        300
+SCF.Mixer.Weight        0.05
+SCF.Mixer.History       10
+SCF.Mixer.Kick          30
+SCF.Mixer.Kick.Weight   1.0
+SCF.DM.Tolerance        1.0E-6
+SCF.H.Tolerance         1.0E-5 eV
+SCF.MustConverge        F
+
+Diag.Algorithm          Divide-And-Conquer-2stage
+ElectronicTemperature   1 K
+
+%block PS.lmax
+   Ir_dftu_so    3
+    O_dftu_so    3
+%endblock PS.lmax
+
+%block PAO.Basis
+Ir_dftu_so   2     
+n=6   0   1   E   100.00000     4.00000
+     6.00000 
+     1.00000 
+n=5   2   1   E   100.00000     3.50000
+     4.50000 
+     1.00000 
+O_dftu_so    2    
+n=2   0   1   E   100.00000     4.00000
+     6.00000
+     1.00000
+n=2   1   1   E   100.00000     4.00000
+     5.50000
+     1.00000
+%endblock PAO.Basis
+
+MeshCutoff      200.0 Ry
+xc.functional   GGA
+xc.authors      PBEsol
+
+Spin         spin-orbit
+Spin.OrbitStrength  1.0
+%block DM.InitSpin
+ 1  +3.   0.   0.
+ 2  -3.   0.   0.
+%endblock DM.InitSpin
+
+LDAU.ProjectorGenerationMethod      1
+%block LDAU.proj
+Ir_dftu_so   1
+ n=5 2
+  2.000 0.500
+  3.000
+%endblock LDAU.proj
+
+WriteCoorStep      T
+WriteForces        T
+WriteIonPlotFiles  T
+WriteMullikenPop   1
+

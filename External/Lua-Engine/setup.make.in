@@ -1,0 +1,27 @@
+##LUA_DIR = /usr/local
+###INC += -I$(LUA_DIR)/include
+#
+PLATFORM=@FLOOK_PLATFORM@
+CC = @CMAKE_C_COMPILER@
+FC = @CMAKE_Fortran_COMPILER@
+CFLAGS = @CMAKE_C_FLAGS@
+FFLAGS = @CMAKE_Fortran_FLAGS@
+
+# This will only partially fix the problem.
+# It still won't work when lua is not compiled with fPIC
+# So basically an external LUA is required for this to work (*maybe*)
+ifeq (,$(findstring @SIESTA_SHARED_LIBS@,no No NO off Off OFF false False FALSE 0))
+PIC = 1
+# SYSCFLAGS is found in aotus/external/lua-*/src/Makefile
+# and can be used to add system flags to the compilation step.
+# However, aotus is currently not pushing that to the compilation
+# backend.
+SYSCFLAGS = -fPIC
+endif
+
+.f90.o:
+	$(FC) -c $(FFLAGS) $(INC) $<
+.F90.o:
+	$(FC) -c $(FFLAGS) $(INC) $<
+.c.o:
+	$(CC) -c $(CFLAGS) $(INC) $<

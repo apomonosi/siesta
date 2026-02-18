@@ -1,0 +1,1 @@
+siestaqmmm_subtest(linkatom LABELS qmmm FILES_SETUP amber.parm)

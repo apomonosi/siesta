@@ -1,0 +1,48 @@
+We want to acknowledge the use of a small number of routines,
+written by other authors, in developing the siesta code.
+In most cases, these routines were acquired by now-forgotten
+routes, and the reported authorships are based on their headings.
+If you detect any incorrect or incomplete attribution, or suspect
+that other routines may be due to different authors, please
+let us know.
+
+\begin{itemize}
+  \item%
+  The main nonpublic contribution, that we thank thoroughly, are
+  modified versions of a number of routines, originally written by
+  \textbf{A. R.\ Williams} around 1985, for the solution of the radial
+  Schr\"odinger and Poisson equations in the APW code of Soler and
+  Williams (PRB \textbf{42}, 9728 (1990)).  Within \siesta, they are
+  kept in files arw.f and periodic\_table.f, and they are used for the
+  generation of the basis orbitals and the screened pseudopotentials.
+
+  \item%
+  The exchange-correlation routines contained in SiestaXC were written
+  by J.M.Soler in 1996 and 1997, in collaboration with
+  \textbf{C.\ Balb\'as} and \textbf{J. L.\ Martins}.  Routine pzxc,
+  which implements the Perdew-Zunger LDA parametrization of xc, is
+  based on routine velect, written by \textbf{S.\ Froyen}.
+
+  \item%
+  The serial version of the multivariate fast fourier transform used
+  to solve Poisson's equation was written by \textbf{Clive Temperton}.
+
+  \item%
+  Subroutine iomd.f for writing MD history in files was originally
+  written by \textbf{J. Kohanoff}.
+
+\end{itemize}
+
+We want to thank very specially \textbf{O. F.\ Sankey}, \textbf{D. J.\
+    Niklewski} and \textbf{D. A.\ Drabold} for making the FIREBALL
+code available to P.\ Ordej\'on.  Although we no longer use the
+routines in that code, it was essential in the initial development of
+the \siesta\ project, which still uses many of the algorithms
+developed by them.
+
+We thank \textbf{V. Heine} for his support and encouraging us in this
+project.
+
+The \siesta\ project is supported by the Spanish DGES through
+several contracts. We also acknowledge past support by the Fundaci\'on
+Ram\'on Areces.

@@ -1,0 +1,62 @@
+SystemName  linkatom.siesta
+SystemLabel  linkatom.siesta
+
+# Global system
+NetCharge 0.0
+# DFT Options
+XC.functional        LDA
+MeshCutoff           50 Ry
+MaxSCFIterations     300
+DM.MixingWeight      0.15
+DM.NumberPulay       6
+DM.Tolerance         1.d-4
+DM.UseSaveDM         F
+
+# MD Options
+MD.TypeOfRun         qmmm
+MD.NumCGsteps        4
+MD.VariableCell      F
+MD.MaxForceTol       0.01 eV/Ang
+# Output Options
+WriteCoordinates   10
+WriteForces        T
+WriteCoorStep      T
+WriteMDHistory     T
+WriteCoorXmol      T
+WriteDenchar       T
+
+# QM Region
+NumberOfAtoms    12
+NumberOfSpecies   2
+%block ChemicalSpeciesLabel
+ 1   1  H
+ 2   6  C
+%endblock ChemicalSpeciesLabel
+
+AtomicCoordinatesFormat  Ang
+%block AtomicCoordinatesAndAtomicSpecies
+   13.668   0.203   4.416   2
+    0.022   0.885   4.416   2
+    1.241   0.174   4.416   2
+   13.686  14.361   4.416   2
+    0.031  13.655   4.416   2
+    1.297  14.313   4.416   2
+   12.711   0.759   4.416   1
+   12.736  13.792   4.416   1
+   14.805  12.555   4.416   1
+    0.045   1.992   4.416   1
+    2.146   0.809   4.416   1
+    2.261  13.752   4.416   1
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+## MM Region
+QMMM.Enabled T
+QMMM.Driver SIESTA_DRIVER
+QMMM.Driver.Type pipe
+QMMM.Driver.QMRegionFile linkatom.siesta.coords
+QMMM.Driver.MMChargeFile linkatom.siesta.pc
+QMMM.Driver.ForceOutFile linkatom.siesta.forces
+QMMM.Cutoff          10.0000000 Ang
+QMMM.DensityCut       0.0000010 Ang
+QMMM.CoulombType 2
+WriteXML .false.

@@ -1,0 +1,92 @@
+For successful \tsiesta\ calculations it is imperative that the
+electrodes and scattering regions are well-converged.
+%
+The basic principle is equivalent to the \siesta\ convergence, see
+Sec.~\ref{sec:scf}.
+
+The steps should be something along the line of (only done at
+$0\, V$).
+\begin{enumerate}
+
+  \item%
+  Converge electrodes and find optimal \fdf{Mesh!Cutoff},
+  \fdf{kgrid!MonkhorstPack} etc.
+
+  Electrode $k$ points should be very high along the semi-infinite
+  direction. The default is $100$, but at least $>50$ should easily be
+  reachable.
+
+
+  \item%
+  Use the parameters from the electrodes and also converge the
+  same parameters for the scattering region SCF.
+
+  This is an iterative process since the scattering region forces the
+  electrodes to use equivalent $k$ points (see
+  \fdf{TS!Elec.<>!check-kgrid}).
+
+  Note that $k$ points should be limited in the \tsiesta\ run, see
+  \fdf{TS!kgrid!MonkhorstPack}.
+
+  One should always use the same parameters in both the electrode and
+  scattering region calculations, except the number of $k$ points for
+  the electrode calculations along their respective semi-infinite
+  directions.
+
+
+  \item%
+  Once \tsiesta\ is completed one should also converge the
+  number of $k$ points for \tbtrans. Note that $k$ point sampling in
+  \tbtrans\ should generally be much denser but \emph{always} fulfill
+  $N_k^{\tsiesta}\geq N_k^\tbtrans$
+
+\end{enumerate}
+
+The converged parameters obtained at $0\,\mathrm V$ should be used for
+all subsequent bias calculations. Remember to copy the \sysfile{TSDE}
+from the closest, previously, calculated bias for restart and much
+faster convergence.
+
+
+\tsiesta\ is also more difficult to converge during the SCF
+steps. This may be due to several interrelated problems:
+%
+\begin{itemize}
+
+  \item%
+  A too short screening distance between the scattering atoms
+  and the electrode layers.
+
+
+  \item%
+  In case buffer atoms (\fdf{TS!Atoms.Buffer}) are used with
+  vacuum on the backside it may be that there are too few buffer atoms
+  to accurately screen off the vacuum region for a sufficiently good
+  initial guess. This effect is only true for $0\,\mathrm V$
+  calculations.
+
+
+  \item%
+  The mixing parameters may need to be smaller than for \siesta,
+  see Sec.~\ref{sec:scf:mix} and it is never guaranteed that it will
+  converge. It is \emph{always} a trial and error method, there are
+  \emph{no} omnipotent mixing parameters.
+
+
+  \item%
+  Very high bias' may be extremely difficult to
+  converge. Generally one can force bias convergence by doing smaller
+  steps of bias. E.g. if problems arise at $0.5\,\mathrm V$ with an
+  initial DM from a $0.25\,\mathrm V$ calculation, one could try and
+  $0.3\,\mathrm V$ first.
+
+
+  \item%
+  If a particular bias point is hard to converge, even by doing
+  the previous step, it may be related to an eigenstate close to the
+  chemical potentials of either electrode (e.g. a molecular eigenstate
+  in the junction). In such cases one could try an even higher bias
+  and see if this converges more smoothly.
+
+\end{itemize}
+
