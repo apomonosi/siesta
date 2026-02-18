@@ -86,14 +86,10 @@ module ts_electrode_m
     !                           == 0 means no update
     !                           == 1 means update cross-terms
     !                           == 2 means update everything (no matter Bulk)
-
-    ! true == re-use the GF file if it already exists!
-    ! false == re-create the GF file, even if it already exists!
+    ! whether to re-calculate the GF-file
     logical :: ReUseGF = .true.
-    ! true == use the GF-file for self-energies
-    ! false == calculate the self-energies as they are needed
+    ! Create a GF-file or re-calculate the self-energies everytime
     logical :: out_of_core = .true.
-
     ! In case of 'out_of_core == .false.' we can reduce the number of operations
     ! by skipping the copying of H00, S00. Hence we need to compare when the
     ! k-point changes...
@@ -165,6 +161,9 @@ module ts_electrode_m
 #endif
 #else
     real(dp) :: Eta = 7.3498067e-5_dp
+#endif
+#ifdef TBTRANS
+    real(dp) :: spin_ax(3) = (/0._dp, 0._dp, 0.5_dp/)
 #endif
 
     ! The region of the down-folded region
@@ -281,7 +280,7 @@ contains
     use units, only: eV
     use intrinsic_missing, only: VNORM
     use m_os, only : file_exist
-    use ts_io_hs_m, only : ts_read_HS_opt
+    use m_ts_io, only : ts_read_TSHS_opt
     use m_ts_io_ctype, only : pline_E_parse
 
     character(len=*), intent(in) :: prefix,slabel
@@ -677,6 +676,18 @@ contains
 #endif
 #endif
 
+       else if ( leqi(ln,'spin-axis') .or. &
+            leqi(ln,'pol-axis') ) then
+          if ( fdf_bnreals(pline) /= 3 ) &
+            call die('Spin polarization axis is missing reals.')
+            this%spin_ax(1) = fdf_breals(pline, 1)
+            this%spin_ax(2) = fdf_breals(pline, 2)
+            this%spin_ax(3) = fdf_breals(pline, 3)
+            ! Normalize to 0.5._dp
+            if (norm2(this%spin_ax) < 1.e-18) &
+                call die('Spin polarization axis too short.')
+            this%spin_ax = this%spin_ax / norm2(this%spin_ax) / 2._dp
+
        else
 
           ! we should always die in case something non-understandable 
@@ -712,14 +723,14 @@ contains
     end if
 
     ! Read in the number of atoms in the HSfile
-    call ts_read_HS_opt(this%HSfile,no_u=this%no_u,na_u=this%na_u, &
+    call ts_read_TSHS_opt(this%HSfile,no_u=this%no_u,na_u=this%na_u, &
          nspin=this%nspin, Ef=this%Ef, ucell=this%cell, Qtot=this%Qtot, &
          nsc = this%nsc , &
          Bcast=.true.)
     this%Ef = this%Ef + this%delta_Ef
 
     allocate(this%xa(3,this%na_u),this%lasto(0:this%na_u))
-    call ts_read_HS_opt(this%HSfile,xa=this%xa,lasto=this%lasto, &
+    call ts_read_TSHS_opt(this%HSfile,xa=this%xa,lasto=this%lasto, &
          Bcast=.true.)
 
     ! in case the number of used atoms has not been set
@@ -1036,7 +1047,7 @@ contains
     use intrinsic_missing, only : VNORM, VEC_PROJ_SCA
     use m_os, only: file_exist
 
-    use ts_io_hs_m, only: ts_read_HS_opt
+    use m_ts_io, only: ts_read_TSHS_opt
 
     ! The electrode that needs to be processed
     class(electrode_t), intent(inout) :: this
@@ -1156,7 +1167,7 @@ contains
     er = .false.
     if ( present(kcell) ) then
 
-      call ts_read_HS_opt(this%HSfile, &
+      call ts_read_TSHS_opt(this%HSfile, &
           kscell=this_kcell,kdispl=this_kdispl, nsc=this_nsc, &
           Gamma=Gamma, Bcast=.true.)
 
@@ -1274,7 +1285,7 @@ contains
       
     else
       
-      call ts_read_HS_opt(this%HSfile, Gamma=Gamma, Bcast=.true.)
+      call ts_read_TSHS_opt(this%HSfile, Gamma=Gamma, Bcast=.true.)
       
     end if
 
@@ -1295,7 +1306,7 @@ contains
           write(*,'(a)') 'Electrode: '//trim(this%name)//' uses real-space SE, &
               &but in-core SE calculations are requested'
           write(*,'(a)') '   In-core self-energy calculations is currently not implemented'
-          write(*,'(a)') '   Please use sisl to create the GF file.'
+          write(*,'(a)') '   Please use sisl to create the TBTGF file.'
         end if
       end if
 
@@ -1305,9 +1316,8 @@ contains
         if ( IONode ) then
           write(*,'(a)') 'Electrode: '//trim(this%name)//' uses real-space SE, &
               &but the GF file is not present!'
-          write(*,'(a)') 'The GF file expected was: '//trim(this%GFfile)
           write(*,'(a)') '   In-core self-energy calculations is currently not implemented'
-          write(*,'(a)') '   One can use sisl to create the GF file.'
+          write(*,'(a)') '   Please use sisl to create the TBTGF file.'
         end if
       end if
       
@@ -1778,17 +1788,21 @@ contains
     use parallel
 
     use m_handle_sparse, only : reduce_spin_size
-    use ts_io_hs_m, only: ts_read_HS
+    use m_ts_io
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     class(electrode_t), intent(inout) :: this
     logical, intent(in), optional :: Bcast ! Bcast information
     logical, intent(in), optional :: IO ! Write to STD-out
     integer, intent(in), optional :: ispin ! select one spin-channel
 
+    character(len=FILE_LEN) :: fN
     integer :: fL, kscell(3,3), istep, ia1
     logical :: onlyS, Gamma_file, TSGamma, lio
     real(dp) :: Temp, kdispl(3), Qtot, Ef
-
+    
     ! Sparsity pattern
     integer :: nsc(3)
 
@@ -1799,14 +1813,17 @@ contains
     if ( associated(this%lasto) ) deallocate(this%lasto)
     if ( associated(this%isc_off) ) deallocate(this%isc_off)
 
-    call ts_read_HS(trim(this%HSfile), &
-         Gamma_file, &
+    fN = trim(this%HSfile)
+    ! We read in the information
+    fL = len_trim(fN)
+    call ts_read_tshs(fN, &
+         onlyS, Gamma_file, TSGamma, &
          this%cell, nsc, this%na_u, this%no_u, this%nspin,  &
          kscell, kdispl, &
          this%xa, this%lasto, &
          this%sp, this%H, this%S, this%isc_off, &
          Ef, Qtot, Temp, &
-         tag=trim(this%name) // ": "//trim(this%HSfile), &
+         istep, ia1, &
          Bcast=Bcast)
     ! Correct fermi-level
     Ef = Ef + this%delta_Ef
@@ -1825,6 +1842,9 @@ contains
   subroutine create_sp2sp01(this, IO)
 
     use parallel, only : IONode
+#ifdef MPI
+    use mpi_siesta
+#endif
     use m_os, only: file_exist
     
     use create_Sparsity_SC
@@ -2054,6 +2074,9 @@ contains
 
     use create_Sparsity_SC
     use geom_helper, only : iaorb, ucorb
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     class(electrode_t), intent(inout) :: this
     logical :: good
@@ -2457,7 +2480,7 @@ contains
        write(*,f11)  '  Cross-terms and electrode region are updated'
     end if
 #endif
-    write(*,f7)  '  Manual delta-Ef shift', this%delta_Ef/eV, 'eV'
+    write(*,f7)  '  Manual delta-Ef shift', this%delta_Ef, 'eV'
     if ( abs(this%mu%mu) > 1.e-10_dp ) then
        write(*,f8)  '  Hamiltonian E-C bias fractional shift', this%V_frac_CT
     end if

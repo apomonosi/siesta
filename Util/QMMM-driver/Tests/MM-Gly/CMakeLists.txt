@@ -1,1 +1,0 @@
-siestaqmmm_subtest(gly MMONLY LABELS qmmm FILES_SETUP amber.parm)

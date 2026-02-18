@@ -9,79 +9,9 @@ module read_curves
 
 implicit none
 
-public :: read_curve_information
-public :: read_n_curves
-public :: mask_to_arrays
+public :: read_curve_information, mask_to_arrays
 
 CONTAINS
-
-subroutine read_n_curves( coop, mpr_u, no_u, ncb )
-  use precision, only: dp
-  use orbital_set, only: get_orbital_set
-
-  implicit none
-
-  logical, intent(in)  :: coop
-  integer, intent(in)  :: mpr_u
-  integer, intent(in)  :: no_u
-  integer, intent(out) :: ncb
-    !! Total number of curves
-
-  integer :: iostat
-  character(len=512) :: line
-  real(dp) :: dm
-
-  ! Dummy variables
-  real(dp) :: dtc_i(2)
-  logical, allocatable :: orb_mask_i(:,:)
-
-  allocate(orb_mask_i(no_u,2))
-  ncb=0
-  do
-     read(mpr_u,"(a)",iostat=iostat,end=1300) line
-     if (iostat /= 0) then
-        print *, "|" // trim(line) // "|"
-        stop "Wrong title input"
-     endif
-
-     ! Exit if emptly line or if explicit marker is used
-     if ((len_trim(line) == 0) .or. (line(1:4) == "----")) EXIT
-     ncb = ncb+1
-
-     ! Get first orbital set for this curve
-     read(mpr_u,fmt="(a)",iostat=iostat) line
-     if (iostat /= 0) then
-        print *, "|" // trim(line) // "|"
-        stop "Wrong line input"
-     endif
-     call get_orbital_set( line, orb_mask_i(:,1) )
-
-     if (coop) then
-        ! Get distance range
-        read(mpr_u,*,iostat=iostat) dtc_i(1:2)
-        if (iostat /= 0) then
-           print *, dtc_i(:)
-           stop "Wrong distance input"
-        endif
-        dm=minval(dtc_i(1:2))
-        if (dm < 0.0_dp .or. dm /= dtc_i(1)) then
-           STOP "Bad distance range"
-        endif
-
-        ! Get second orbital set for this curve
-        read(mpr_u,fmt="(a)",iostat=iostat) line
-        if (iostat /= 0) then
-           print *, "|" // trim(line) // "|"
-           stop "Wrong line input"
-        endif
-        call get_orbital_set( line, orb_mask_i(:,2) )
-     endif
-
-  enddo
-
-1300 continue
-  deallocate(orb_mask_i)
-end subroutine read_n_curves
 
 subroutine read_curve_information(dos,coop,  &
                                      mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
@@ -183,8 +113,8 @@ subroutine mask_to_arrays(ncb,orb_mask,noc,koc)
         endif
      enddo
   enddo
-
+     
 end subroutine mask_to_arrays
-
+  
 
 end module read_curves

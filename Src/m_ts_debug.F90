@@ -113,7 +113,7 @@ contains
     use class_Sparsity
     use geom_helper, only : UCORB
 #ifdef MPI
-    use mpi_siesta, only : MPI_Comm_World, MPI_Barrier
+    use mpi_siesta, only : MPI_Comm_World
 #endif
     integer, intent(in) :: u
     type(Sparsity), intent(inout) :: sp

@@ -13,7 +13,7 @@
 ! Written by J.M.Soler. July 2009
 !===============================================================================
 
-  !  The user must provide an external function 'use_walltime_in_timer'
+  !  The user must provide an external function 'use_walltime_in_timer' 
   !  with the interface specified below to set the value of 'use_walltime'
 !
 ! Used MPI routines and parameters
@@ -76,19 +76,19 @@
 !     do something
 !     call timer_stop('mySub2')
 !   end subroutine mySub2
-! - To obtain communication times in parallel execution,
+! - To obtain communication times in parallel execution, 
 !   compile with -DMPI_TIMING
 !===============================================================================
-! SUBROUTINE timer_init()
+! SUBROUTINE timer_init()   
 !   Initializes timing
 ! USAGE:
 !   See GENERAL USAGE section
-!   Note: Call timer_init only once in your entire program, unless
+!   Note: Call timer_init only once in your entire program, unless 
 !         you want to re-start all times
 ! ALGORITHMS:
 !   Sets to zero the initial time and the number of timed programs
 !===============================================================================
-! SUBROUTINE timer_start( prog )
+! SUBROUTINE timer_start( prog )   
 !   Start counting time for a program or code section
 ! INPUT:
 !   character(len=*) prog  ! Name of program of code section to be timed
@@ -103,7 +103,7 @@
 !   to the prog name, for future use by timer_stop
 !   If use_walltime is .true., it uses wall_time instead
 !===============================================================================
-! SUBROUTINE timer_stop( prog )
+! SUBROUTINE timer_stop( prog )   
 !   Stops counting time for a program or code section
 ! INPUT:
 !   character(len=*) prog  ! Name of program of code section to be timed
@@ -114,14 +114,14 @@
 !   Stops with an error message if timer_stop is called without a previous
 !   call to timer_start with the same argument
 ! ALGORITHMS:
-!   Calls intrinsic routine cpu_time and subtracts, from the present time,
+!   Calls intrinsic routine cpu_time and subtracts, from the present time,  
 !   that previously stored by timer_start, and associated to the prog name.
 !   Then it adds the difference to the total time associated to that name.
 !   All those times are stored in an internal array of type(times_t), and
 !   size equal to the number of timed programs.
 !===============================================================================
 ! SUBROUTINE timer_get( prog, active, nCalls, &
-!                       startTime, stopTime, totTime, commTime )
+!                       startTime, stopTime, totTime, commTime )  
 !   Returns CPU times of a program or code section
 ! INPUT:
 !   character(len=*):: prog  ! Name of program or code section
@@ -154,11 +154,11 @@
 !   real(dp)        :: threshold ! Min. fractional time to be reported
 ! USAGE:
 !   See GENERAL USAGE section
-!   It can be called several times, with different arguments. In this case,
+!   It can be called several times, with different arguments. In this case, 
 !   the last values prevail and get stored for future calls.
 ! BEHAVIOUR:
-! - If prog is not present, or prog=='all', it prints a full report, in the
-!   specified unit or file, of all the CPU times that have been profiled by
+! - If prog is not present, or prog=='all', it prints a full report, in the 
+!   specified unit or file, of all the CPU times that have been profiled by 
 !   timer_start--timer_stop. Otherwise, it prints a single line, in the
 !   standard output, of the specified program or code section.
 ! - In serial execution, to keep backwards compatibility, the report is written
@@ -178,19 +178,18 @@
 ! - In parallel execution, the reported times are those spent in the node with
 !   the largest total CPU time, excluding communications.
 ! ALGORITHMS:
-! - In parallel execution, the total calculation time (excluding commun.) of
-!   all nodes is first found using MPI_All_Gather, and the node with the
+! - In parallel execution, the total calculation time (excluding commun.) of 
+!   all nodes is first found using MPI_All_Gather, and the node with the 
 !   largest value is designed the busyNode that will write the report.
-! - Since the order in which prog times are stored may be different in
-!   different nodes, the busyNode broadcasts the name(s) of the prog(s)
+! - Since the order in which prog times are stored may be different in 
+!   different nodes, the busyNode broadcasts the name(s) of the prog(s) 
 !   whose time(s) it wants to write. Each node then finds its time for that
 !   prog and sends it to the busyNode, so that it can determine and print
 !   the load balancing for that prog (specifically the min/max ratio of the
 !   calculation time spent in that prog by the different nodes).
-! - After the report is written by the busyNode, it is sent using copyFile to
+! - After the report is written by the busyNode, it is sent using copyFile to 
 !   the root node, that writes it in its file system.
 !===============================================================================
-#include "mpi_macros.f"
 
 MODULE m_timer
 
@@ -225,9 +224,6 @@ PRIVATE ! Nothing is declared public beyond this point
      function use_walltime_in_timer() result(use_walltime)
        logical :: use_walltime
      end function use_walltime_in_timer
-     function use_inbalance_in_timer_report() result(use_inbalance)
-       logical :: use_inbalance
-     end function use_inbalance_in_timer_report
   end interface
 
 ! Parameters
@@ -251,7 +247,6 @@ PRIVATE ! Nothing is declared public beyond this point
 
 ! Module variables and arrays
   logical, save :: use_walltime         ! wall-time or cpu-time?
-  logical, save :: use_inbalance        ! min/ave/max report for section
   real(dp),save :: minRepTime = 0.0_dp  ! Min reported CPU time fraction
   integer, save :: nProgs=0             ! Number of timed programs
   type(times_t), target, save:: progData(maxProgs) ! Holds data of timed progs
@@ -265,13 +260,11 @@ CONTAINS
 
 !===============================================================================
 
-subroutine print_report( prog )   ! Write a report of counted times
+subroutine print_report( prog )   ! Write a report of counted times 
 
 #ifdef MPI
   use mpi_siesta
 #endif
-!$ use omp_lib, only: omp_get_max_threads
-
 ! Arguments
   implicit none
   character(len=*),intent(in):: prog   ! Name of program or code section
@@ -290,9 +283,7 @@ subroutine print_report( prog )   ! Write a report of counted times
   integer :: node, nodes, nProgsWriterNode, progCalls, rootNode, writerNode
   logical :: found, opened, withinMPI
 #ifdef MPI
-  integer:: MPIerror, MPItag
-  MPI_STATUS_TYPE :: MPIstatus
-  real(dp) :: bc_times(nNodes)
+  integer:: MPIerror, MPIstatus(MPI_STATUS_SIZE), MPItag
 #endif
 
 ! If already writing a report, return to avoid an infinite recursion
@@ -401,15 +392,12 @@ subroutine print_report( prog )   ! Write a report of counted times
         ! Open local report file
         call io_assign( iu )
         open( unit=iu, file=myReportFile, form='formatted', status='unknown' )
-
-        write(iu,'(/,a,i0)') &
+         
+        write(iu,'(/,a,i6)') &
          'timer: Number of nodes = ', nNodes
-
-!$      write(iu,'(a,i0)') &
-!$       'timer: Number of threads per node = ', omp_get_max_threads()
-        write(iu,'(a,i0)') &
+        write(iu,'(a,i6)') &
          'timer: Busiest calculating node was node = ', busyNode
-        write(iu,'(a,i0)') &
+        write(iu,'(a,i6)') &
          'timer: Times refer to node = ', writerNode
         write(iu,'(a,f12.3)') &
          'timer: Total elapsed wall-clock time (sec) = ', wallTime
@@ -427,7 +415,7 @@ subroutine print_report( prog )   ! Write a report of counted times
 
         if (totalComTime < 1.0e-4) then
            ! Avoid division by zero in prog table output when not timing comms
-           totalComTime = huge(1.0_dp)
+           totalComTime = huge(1.0_dp) 
         endif
 
         write(iu,'(a,3f12.3,f8.3)') &
@@ -488,7 +476,7 @@ subroutine print_report( prog )   ! Write a report of counted times
 
       ! Write total communications time
       if (myNode==writerNode) then
-
+         
         if (totalComTime > huge(1.0_dp)/2.0_dp) then
            ! Set back to 0
            totalComTime = 0.0_dp
@@ -524,7 +512,7 @@ subroutine print_report( prog )   ! Write a report of counted times
 
         ! Copy report file to the file system of root node
         call io_close( iu )
-
+        
       endif ! (myNode==writerNode)
 
       if (reportUnit>0) then ! Append report to file already open
@@ -555,35 +543,16 @@ subroutine print_report( prog )   ! Write a report of counted times
 
   else ! (prog/='all')  =>  write only one prog's time (only in root node)
 
-     if (use_inbalance) then
-        ! This will print the minimum, average, and maximum
-        ! time of a given program section, across MPI processes
+    if (myNode==0) then
+      ! Look for program name among those stored
+      iProg = prog_index( prog, found )
+      if (.not.found) call die(errHead//'not found prog = '//trim(prog))
+      ! Write times
+      write(6,'(a,a10,i6,f12.3,f7.2)') 'timer: Routine,Calls,Time,% = ', &
+        prog, progData(iProg)%nCalls, progData(iProg)%totTime, &
+        progData(iProg)%totTime/totalTime*100
+    endif ! (myNode==0)
 
-        iProg = prog_index( prog, found )
-        if (.not.found) call die(errHead//'not found prog = '//trim(prog))
-        totalTime = progData(iProg)%lastTime
-
-#ifdef MPI
-        call MPI_Gather( totalTime, 1, MPI_Double_Precision, &
-             bc_times, 1, MPI_Double_Precision, 0, &
-             MPI_Comm_World, MPIerror )
-        if (myNode==0) then
-           write(6,'(a,a10,a,3ES12.4)') 'timer(', prog,') (min/ave/max) : ', &
-                MINVAL(bc_times), SUM(bc_times)/nNodes, MAXVAL(bc_times)
-        endif
-#endif
-     else
-        ! Traditional printout
-        if (myNode==0) then
-           ! Look for program name among those stored
-           iProg = prog_index( prog, found )
-           if (.not.found) call die(errHead//'not found prog = '//trim(prog))
-           ! Write times
-           write(6,'(a,a10,i6,f12.3,f7.2)') 'timer: Routine,Calls,Time,% = ', &
-                prog, progData(iProg)%nCalls, progData(iProg)%totTime, &
-                progData(iProg)%totTime/totalTime*100
-        endif ! (myNode==0)
-     endif
   end if ! (prog=='all')
 
 ! Exit point
@@ -610,7 +579,7 @@ integer function prog_index( prog, found )   ! Get index of program in my data
     call die(errHead//'maxLength too small for prog = '//trim(prog))
   end if
 
-! Look for program name among those stored. Look back and forth, from last
+! Look for program name among those stored. Look back and forth, from last 
 ! found, to find it quickly in sequential searches
   progFound = .false.
   if (nProgs>0) then
@@ -690,7 +659,6 @@ end subroutine timer_get
 subroutine timer_init()   ! Initialize timing
 
   use_walltime = use_walltime_in_timer()
-  use_inbalance = use_inbalance_in_timer_report()
 
   call wall_time( wallTime0 )
   call current_time(time0)
@@ -722,7 +690,7 @@ real(dp),         optional, intent(in) :: threshold ! Min. fract. time to report
 
 if (present(unit)) then
   reportUnit = unit
-else if (present(file)) then
+else if (present(file)) then 
   reportUnit = 0
   reportFile = file
 end if
@@ -825,7 +793,7 @@ recursive subroutine timer_stop( prog )   ! Stop counting time for a program
 ! Add communication time to all active programs
   if (len(prog) < 4) then
      ! Do nothing -- maybe warn the user that prog is not very meaningful
-  else if (prog(1:4)=='MPI_' .or. prog(1:4)=='mpi_') then
+  else if (prog(1:4)=='MPI_' .or. prog(1:4)=='mpi_') then  
     ! We are dealing with a communication routine
     do jProg = 1,nProgs
       if (progData(jProg)%active) then
@@ -840,7 +808,7 @@ recursive subroutine timer_stop( prog )   ! Stop counting time for a program
 
 end subroutine timer_stop
 
-subroutine timer_all_stop()
+subroutine timer_all_stop() 
 
 integer :: i
 type(times_t), pointer :: p
@@ -852,7 +820,7 @@ do i=1, maxProgs
    endif
 enddo
 end subroutine timer_all_stop
-
+   
   !------------------------------------------------
   subroutine current_time(t)
     !

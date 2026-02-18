@@ -13,3 +13,7 @@
 * The [ASE (Atomic Simulation
   Environment)](https://wiki.fysik.dtu.dk/ase/) has Siesta as one of
   its supported calculators.
+
+* Some old experiments for a python interface to Siesta built on top
+  of ASE can be found in the directory `old-python-interface`.
+

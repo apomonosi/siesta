@@ -7,8 +7,8 @@
 ! ---
 
       module broadening
-      use units, only: Pi
       integer, parameter :: dp = selected_real_kind(10,100)
+      real(dp), parameter :: pi = 3.141592653589_dp
       real(dp), public :: width
 
       CONTAINS
@@ -49,10 +49,11 @@ C **********************************************************************
       USE ATMFUNCS
       USE FDF
       USE CHEMICAL
-      use units, only: Ang
 
       IMPLICIT NONE
 
+      real(dp), parameter :: Ang    = 1.0_dp / 0.529177_dp
+      
       INTEGER, INTENT(IN) ::
      .  NA, NO, NO_U, NPX, NPY, NPZ, IUNITCD,
      .  nspin, nspin_blocks, MAXNA, NK,

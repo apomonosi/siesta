@@ -5,17 +5,16 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-#include "mpi_macros.f"
 module m_zminim
 
 use fdf,            only : fdf_boolean, fdf_integer, fdf_get, fdf_physical
 use files,          only : slabel
 use parallel,       only : ProcessorY, BlockSize, Node, Nodes
 use precision,      only : dp
-use units,          only : Pi
 use siesta_options, only : fixspin
 use sys,            only : die
 #ifdef MPI
+use mpi_siesta,     only : mpi_integer, mpi_double_precision, mpi_double_complex, mpi_comm_world, mpi_sum, mpi_status_size
 use parallelsubs,   only : GetNodeOrbs, GlobalToLocalOrb, WhichNodeOrb
 use parallelsubs,   only : set_BlockSizeDefault
 #endif
@@ -31,6 +30,8 @@ private
 type multispin
   complex(dp), allocatable :: mtrx(:,:)
 end type multispin
+
+real(dp), parameter :: Pi=3.141592653589793238462643383279502884197_dp
 
 complex(dp), parameter :: cmplx_1=(1.0_dp,0.0_dp)
 complex(dp), parameter :: cmplx_2=(2.0_dp,0.0_dp)
@@ -475,9 +476,6 @@ subroutine zminim(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,nu
 !================================================!
 subroutine minim_cg(CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,nspin,ispin,UpdatePrecon,UsePrecon,nk,ik,kpoint,d_dense1D,&
                     h_dense1D,s_dense1D,t_dense1D)
-#ifdef MPI
-  use mpi_siesta, only : mpi_allreduce, mpi_double_precision, mpi_sum, mpi_comm_world
-#endif
   implicit none
 
   !**** INPUT ***********************************!
@@ -533,6 +531,7 @@ subroutine minim_cg(CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,nspin,ispin,Up
   integer, allocatable :: ipiv(:)
 #ifdef MPI
   integer :: liwork
+  integer :: mpi_status(1:mpi_status_size) ! MPI status
   integer, save :: ictxt                   ! handle for main BLACS context (1D or 2D)
   integer, save :: ictxt_1D                ! handle for additional BLACS context (1D)
   integer, save :: ictxt_1D_T              ! handle for additional BLACS context (1D transposed)
@@ -1443,10 +1442,6 @@ end subroutine minim_cg
 !================================================!
 subroutine minim_cg_sparse(nhmax,numh,listhptr,listh,CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,nspin,ispin,UpdatePrecon,&
                            UsePrecon,UpdateSparseComm,nk,ik,kpoint,d_sparse,h_sparse,s_sparse,s_dense1D,t_dense1D)
-#ifdef MPI
-  use mpi_siesta, only : mpi_bcast, mpi_allreduce, mpi_double_precision, &
-                         mpi_sum, mpi_comm_world, mpi_integer
-#endif
   implicit none
 
   !**** INPUT ***********************************!
@@ -1508,6 +1503,7 @@ subroutine minim_cg_sparse(nhmax,numh,listhptr,listh,CalcE,PreviousCallDiagon,is
   integer, allocatable :: ipiv(:)
 #ifdef MPI
   integer :: liwork
+  integer :: mpi_status(1:mpi_status_size) ! MPI status
   integer, save :: ictxt                   ! handle for main BLACS context (1D)
   integer, save :: nhmax_max
   integer, save :: h_dim_loc_max
@@ -2448,10 +2444,6 @@ end subroutine calc_A
 ! routine)                                       !
 !================================================!
 subroutine calc_A_sparse(h_dim,N_occ,ispin,nhmax,numh,listhptr,listh,As,c,A,Asc)
-#ifdef MPI
-  use mpi_siesta, only : mpi_bcast, mpi_integer, mpi_comm_world, &
-                         mpi_double_complex
-#endif
   implicit none
 
   !**** INPUT ***********************************!
@@ -2590,10 +2582,6 @@ end subroutine calc_densmat
 ! routine)                                       !
 !================================================!
 subroutine calc_densmat_sparse(h_dim,N_occ,ispin,nhmax,numh,listhptr,listh,A,c1,As,cA,c2)
-#ifdef MPI
-  use mpi_siesta, only : mpi_bcast, mpi_integer, mpi_comm_world, &
-                         mpi_reduce, mpi_sum, mpi_double_complex
-#endif
   implicit none
 
   !**** INPUT ***********************************!
@@ -2693,10 +2681,6 @@ end subroutine calc_densmat_sparse
 ! equation using analytical expressions          !
 !================================================!
 subroutine calc_coeff(h_dim,N_occ,ispin,H,S,Hd,Sd,Hdd,Sdd,coeff,SdH)
-#ifdef MPI
-  use mpi_siesta, only : mpi_allreduce, mpi_double_precision, &
-                         mpi_sum, mpi_comm_world
-#endif
   implicit none
 
   !**** INPUT ***********************************!

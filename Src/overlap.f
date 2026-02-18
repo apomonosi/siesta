@@ -14,11 +14,12 @@
       use neighbour,     only : jna=>jan, r2ij, xij, mneighb,
      &                          reset_neighbour_arrays
       use alloc,         only : re_alloc, de_alloc
-      use matel_m,       only : matel
+      use m_new_matel,   only : new_matel
       use m_iodm_old,    only : write_dm
       use m_matio,       only : write_mat
       use atomlist, only: no_l
       use fdf
+
       implicit none
 
       public :: overlap
@@ -109,7 +110,7 @@ C           Valid orbital
                 !
                 jg = orb_gindex(js,joa)
                 if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-                  call matel( 'S', ig, jg, xij(1:3,jn),
+                  call new_MATEL( 'S', ig, jg, xij(1:3,jn),
      &                        Sij, grSij )
                   Si(0,jo) = Si(0,jo) + Sij
                   if ( has_grad )
@@ -129,6 +130,8 @@ C           Valid orbital
         enddo
       enddo
 
+C     Deallocate local memory
+!      call new_MATEL( 'S', 0, 0, xij, Sij, grSij )
       call reset_neighbour_arrays( )
       call de_alloc( Si, 'Si', 'overlap' )
 
@@ -147,6 +150,7 @@ C           Valid orbital
      $               userfile="SMATBS",compatible=.false.)
          call timer("fastWriteMat",2)
       endif
+
 
 C     Finish timer
       call timer( 'overlap', 2 )

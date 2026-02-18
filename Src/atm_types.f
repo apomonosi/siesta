@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -8,7 +8,7 @@
       module atm_types
 
       use precision, only: dp
-      use radial, only: rad_func, reset_rad_func
+      use radial, only: rad_func
 !
 !     Derived types for orbitals,  KB projectors, and DFT+U projectors
 !
@@ -61,10 +61,10 @@
                                                         ! components)
 !
 !        KB Projectors
-!             For each l, there can be several projectors. Formally, we
+!             For each l, there can be several projectors. Formally, we 
 !             can can use the "nl" terminology for them. n will run from
 !             1 to the total number of projectors at that l.
-!
+!             
 !
          logical                         ::  lj_projs = .false.
          integer                         ::  n_pjnl=0   ! num of "nl" projs
@@ -74,7 +74,6 @@
          integer, dimension(maxn_pjnl)   ::  pjnl_n     ! n of each nl proj
          real(dp), dimension(maxn_pjnl)
      $                                   ::  pjnl_ekb   ! energy of
-                                                        ! each nl proj
 
 !
 !        Aggregate numbers of orbitals and projectors (including 2l+1
@@ -100,7 +99,7 @@
          integer, dimension(maxnprojs)   ::  pj_gindex
 !        DFT+U Projectors
 !        Here we follow the scheme used for the KB projectors
-!
+!        
          integer                         ::  n_pjdftunl = 0
                                              ! num of "nl" projs
                                              ! not counting the "m copies"
@@ -110,7 +109,7 @@
          integer, dimension(maxn_pjnl)   ::  pjdftunl_n ! n of each nl proj
                                              ! Here, n is not the principal
                                              ! quantum number, but a sequential
-                                             ! index from 1 to the total
+                                             ! index from 1 to the total 
                                              ! number of projectors for that l.
                                              ! In the case of DFT+U projectors,
                                              ! It is always equal to 1.
@@ -121,17 +120,17 @@
                                              ! Total number of DFT+U proj.
                                              ! counting the "m copies"
                                              ! (including the (2l + 1) factor))
-         integer, dimension(maxnprojs)   ::  pjdftu_index = 0
-         integer, dimension(maxnprojs)   ::  pjdftu_n = 0
-         integer, dimension(maxnprojs)   ::  pjdftu_l = 0
-         integer, dimension(maxnprojs)   ::  pjdftu_m = 0
-         integer, dimension(maxnprojs)   ::  pjdftu_gindex = 0
+         integer, dimension(maxnprojs)   ::  pjdftu_index
+         integer, dimension(maxnprojs)   ::  pjdftu_n
+         integer, dimension(maxnprojs)   ::  pjdftu_l
+         integer, dimension(maxnprojs)   ::  pjdftu_m
+         integer, dimension(maxnprojs)   ::  pjdftu_gindex
          type(dftu_so_integrals_type), dimension(:), pointer
-     .                                   ::  dftu_so_integrals => null()
+     .                                   ::  dftu_so_integrals
 !
-         type(rad_func), dimension(:), pointer       ::  orbnl => null()
-         type(rad_func), dimension(:), pointer       ::  pjnl => null()
-         type(rad_func), dimension(:), pointer       ::  pjdftu =>null()
+         type(rad_func), dimension(:), pointer       ::  orbnl
+         type(rad_func), dimension(:), pointer       ::  pjnl
+         type(rad_func), dimension(:), pointer       ::  pjdftu
          type(rad_func)                              ::  vna
          integer                                     ::  vna_gindex=0
          type(rad_func)                              ::  chlocal
@@ -140,8 +139,6 @@
          type(rad_func)                              ::  core
 
          logical                        :: read_from_file
-      contains
-         procedure :: reset => reset_species_info
       end type species_info
 
 !     Derived type for the definition of the on-site four-center-integrals
@@ -170,8 +167,6 @@
                                              !   together with Spin-Orbit
                                              !   or non-collinear
                                              !   magnetism
-      contains
-         procedure :: reset => reset_dftu_so_integrals
       end type dftu_so_integrals_type
 
 
@@ -184,84 +179,8 @@
      $                            save, public   ::  species(:)
       type(rad_func), allocatable, target,
      $                            save, public   ::  elec_corr(:)
+      
 
-
-      public :: atm_types_reset
       private
-
-      contains
-
-      subroutine reset_species_info( self )
-            !! Deallocates all associated pointers within a given species.
-            implicit none
-            class(species_info), intent(inout) :: self
-            integer :: idftu
-
-            if ( associated(self%dftu_so_integrals) ) then
-               do idftu = 1, size( self%dftu_so_integrals, 1 )
-                  call self%dftu_so_integrals(idftu)%reset()
-               enddo
-               deallocate( self%dftu_so_integrals )
-               nullify( self%dftu_so_integrals )
-            endif
-
-            if ( associated(self%orbnl) ) then
-               do idftu = 1, size( self%orbnl, 1 )
-                  call reset_rad_func( self%orbnl(idftu))
-               enddo
-               deallocate( self%orbnl )
-            endif
-            if ( associated(self%pjnl) ) then
-               do idftu = 1, size( self%pjnl, 1 )
-                  call reset_rad_func( self%pjnl(idftu))
-               enddo
-               deallocate( self%pjnl )
-            endif
-            if ( associated(self%pjdftu) ) then
-               do idftu = 1, size( self%pjdftu, 1 )
-                  call reset_rad_func( self%pjdftu(idftu))
-               enddo
-               deallocate( self%pjdftu )
-            endif
-
-            nullify( self%pjnl, self%orbnl, self%pjdftu )
-
-            call reset_rad_func( self%vna )
-            call reset_rad_func( self%chlocal )
-            call reset_rad_func( self%reduced_vlocal )
-            call reset_rad_func( self%core )
-      end subroutine reset_species_info
-
-      subroutine reset_dftu_so_integrals( self )
-            !! Deallocates all associated pointers for DFTU-SO integrals.
-            implicit none
-            class(dftu_so_integrals_type), intent(inout) :: self
-
-            if ( associated(self%Slater_F) )
-     &         deallocate( self%Slater_F )
-            if ( associated(self%vee_4center_integrals) )
-     &         deallocate( self%vee_4center_integrals )
-
-            nullify( self%Slater_F, self%vee_4center_integrals )
-
-      end subroutine reset_dftu_so_integrals
-
-      subroutine atm_types_reset()
-            implicit none
-            integer :: ispec
-            if ( allocated(species) ) then
-                  do ispec = 1, size(species,1)
-                        call species(ispec)%reset()
-                  enddo
-                  deallocate( species )
-            endif
-
-            if ( allocated(elec_corr) ) then
-                  do ispec = 1, size(elec_corr,1)
-                        call reset_rad_func( elec_corr(ispec) )
-                  enddo
-                  deallocate(elec_corr)
-            endif
-      end subroutine atm_types_reset
 
       end module atm_types

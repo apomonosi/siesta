@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -49,9 +49,7 @@
 !       calculate neig eigenvalues and eigenvectors (jobz == 'V')
 !      neig == 0:
 !       same as calculating all eigenvalues (jobz == 'N')
-!
-#include "mpi_macros.f"
-
+!      
 module m_diag
 
 #ifndef MPI
@@ -61,15 +59,7 @@ module m_diag
 
   use precision
   use parallel, only : Node, Nodes, IONode
-
-# ifdef SIESTA__ELPA
-#ifdef ELSI_HAS_EXTERNAL_ELPA
-#include "elpa/elpa_version.h"
-#endif
-  use configured_values_m, only: elpa_gpu_string
-  use configured_values_m, only: SIESTA_ELPA_REAL_GPU_KERNEL, SIESTA_ELPA_COMPLEX_GPU_KERNEL
-# endif
-
+  
   implicit none
 
   private
@@ -81,7 +71,7 @@ module m_diag
   integer :: iCTXT = -1
   integer :: iCTXT2D = -1
 #endif
-
+  
 #ifdef _DIAG_WORK
   logical :: diag_work_r(2) = .true.
   logical :: diag_work_c(2) = .true.
@@ -95,8 +85,6 @@ module m_diag
   ! Diagonalization routines (real and complex)
   public :: diag_r, diag_c
 
-  public :: diag_get_1d_context
-
 contains
 
   subroutine diag_init()
@@ -109,8 +97,6 @@ contains
 # ifdef SIESTA__ELPA
     use m_diag_option, only: algorithm, ELPA_1stage, ELPA_2stage
     use elpa, only: elpa_initialized, elpa_init, ELPA_OK
-    use configured_values_m, only: elpa_gpu_string
-    use configured_values_m, only: SIESTA_ELPA_REAL_GPU_KERNEL, SIESTA_ELPA_COMPLEX_GPU_KERNEL
 # endif
 #endif
 
@@ -127,11 +113,11 @@ contains
 
     if ( Serial ) return
     if ( ParallelOverK ) return
-
+    
 #ifdef MPI
-
+    
     ! Create a new context
-    iCTXT = MPI_COMM_ID( MPI_Comm_World )
+    iCTXT = MPI_Comm_World
     nr = 1
     nc = Nodes
     call blacs_gridinit( iCTXT, 'C', nr, nc )
@@ -154,62 +140,39 @@ contains
        ! Check whether ELPA is initialized
        if ( elpa_initialized() /= ELPA_OK ) then
           if ( elpa_init(20170403) /= ELPA_OK ) then
-          !!! if ( elpa_init(ELPA_API_VERSION) /= ELPA_OK ) then
              call die('diag: ELPA initialization could not use API 20170403')
           end if
        end if
 
     end if
 #endif
-
+    
   end subroutine diag_init
-
-  function diag_get_1d_context() result(ctxt)
-    integer :: ctxt
-    ctxt = -1
-#ifdef MPI
-    if ( iCTXT < 0 ) call diag_init()
-    ctxt = iCTXT
-#endif
-  end function diag_get_1d_context
 
   subroutine diag_exit()
 #ifdef SIESTA__ELPA
     use elpa, only: elpa_initialized, elpa_uninit, ELPA_OK
 #endif
 
-    implicit none
-    logical :: used_blacs
-
 #ifdef SIESTA__ELPA
     integer :: info
-#endif
-    used_blacs = .false.
-
-#ifdef SIESTA__ELPA
     ! Check whether ELPA is initialized, uninitialize it if it is.
     if ( elpa_initialized() == ELPA_OK ) then
        call elpa_uninit(info)
        call elpa_check(info, 'uninit')
-       used_blacs = .true.
     end if
 #endif
 
 #ifdef MPI
     if ( iCTXT >= 0 ) then
-       call blacs_freebuff(iCTXT, 0)
        call blacs_gridexit(iCTXT)
        iCTXT = -1
-       used_blacs = .true.
     end if
 
     if ( iCTXT2D >= 0 ) then
-       call blacs_freebuff(iCTXT2D, 0)
        call blacs_gridexit(iCTXT2D)
        iCTXT2D = -1
-       used_blacs = .true.
     end if
-    if (used_blacs) call blacs_exit(1)
 #endif
 
   end subroutine diag_exit
@@ -226,18 +189,18 @@ contains
     if ( present(iC) ) then
        call descinit(desc,N,N,BlockSize,BlockSize,0,0,iC,NR,ierr)
     else
-       if ( iCTXT < 0 ) iCTXT = MPI_COMM_ID( MPI_Comm_World )
+       if ( iCTXT < 0 ) iCTXT = MPI_Comm_World
        call descinit(desc,N,N,BlockSize,BlockSize,0,0,iCTXT,NR,ierr)
     end if
     if ( ierr /= 0 ) &
          call die('diag_descinit: Blacs setup has failed!')
 #endif
   end subroutine diag_descinit
-
+  
   subroutine diag_correct_input(algo, jobz, range, uplo, trans, neig, n)
 
     use m_diag_option
-
+    
     integer, intent(inout) :: algo
     character, intent(out) :: jobz, range, uplo, trans
     integer, intent(inout) :: neig
@@ -247,17 +210,17 @@ contains
     if ( neig > 0 ) then
        ! both eigenvalues and eigenvectors
        jobz = 'V'
-
+       
     else if ( neig < 0 ) then
        jobz = 'N'
        ! only a subset of eigenvalues
        neig = -neig
-
+       
     else if ( neig == 0 ) then
        jobz = 'N'
        ! correct to all eigenvalues
        neig = n
-
+       
     end if
 
     ! Set range to 'A' for all values
@@ -275,7 +238,7 @@ contains
        trans = 'C'
     end if
 
-
+    
     ! Correct for special routines
     if ( Serial ) then
 
@@ -314,7 +277,7 @@ contains
           range = 'A'
           neig = n
        end if
-
+       
 #endif
     end if
 
@@ -351,7 +314,7 @@ contains
 ! parallel matrix diagonalisation. This requires Scalapack and Blacs to
 ! be installed first. Although globally a 1-D block cyclic data distribution
 ! is employed, locally 1 or 2-D distributions are allowed for.
-! The blocksize is now explicitly passed to the routine (A. Garcia, 2016)
+! The blocksize is now explicitly passed to the routine (A. Garcia, 2016)      
 ! The routine allows access to all the phases of diagonalisation for fuller
 ! control, and allows for parallel divide and conquer with reduced memory.
 ! The presence of eigenvalue clusters is checked for and the memory adjusted
@@ -365,7 +328,7 @@ contains
 ! double allocation. This is allowed if the 2D distribution # of elements
 ! is less than or equal to the number of elements in the local arrays.
 ! (NOTE this is typically so).
-!
+! 
 !
 ! It allows for the following routines:
 !   LAPACK (Serial or ParallelOverK):
@@ -388,7 +351,7 @@ contains
 
     ! Modules
     use m_diag_option ! just all
-
+    
     use alloc
     use sys, only : die
 #ifdef SIESTA__ELPA
@@ -411,11 +374,11 @@ contains
     ! Local variables
     type(allocDefaults) :: oldDefaults
     integer :: algo
+#ifdef MPI
 
     ! Scale when transforming to generalized eigenvalue problem
     real(dp) :: scale
 
-#ifdef MPI
     ! Expert and MRRR drivers
     integer :: nz, mclustr
     integer,  pointer :: iclustr(:) => null()
@@ -452,7 +415,7 @@ contains
     integer, pointer :: isuppz(:) => null()
     integer :: il, iu
     real(dp) :: vl, vu
-
+    
     ! Work sizes
     integer :: liwork, lrwork, lwork
     integer, save :: lrwork_add = 0
@@ -477,12 +440,9 @@ contains
 !*******************************************************************************
 ! Setup                                                                        *
 !*******************************************************************************
-
+      
     ! Initialise error flag
     ierror = 0
-
-    ! Initialise scale
-    scale = 1._dp
 
     ! Trap n=1 case, which is not handled correctly otherwise (JMS 2011/07/19)
     if ( n == 1 ) then
@@ -510,13 +470,13 @@ contains
     il = 1
     iu = neig
 
-
+    
     ! Correct the input according to the diagonalization
     ! routines and queries
     algo = algorithm
     call diag_correct_input(algo, jobz, range, uplo, trans, iu, n)
 
-
+    
 #ifdef MPI
     if ( .not. Serial) then
 
@@ -527,7 +487,7 @@ contains
           ! Retrieve information about the BLACS 2D distribution
           call blacs_gridinfo(iCTXT2D, &
                np2d(1), np2d(2), my2d(1), my2d(2))
-
+          
           ! Enquire size of local part of 2D matrices
           mat_2d(1) = numroc(n, diag_BlockSize, my2d(1), 0, np2d(1))
           mat_2d(2) = numroc(n, diag_BlockSize, my2d(2), 0, np2d(2))
@@ -542,36 +502,37 @@ contains
           ! Retrieve information about the BLACS 1D distribution
           call blacs_gridinfo(iCTXT, &
                np2d(1), np2d(2), my2d(1), my2d(2))
-
+          
           ! Enquire size of local part of the 1D matrices
           mat_2d(1) = numroc(n, BlockSize, my2d(1), 0, np2d(1))
           mat_2d(2) = numroc(n, BlockSize, my2d(2), 0, np2d(2))
 
           desc => desc_1d(:)
-
+          
        end if
-
+       
 # ifdef SIESTA__ELPA
        ! Initialize the elpa type
        if ( algo == ELPA_1stage .or. algo == ELPA_2stage ) then
+
           ! ELPA setup
           ELPAt => elpa_allocate(info)
           call elpa_check(info, 'allocate')
-          call ELPAt%set('mpi_comm_parent', MPI_COMM_ID(MPI_Comm_World), info)
+          call ELPAt%set('mpi_comm_parent', MPI_Comm_World, info)
           call elpa_check(info, 'mpi_comm_parent')
-
+          
           call ELPAt%set('process_row', my2d(1), info)
           call elpa_check(info, 'process_row')
           call ELPAt%set('process_col', my2d(2), info)
           call elpa_check(info, 'process_col')
-
+                    
           if ( algorithm == ELPA_1stage ) then
              call ELPAt%set('solver', ELPA_SOLVER_1STAGE, info)
           else if ( algorithm == ELPA_2stage ) then
              call ELPAt%set('solver', ELPA_SOLVER_2STAGE, info)
           end if
           call elpa_check(info, 'solver')
-
+          
           call ELPAt%set('na', n, info)
           call elpa_check(info, 'na')
           call ELPAt%set('local_nrows', mat_2d(1), info)
@@ -593,16 +554,12 @@ contains
           call elpa_check(info, 'setup')
 
           if (elpa_use_gpu) then
-             call ELPAt%set(trim(elpa_gpu_string), 1, info)
+             call ELPAt%set('gpu', 1, info)
              call elpa_check(info, 'gpu set')
              if ( algorithm == ELPA_2stage ) then
-                call ELPAt%set("complex_kernel",SIESTA_ELPA_COMPLEX_GPU_KERNEL,info)
+                call ELPAt%set("complex_kernel",ELPA_2STAGE_COMPLEX_GPU,info) 
                 call elpa_check(info, 'complex kernel gpu')
              endif
-#if ELPA_API_VERSION >= 20250131
-             info = ELPAt%setup_gpu()
-             call elpa_check(info, 'new gpu setup')
-#endif
           endif
 
 
@@ -613,7 +570,7 @@ contains
 
        end if
 # endif
-
+       
     end if
 #endif
 
@@ -667,11 +624,11 @@ contains
              Hp => S
              Sp => Z
              Zp => H
-
+             
           end if
-
+          
        else
-
+          
           Hp => H
           Sp => S
           Zp => Z
@@ -704,7 +661,7 @@ contains
 
     ! Add lrwork_add
     lrwork = lrwork + lrwork_add
-
+    
 #ifdef _DIAG_WORK
     if ( jobz == 'N' ) then
        if ( diag_work_c(1) ) then
@@ -741,7 +698,7 @@ contains
        call pzgemr2d(n, n, H, 1, 1, desc_1d, Hp, 1, 1, desc_2d, iCTXT)
     end if
 #endif
-
+    
 !*******************************************************************************
 ! Factorise overlap matrix                                                     *
 !*******************************************************************************
@@ -792,7 +749,7 @@ contains
           ! Invert the upper triangular Cholesky decomposition.
           call ELPAt%invert_triangular(Sp, info)
           call elpa_check(info, 'cdiag: Triangular inversion')
-
+          
           ! Left hand of the inverse
           ! We do require the full matrix calculated
           ! due to the ELPA solver.
@@ -801,7 +758,7 @@ contains
                Sp,Zp,mat_2d(1),mat_2d(2), &
                Hp,mat_2d(1),mat_2d(2),info)
           call elpa_check(info, 'cdiag: Hermitian multiply Left')
-
+          
           ! Right hand of the inverse.
           ! Note the ELPA Hermitian multiply always takes the Hermitian
           ! conjugate of the left operator, hence we cannot use it here
@@ -809,7 +766,7 @@ contains
           ! and then use hermitian_multiply... (?)
           call pztrmm('R','U','N','N',n,n,cmplx(1._dp,0._dp,dp), &
                Sp,1,1,desc,Hp,1,1,desc)
-
+          
           info = 0
        else
           call pzhengst(1,uplo,n,Hp,1,1,desc,Sp,1,1, &
@@ -834,14 +791,14 @@ contains
     if ( Serial ) then
 
        select case ( algo )
-       case ( DivideConquer )
+       case ( DivideConquer ) 
           call zheevd(jobz,uplo,n,H,n,&
                w,work,lwork,rwork,lrwork,iwork,liwork, &
                info)
           if ( neig > 0 ) then
              call zcopy(n*neig,H,1,Z,1)
           end if
-
+          
 #ifdef SIESTA__MRRR
        case ( MRRR )
           call zheevr(jobz,range,uplo, &
@@ -851,13 +808,13 @@ contains
                work,lwork,rwork,lrwork,iwork,liwork, &
                info)
 #endif
-
+          
        case ( Expert )
           call zheevx(jobz,range,uplo,n,H,n,vl,vu,il,iu,abstol, &
                neigok,w,Z,n, &
                work,lwork,rwork,iwork,ifail, &
                info)
-
+          
        case ( QR )
           call zheev(jobz,uplo,n,H,n,w, &
                work,lwork,rwork, &
@@ -865,16 +822,16 @@ contains
           if ( neig > 0 ) then
              call zcopy(n*neig,H,1,Z,1)
           end if
-
+          
 #ifdef SIESTA__DIAG_2STAGE
-       case ( DivideConquer_2stage )
+       case ( DivideConquer_2stage ) 
           call zheevd_2stage(jobz,uplo,n,H,n,&
                w,work,lwork,rwork,lrwork,iwork,liwork, &
                info)
           if ( neig > 0 ) then
              call zcopy(n*neig,H,1,Z,1)
           end if
-
+          
 # ifdef SIESTA__MRRR
        case ( MRRR_2stage )
           call zheevr_2stage(jobz,range,uplo, &
@@ -901,7 +858,7 @@ contains
 #endif
 
        end select
-
+       
 #ifdef MPI
     else
 
@@ -934,7 +891,7 @@ contains
           info = 0
 #endif
 
-       case ( Expert )
+       case ( Expert ) 
           call pzheevx(jobz,range,uplo,n,Hp,1,1,desc,vl,vu,il,iu, &
                abstol,neigok,nz,w,orfac,Zp,1,1,desc, &
                work,lwork,rwork,lrwork,iwork,liwork, &
@@ -952,7 +909,7 @@ contains
              call die('cdiag: Requires bigger rwork')
 
           else if ( mod(info,2) /= 0 .or. mod(info/8,2) /= 0 ) then
-
+             
              ! One or more than one eigenvector failed to
              ! converge, we should warn the user to decrease
              ! the tolerance.
@@ -961,7 +918,7 @@ contains
                      "due to insufficient eigenvector convergence..."
              end if
              call die('cdiag: Decrease the absolute tolerance!')
-
+             
           else if ( mod(info/2, 2) /= 0 ) then
 
              ! We need to signal an increase in workspace
@@ -972,17 +929,17 @@ contains
 
              i = (mclustr-1) * n
              if ( lrwork_add < i ) then
-
+                
                 ! Try to increase the work-size
                 lrwork_add = i
                 call clean_memory()
-
+                
                 call timer('cdiag3', 2)
                 call timer('cdiag', 2)
 
                 return
              end if
-
+             
           end if
 
        case ( QR )
@@ -1018,7 +975,7 @@ contains
     end if
     call timer('cdiag3',2)
 
-
+    
 !*******************************************************************************
 ! Back transformation of eigenvectors                                          *
 !*******************************************************************************
@@ -1067,15 +1024,15 @@ contains
 
     ! Stop time count
     call timer('cdiag',2)
-
+    
   contains
 
     subroutine clean_memory()
-
+      
 !*******************************************************************************
 ! Clean up                                                                     *
 !*******************************************************************************
-
+      
 #ifdef SIESTA__ELPA
       integer :: info
 #endif
@@ -1126,13 +1083,13 @@ contains
       call alloc_default( restore=oldDefaults )
 
     end subroutine clean_memory
-
+    
     subroutine work_query()
       integer :: l_lwork
 
       ! Initialize
       l_lwork = 0
-
+      
       work(1) = 1
       rwork(1) = 1
       iwork(1) = 1
@@ -1143,9 +1100,9 @@ contains
 
       ! Get memory requirements
       if ( Serial ) then
-
+         
          select case ( algo )
-         case ( DivideConquer )
+         case ( DivideConquer ) 
             call zheevd(jobz,uplo,n,H,n,&
                  w,work,lwork,rwork,lrwork,iwork,liwork, &
                  info)
@@ -1179,7 +1136,7 @@ contains
             rwork(1) = max(nint(rwork(1)), 3*n)
 
 #ifdef SIESTA__DIAG_2STAGE
-         case ( DivideConquer_2stage )
+         case ( DivideConquer_2stage ) 
             call zheevd_2stage(jobz,uplo,n,H,n,&
                  w,work,lwork,rwork,lrwork,iwork,liwork, &
                  info)
@@ -1214,7 +1171,7 @@ contains
 #endif
 
          case default
-
+                        
             call die('cdiag: error in work_query')
 
          end select
@@ -1241,7 +1198,7 @@ contains
                  Zp, 1, 1, desc, &
                  work, lwork, rwork, lrwork, iwork, liwork, &
                  info)
-
+            
 # ifdef SIESTA__MRRR
          case ( MRRR )
             call pzheevr(jobz, range, uplo, n, Hp, 1, 1, desc, &
@@ -1256,7 +1213,7 @@ contains
             ! skip the l_lwork for pzhengst routine.
             l_lwork = 1
 # endif
-
+            
          case ( Expert )
             call pzheevx(jobz, range, uplo, n, Hp, 1, 1, desc, &
                  vl, vu, il, iu, abstol, neigok, nz, w, &
@@ -1303,7 +1260,7 @@ contains
             call die('cdiag: error in work_query')
 
          end select
-#endif
+#endif         
       end if
 
       lwork = nint(max(nint(real(work(1), dp)), l_lwork) * mem_factor)
@@ -1315,10 +1272,10 @@ contains
       liwork = max(1, liwork)
 
     end subroutine work_query
-
+    
   end subroutine diag_c
 
-
+  
   subroutine diag_r( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
 ! ***************************************************************************
 ! Subroutine to solve all eigenvalues and eigenvectors of the
@@ -1349,7 +1306,7 @@ contains
 ! parallel matrix diagonalisation. This requires Scalapack and Blacs to
 ! be installed first. Although globally a 1-D block cyclic data distribution
 ! is employed, locally 1 or 2-D distributions are allowed for.
-! The blocksize is now explicitly passed to the routine (A. Garcia, 2016)
+! The blocksize is now explicitly passed to the routine (A. Garcia, 2016)      
 ! The routine allows access to all the phases of diagonalisation for fuller
 ! control, and allows for parallel divide and conquer with reduced memory.
 ! The presence of eigenvalue clusters is checked for and the memory adjusted
@@ -1385,7 +1342,7 @@ contains
 
     ! Modules
     use m_diag_option ! just all
-
+    
     use alloc
     use sys, only : die
 
@@ -1393,7 +1350,7 @@ contains
     use mpi_siesta, only: MPI_Comm_World
     use elpa
 #endif
-    implicit none
+
     ! Passed variables
     integer, intent(out) :: ierror
     integer, intent(in) :: iscf
@@ -1409,9 +1366,10 @@ contains
     ! Local variables
     type(allocDefaults) :: oldDefaults
     integer :: algo
+#ifdef MPI
+
     ! Scale when transforming to generalized eigenvalue problem
     real(dp) :: scale
-#ifdef MPI
 
     ! Expert and MRRR drivers
     integer :: nz, mclustr
@@ -1448,7 +1406,7 @@ contains
     integer, pointer :: isuppz(:) => null()
     integer :: il, iu
     real(dp) :: vl, vu
-
+    
     ! Work sizes
     integer :: liwork, lwork
     integer, save :: lwork_add = 0
@@ -1458,6 +1416,7 @@ contains
 
     ! Local variables for loops etc.
     integer :: i
+
     integer, external :: numroc
 
     ! Start time count
@@ -1471,12 +1430,9 @@ contains
 !*******************************************************************************
 ! Setup                                                                        *
 !*******************************************************************************
-
+      
     ! Initialise error flag
     ierror = 0
-
-    ! Initialise scale
-    scale = 1._dp
 
     ! Trap n=1 case, which is not handled correctly otherwise (JMS 2011/07/19)
     if ( n == 1 ) then
@@ -1503,14 +1459,14 @@ contains
     vu = huge(0._dp)
     il = 1
     iu = neig
-
+    
 
     ! Correct the input according to the diagonalization
     ! routines and queries
     algo = algorithm
     call diag_correct_input(algo, jobz, range, uplo, trans, iu, n)
 
-
+    
 #ifdef MPI
     if ( .not. Serial) then
 
@@ -1521,7 +1477,7 @@ contains
           ! Retrieve information about the BLACS 2D distribution
           call blacs_gridinfo(iCTXT2D, &
                np2d(1), np2d(2), my2d(1), my2d(2))
-
+          
           ! Enquire size of local part of 2D matrices
           mat_2d(1) = numroc(n, diag_BlockSize, my2d(1), 0, np2d(1))
           mat_2d(2) = numroc(n, diag_BlockSize, my2d(2), 0, np2d(2))
@@ -1536,37 +1492,37 @@ contains
           ! Retrieve information about the BLACS 1D distribution
           call blacs_gridinfo(iCTXT, &
                np2d(1), np2d(2), my2d(1), my2d(2))
-
+          
           ! Enquire size of local part of the 1D matrices
           mat_2d(1) = numroc(n, BlockSize, my2d(1), 0, np2d(1))
           mat_2d(2) = numroc(n, BlockSize, my2d(2), 0, np2d(2))
 
           desc => desc_1d(:)
-
+          
        end if
 
 # ifdef SIESTA__ELPA
        ! Initialize the elpa type
        if ( algo == ELPA_1stage .or. algo == ELPA_2stage ) then
-
+          
           ! ELPA setup
           ELPAt => elpa_allocate(info)
           call elpa_check(info, 'allocate')
-          call ELPAt%set('mpi_comm_parent', MPI_COMM_ID(MPI_Comm_World), info)
+          call ELPAt%set('mpi_comm_parent', MPI_Comm_World, info)
           call elpa_check(info, 'mpi_comm_parent')
-
+          
           call ELPAt%set('process_row', my2d(1), info)
           call elpa_check(info, 'process_row')
           call ELPAt%set('process_col', my2d(2), info)
           call elpa_check(info, 'process_col')
-
+                    
           if ( algorithm == ELPA_1stage ) then
              call ELPAt%set('solver', ELPA_SOLVER_1STAGE, info)
           else if ( algorithm == ELPA_2stage ) then
              call ELPAt%set('solver', ELPA_SOLVER_2STAGE, info)
           end if
           call elpa_check(info, 'solver')
-
+          
           call ELPAt%set('na', n, info)
           call elpa_check(info, 'na')
           call ELPAt%set('local_nrows', mat_2d(1), info)
@@ -1588,16 +1544,12 @@ contains
           call elpa_check(info, 'setup')
 
           if (elpa_use_gpu) then
-             call ELPAt%set(trim(elpa_gpu_string), 1, info)
+             call ELPAt%set('gpu', 1, info)
              call elpa_check(info, 'gpu set')
              if ( algorithm == ELPA_2stage ) then
-                call ELPAt%set("real_kernel",SIESTA_ELPA_REAL_GPU_KERNEL,info)
+                call ELPAt%set("real_kernel",ELPA_2STAGE_REAL_GPU,info) 
                 call elpa_check(info, 'real kernel gpu')
              endif
-#if ELPA_API_VERSION >= 20250131
-             info = ELPAt%setup_gpu()
-             call elpa_check(info, 'new gpu setup')
-#endif
           endif
 
           ! There is no need to check the info parameter
@@ -1611,7 +1563,7 @@ contains
     end if
 #endif
 
-
+    
     ! Initialize the variables for the different routines
     if ( Serial ) then
 
@@ -1662,11 +1614,11 @@ contains
              Hp => S
              Sp => Z
              Zp => H
-
+             
           end if
-
+          
        else
-
+          
           Hp => H
           Sp => S
           Zp => Z
@@ -1733,7 +1685,7 @@ contains
        call pdgemr2d(n, n, H, 1, 1, desc_1d, Hp, 1, 1, desc_2d, iCTXT)
     end if
 #endif
-
+    
 !*******************************************************************************
 ! Factorise overlap matrix                                                     *
 !*******************************************************************************
@@ -1784,7 +1736,7 @@ contains
           ! Invert the upper triangular Cholesky decomposition.
           call ELPAt%invert_triangular(Sp, info)
           call elpa_check(info, 'rdiag: Triangular inversion')
-
+          
           ! Left hand of the inverse
           ! We do require the full matrix calculated
           ! due to the ELPA solver.
@@ -1801,7 +1753,7 @@ contains
           ! and then use hermitian_multiply... (?)
           call pdtrmm('R','U','N','N',n,n,1._dp, &
                Sp,1,1,desc,Hp,1,1,desc)
-
+          
           info = 0
        else
           call pdsyngst(1,uplo,n,Hp,1,1,desc,Sp,1,1, &
@@ -1826,14 +1778,14 @@ contains
     if ( Serial ) then
 
        select case ( algo )
-       case ( DivideConquer )
+       case ( DivideConquer ) 
           call dsyevd(jobz,uplo,n,H,n,&
                w,work,lwork,iwork,liwork, &
                info)
           if ( neig > 0 ) then
              call dcopy(n*neig,H,1,Z,1)
           end if
-
+          
 #ifdef SIESTA__MRRR
        case ( MRRR )
           call dsyevr(jobz,range,uplo, &
@@ -1843,13 +1795,13 @@ contains
                work,lwork,iwork,liwork, &
                info)
 #endif
-
+          
        case ( Expert )
           call dsyevx(jobz,range,uplo,n,H,n,vl,vu,il,iu,abstol, &
                neigok,w,Z,n, &
                work,lwork,iwork,ifail, &
                info)
-
+          
        case ( QR )
           call dsyev(jobz,uplo,n,H,n,w, &
                work,lwork, &
@@ -1857,16 +1809,16 @@ contains
           if ( neig > 0 ) then
              call dcopy(n*neig,H,1,Z,1)
           end if
-
+          
 #ifdef SIESTA__DIAG_2STAGE
-       case ( DivideConquer_2stage )
+       case ( DivideConquer_2stage ) 
           call dsyevd_2stage(jobz,uplo,n,H,n,&
                w,work,lwork,iwork,liwork, &
                info)
           if ( neig > 0 ) then
              call dcopy(n*neig,H,1,Z,1)
           end if
-
+          
 # ifdef SIESTA__MRRR
        case ( MRRR_2stage )
           call dsyevr_2stage(jobz,range,uplo, &
@@ -1893,7 +1845,7 @@ contains
 #endif
 
        end select
-
+       
 #ifdef MPI
     else
 
@@ -1926,7 +1878,7 @@ contains
           info = 0
 #endif
 
-       case ( Expert )
+       case ( Expert ) 
           call pdsyevx(jobz,range,uplo,n,Hp,1,1,desc,vl,vu,il,iu, &
                abstol,neigok,nz,w,orfac,Zp,1,1,desc, &
                work,lwork,iwork,liwork, &
@@ -1943,7 +1895,7 @@ contains
              call die('rdiag: Requires bigger work')
 
           else if ( mod(info,2) /= 0 .or. mod(info/8,2) /= 0 ) then
-
+             
              ! One or more than one eigenvector failed to
              ! converge, we should warn the user to decrease
              ! the tolerance.
@@ -1952,7 +1904,7 @@ contains
                      "due to insufficient eigenvector convergence..."
              end if
              call die('rdiag: Decrease the absolute tolerance!')
-
+             
           else if ( mod(info/2, 2) /= 0 ) then
 
              ! We need to signal an increase in workspace
@@ -1963,17 +1915,17 @@ contains
 
              i = (mclustr-1) * n
              if ( lwork_add < i ) then
-
+                
                 ! Try to increase the work-size
                 lwork_add = i
                 call clean_memory()
-
+                
                 call timer('rdiag3', 2)
                 call timer('rdiag', 2)
-
+                
                 return
              end if
-
+             
           end if
 
        case ( QR )
@@ -2008,7 +1960,7 @@ contains
     end if
     call timer('rdiag3',2)
 
-
+    
 !*******************************************************************************
 ! Back transformation of eigenvectors                                          *
 !*******************************************************************************
@@ -2054,15 +2006,15 @@ contains
 
     ! Stop time count
     call timer('rdiag',2)
-
+    
   contains
 
     subroutine clean_memory()
-
+      
 !*******************************************************************************
 ! Clean up                                                                     *
 !*******************************************************************************
-
+      
 #ifdef SIESTA__ELPA
       integer :: info
 #endif
@@ -2112,13 +2064,13 @@ contains
       call alloc_default( restore=oldDefaults )
 
     end subroutine clean_memory
-
+    
     subroutine work_query()
       integer :: l_lwork
 
       ! Initialize
       l_lwork = 0
-
+      
       work(1) = 1
       iwork(1) = 1
 
@@ -2127,9 +2079,9 @@ contains
 
       ! Get memory requirements
       if ( Serial ) then
-
+         
          select case ( algo )
-         case ( DivideConquer )
+         case ( DivideConquer ) 
             call dsyevd(jobz,uplo,n,H,n,&
                  w,work,lwork,iwork,liwork, &
                  info)
@@ -2159,7 +2111,7 @@ contains
                  info)
 
 #ifdef SIESTA__DIAG_2STAGE
-         case ( DivideConquer_2stage )
+         case ( DivideConquer_2stage ) 
             call dsyevd_2stage(jobz,uplo,n,H,n,&
                  w,work,lwork,iwork,liwork, &
                  info)
@@ -2190,7 +2142,7 @@ contains
 #endif
 
          case default
-
+                        
             call die('rdiag: error in work_query')
 
          end select
@@ -2217,7 +2169,7 @@ contains
                  Zp, 1, 1, desc, &
                  work, lwork, iwork, liwork, &
                  info)
-
+            
 # ifdef SIESTA__MRRR
          case ( MRRR )
             call pdsyevr(jobz, range, uplo, n, Hp, 1, 1, desc, &
@@ -2231,8 +2183,8 @@ contains
          case ( ELPA_1stage, ELPA_2stage )
             l_lwork = 1
 # endif
-
-         case ( Expert )
+            
+         case ( Expert ) 
             call pdsyevx(jobz, range, uplo, n, Hp, 1, 1, desc, &
                  vl, vu, il, iu, abstol, neigok, nz, w, &
                  orfac, &
@@ -2252,7 +2204,7 @@ contains
             call die('rdiag: error in work_query')
 
          end select
-#endif
+#endif         
       end if
 
       lwork = nint(max(nint(work(1)), l_lwork) * mem_factor)
@@ -2262,7 +2214,7 @@ contains
       liwork = max(1, liwork)
 
     end subroutine work_query
-
+    
   end subroutine diag_r
 
 
@@ -2271,16 +2223,16 @@ contains
     use elpa, only: elpa_strerr, ELPA_OK
     integer, intent(in) :: err
     character(len=*), intent(in) :: name
-
+    
     if ( err == ELPA_OK ) return
-
+    
     write(*,'(a)') 'diag: ELPA error on ' //trim(name)
     write(*,'(a)') elpa_strerr(err)
     call die('diag: ELPA error, see output')
-
+    
   end subroutine elpa_check
 #endif
-
+  
 end module m_diag
 
 
@@ -2289,7 +2241,7 @@ subroutine cdiag( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   use m_diag, only: diag_c
 
   implicit none
-
+  
   integer, intent(in) :: nml, nm
   complex(dp), intent(inout), target :: H(nml,nm)
   complex(dp), intent(inout), target :: S(nml,nm)
@@ -2300,17 +2252,17 @@ subroutine cdiag( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   integer, intent(in) :: iscf
   integer, intent(out) :: ierror
   integer, intent(in) :: BlockSize
-
+  
   call diag_c(H, S, N, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
-
+  
 end subroutine cdiag
 
 subroutine rdiag( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   use precision, only: dp
   use m_diag, only: diag_r
-
+  
   implicit none
-
+  
   integer, intent(in) :: nml, nm
   real(dp), intent(inout), target :: H(nml,nm)
   real(dp), intent(inout), target :: S(nml,nm)
@@ -2321,7 +2273,7 @@ subroutine rdiag( H, S, n, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
   integer, intent(in) :: iscf
   integer, intent(out) :: ierror
   integer, intent(in) :: BlockSize
-
+  
   call diag_r(H, S, N, nm, nml, w, Z, neig, iscf, ierror, BlockSize)
-
+  
 end subroutine rdiag

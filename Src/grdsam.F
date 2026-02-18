@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -6,26 +6,9 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
       module m_grdsam
-      use precision, only : dp
-
-      implicit none
       public :: grdsam
-      public :: reset_grdsam
-
-      private
-      real(dp), pointer, save :: pt(:,:) => null()
-      integer, save  :: npt = -1
-
       CONTAINS
-
-      subroutine reset_grdsam()
-         use alloc, only : de_alloc
-         implicit none
-         call de_alloc( pt, 'pt', 'grdsam' )
-         npt = -1
-      end subroutine reset_grdsam
-
-      subroutine grdsam(nspin, norb, iaorb, iphorb,
+      subroutine grdsam(nspin, norb, iaorb, iphorb, 
      &                  nuo, nuotot, nua, na, isa, xa, indxua,
      &                  cell, ntm, ifa, istr, maxnd,
      &                  maxnh, numh, listhptr, listh, Dscf, Datm, Hmat,
@@ -37,26 +20,26 @@ c Final call to dhscf of the scf cycle + grid-cell sampling
 c
 c   After a first call to DHSCF, there are more calls for rigidly shifted
 c   atomic coordinates, sampling the small cell defined by the grid, to get
-c   average energy, forces, stress, and dipole. It does it with fix density
+c   average energy, forces, stress, and dipole. It does it with fix density 
 c   matrix. It can be regarded as a (discrete sampling) symmetrization
-c   to restore the homogeneity of space, which was lost with the
-c   grid summations.
+c   to restore the homogeneity of space, which was lost with the 
+c   grid summations. 
 c
-c   The first call to DHSCF is the usual one (the point in which
-c   selfconsistency has been performed). It corresponds to the
+c   The first call to DHSCF is the usual one (the point in which 
+c   selfconsistency has been performed). It corresponds to the 
 c   shift (0,0,0) in the grid cell.
 c
 c   The sampling is done on the additional points given in block
 c   GridCellSampling, which are given in fractional coordinates of
-c   the small grid cell.
+c   the small grid cell. 
 c
-c   Even if the sum is large the symmetrization is never complete
+c   Even if the sum is large the symmetrization is never complete 
 c   since the density matrix is the one obtained for one position of
 c   the grid (no new selfconsistency for each shift).
-c
-c Written by E. Artacho. January 1998.
+c      
+c Written by E. Artacho. January 1998. 
 c *********************** INPUT TOWARDS DHSCF *******************************
-c integer nspin         : number of spins considered
+c integer nspin         : number of spins considered 
 c integer norb          : total number of basis orbitals
 c integer iaorb(norb)   : atom to which each orbital belongs
 c integer iphorb(norb)  : orbital index (within atom) of each orbital
@@ -109,20 +92,20 @@ C
       use alloc,     only : re_alloc, de_alloc
       use siesta_options, only: g2cut
       use siesta_geom,    only: mscell
-      use siesta_options, only: option_charges
-      use option_charges_m, only: OPT_CHARGE_GEOMETRY
-      use partial_charges_m, only: want_partial_charges
-
+      use siesta_options, only: hirshpop, voropop
+      use siesta_options, only: partial_charges_at_every_geometry
+      use m_partial_charges, only: want_partial_charges
+      
       use m_spin, only: h_spin_dim
 
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
 #endif
-
+      
       implicit          none
 
       integer           maxnh, maxnd, na, norb, nspin,
-     &                  nuo, nuotot, nua, iaorb(norb), ifa, indxua(na),
+     &                  nuo, nuotot, nua, iaorb(norb), ifa, indxua(na), 
      &                  iphorb(norb), isa(na), istr, listh(maxnh),
      &                  listhptr(nuo), numh(nuo), ntm(3)
 
@@ -135,6 +118,8 @@ C
       real(dp) :: DUscf, DUext, Dxc, Enaatm, Enascf, Exc, Uatm, Uscf
 
 C Internal variables and arrays
+ 
+      logical           samesh
       integer           nr, ipt, ia,
      &                  iv
       real(dp) :: strold(3,3,2)
@@ -156,6 +141,10 @@ C Internal variables and arrays
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
       type(filesOut_t)           :: filesOut  ! blank output file names
+
+      ! Saved variables:
+      integer, save  :: npt = -1
+      real(dp), pointer, save :: pt(:,:) => null()
 
       real(dp) :: d, dx(3)
       real(dp) :: famax(3), fastd(3)
@@ -186,8 +175,8 @@ C Check whether GridCellSampling block has been looked for ------------------
         ! sampling.
 
         if ( fdf_islist('Grid.CellSampling') ) then
-
-           ! There are two methods of using the
+           
+           ! There are two methods of using the 
            ! Cell sampling, the diagonal one (via a list)
 
            call fdf_list('Grid.CellSampling', 3, nABC)
@@ -212,12 +201,12 @@ C Check whether GridCellSampling block has been looked for ------------------
 
            ! Allocate the sampled points
            call re_alloc( pt, 1, 3, 1, npt, 'pt', 'grdsam' )
-
+           
            ipt = 0
            do iz = 0 , nABC(3) - 1
             do iy = 0 , nABC(2) - 1
               do ix = 0 , nABC(1) - 1
-
+                  
               ! This is 0. 0. 0., we should skip it
               if ( ix + iy + iz == 0 ) cycle
 
@@ -238,11 +227,11 @@ C Check whether GridCellSampling block has been looked for ------------------
            if ( ipt /= npt ) then
               call die('Error in creating the equi-grid-cell-sampling.')
            end if
-
+           
         else if ( fdf_block('Grid.CellSampling', bfdf) ) then
-
+           
            ! The user-defined one
-
+           
            ! First read the number of sampled points
            npt = 0
            do while ( fdf_bline(bfdf,pline) )
@@ -257,7 +246,7 @@ C Check whether GridCellSampling block has been looked for ------------------
 
            ! Allocate arrays
            call re_alloc( pt, 1, 3, 1, npt, 'pt', 'grdsam' )
-
+           
           if ( IONode ) then
             write(6,'(/a)') 'grdsam: Reading %block Grid.CellSampling'
           end if
@@ -272,7 +261,7 @@ C Check whether GridCellSampling block has been looked for ------------------
              else
                 write(6,'(a,/,a)')
      &             'grdsam: syntax ERROR in %block Grid.CellSampling:',
-     &             trim(pline%line)
+     &             trim(fdf_getline(bfdf%mark))
              end if
           end do
 
@@ -281,7 +270,7 @@ C Check whether GridCellSampling block has been looked for ------------------
           end if
 
         end if
-
+       
       end if
 
 c if sampling, store the forces and stresses prior to dhscf -----------------
@@ -298,7 +287,7 @@ c if sampling, store the forces and stresses prior to dhscf -----------------
           write(*,'(2(a,i0))') 'grdsam: Grid-cell sampling: ', 0,
      &        ' / ',npt
         end if
-
+       
       end if
 
 
@@ -308,13 +297,10 @@ c first (normal) call to DHSCF, ihmat=1 --------------------------------------
 !     and can compute the partial charges if desired in this call to
 !     dhscf.
 !
-      want_partial_charges = 0
-      if ( option_charges%hirshfeld%run(OPT_CHARGE_GEOMETRY) ) then
-         want_partial_charges = OPT_CHARGE_GEOMETRY
-      end if
-      if ( option_charges%voronoi%run(OPT_CHARGE_GEOMETRY) ) then
-         want_partial_charges = OPT_CHARGE_GEOMETRY
-      end if
+      if ((hirshpop .or. voropop)
+     $    .and. partial_charges_at_every_geometry) then
+         want_partial_charges = .true.
+      endif
 
       call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      &            na, isa, xa, indxua, ntm,
@@ -322,8 +308,7 @@ c first (normal) call to DHSCF, ihmat=1 --------------------------------------
      &            maxnd, numh, listhptr, listh, Dscf, Datm,
      &            maxnh, Hmat, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      &            Exc, Dxc, dipol, stress, fal, stressl)
-
-      want_partial_charges = 0
+      want_partial_charges = .false.
 
 c Sampling ------------------------------------------------------------------
 
@@ -337,10 +322,10 @@ c initialize averages with output of regular DHSCF run -----------------------
         ! Allocate the used sampling arrays
         call re_alloc( xanew, 1, 3, 1, na, 'xanew', 'grdsam' )
         call re_alloc( allfa, 1, 3, 1, nua, 0, npt, 'allfa', 'grdsam')
-        call re_alloc( allstr, 1, 3, 1, 3, 1, 2, 0, npt,
+        call re_alloc( allstr, 1, 3, 1, 3, 1, 2, 0, npt, 
      &       'allstr', 'grdsam')
 
-        ! It is rather instructive to save them all
+        ! It is rather instructive to save them all 
         ! and get the difference between the consecutive
         ! runs to get a magnitude of the difference.
         ! I.e. the stored forces are now _only_ the grid-cell
@@ -382,7 +367,7 @@ c loop sampling on displacements making averages ----------------------------
           fal(:,:) = faold(:,:)
           stress(:,:) = strold(:,:,1)
           stressl(:,:) = strold(:,:,2)
-
+        
           if ( IONode ) then
            write(*,'(2(a,i0))') 'grdsam: Grid-cell sampling: ',ipt,
      &          ' / ',npt
@@ -396,7 +381,7 @@ c loop sampling on displacements making averages ----------------------------
      &                      isa, xanew, indxua, cell,
      &                      mscell, G2max, ntm,
      &                      maxnd, numh, listhptr, listh, datm,
-     &                      Fal, stressl, -1)
+     &                      Fal, stressl)
 
           call dhscf( nspin, norb, iaorb, iphorb, nuo, nuotot, nua,
      &                na, isa, xanew, indxua, ntm,
@@ -503,9 +488,9 @@ c loop sampling on displacements making averages ----------------------------
           end do
          end do
         end do
-        ! Calculate std.
+        ! Calculate std. 
         fastd = sqrt(fastd)
-
+        
         ! Print out stuff
         if ( IONode ) then
            write(*,'(/a,3(tr1,f10.6),tr1,a)')
@@ -518,7 +503,7 @@ c loop sampling on displacements making averages ----------------------------
      &      'grdsam: Max (sampled stress - avg. stress):',strmax/kbar,
      &      'kbar'
         end if
-
+      
         ! Copy back the resulting averaged energies
         ! and dipole moments
         dipol(:) = avdipol(:)
@@ -543,7 +528,7 @@ c loop sampling on displacements making averages ----------------------------
      &      isa, xa, indxua, cell,
      &      mscell, G2max, ntm,
      &      maxnd, numh, listhptr, listh, datm,
-     &      Faold, strold(:,:,1), -1)
+     &      Faold, strold(:,:,1))
 
         ! Deallocate local memory
         call de_alloc( faold, 'faold', 'grdsam' )

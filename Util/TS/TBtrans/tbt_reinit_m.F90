@@ -36,13 +36,7 @@ contains
     use files, only: label_length
     use parallel, only : Node
     use fdf
-    use units,         only: inquire_unit
-
     use m_verbosity
-
-#ifdef MPI
-    use mpi_siesta
-#endif
 
     implicit none
 
@@ -186,21 +180,10 @@ contains
     ! the string used below conforms to ISO 8601 with millisecond precision.
     write(fileout,"(a)") 'fdf.' // mydate // 'T' // mytime // ".log"
 
-    if (Node .eq. 0) then
-       call fdf_init(filein, trim(fileout))
-    else
-       ! the other nodes will get the data structure
-    endif
+    call fdf_init(filein,trim(fileout))
 
     ! Parse the command line
-    ! Note that there could be changes to the fdf data structure
     call tbt_parse_command_line(info=.false.)
-
-#ifdef MPI      
-      call broadcast_fdf_struct(0,mpi_comm_world)
-#endif
-
-    call fdf_set_unit_handler(inquire_unit)
 
     ! Initialize the verbosity setting
     call init_verbosity('TBT.Verbosity', 5)
@@ -264,10 +247,8 @@ contains
     use mpi_siesta
 #endif
     use parallel,     only: Node
-    use siesta_version_info, only: siesta_print_version
-
+    use version_info, only: prversion
     implicit none
-
 
     ! Arguments
     logical, intent(in), optional :: info
@@ -408,7 +389,7 @@ contains
         ! If a version option is found,
         ! print version information...
         if (process_info) then
-          if (Node == 0) call siesta_print_version
+          if (Node == 0) call prversion
 
           ! ... and quietly end execution
           ! (do not call die to avoid the bye message)

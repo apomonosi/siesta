@@ -53,7 +53,7 @@
 !                      name, routine, copy, shrink )
 ! INPUT:
 !   integer       :: i1min        : Lower bound of first dimension
-!                                   If not present, it is fixed by
+!                                   If not present, it is fixed by 
 !                                   the last call to alloc_default.
 !                                   If present and the rank is 2(3),
 !                                   then i2min(&i3min) must also be
@@ -67,13 +67,13 @@
 !   character*(*) :: name         : Actual array name or a label for it
 !   character*(*) :: routine      : Name of the calling routine
 !                                     or routine section
-!   logical       :: copy         : Save (copy) contents of old array
+!   logical       :: copy         : Save (copy) contents of old array 
 !                                   to new array?
-!   logical       :: shrink       : Reallocate if the new array bounds
-!                                   are contained within the old ones?
+!   logical       :: shrink       : Reallocate if the new array bounds 
+!                                   are contained within the old ones? 
 !                                   If not present, copy and/or shrink
 !                                      are fixed by the last call to
-!                                      alloc_default.
+!                                      alloc_default. 
 ! INPUT/OUTPUT:
 !   TYPE, pointer :: array : Array to be allocated or reallocated.
 !                            Implemented types and ranks are:
@@ -129,9 +129,9 @@
 !                            kinds as in re_alloc).
 ! BEHAVIOR:
 !   Besides deallocating the array, re_alloc decreases the count of
-! memory usage previously counted by re_alloc. Thus, dealloc should
+! memory usage previously counted by re_alloc. Thus, dealloc should 
 ! not be called to deallocate an array not allocated by re_alloc.
-! Equally, arrays allocated or reallocated by re_alloc should be
+! Equally, arrays allocated or reallocated by re_alloc should be 
 ! deallocated by dealloc.
 ! ==================================================================---
 MODULE alloc
@@ -150,76 +150,53 @@ PUBLIC ::             &
   de_alloc,           &! Deallocation
   allocDefaults        ! Derived type to hold allocation defaults
 
-public :: set_alloc_event_handler
-public :: set_alloc_error_handler
-
 PRIVATE      ! Nothing is declared public beyond this point
 
 integer, parameter :: sp = selected_real_kind(5,10)
 integer, parameter :: dp = selected_real_kind(10,100)
 integer, parameter :: i8b = selected_int_kind(18)
 
-! Interfaces to handlers that can be provided
+! Interfaces to external routines that must be provided
 ! by the calling program
 !
 interface
    ! Error message and integer code
    ! If 'code' is 0, this is the last call in a series
    ! (see below for usage)
-   subroutine alloc_error_report_interf(str,code)
+   subroutine alloc_error_report(str,code)
      character(len=*), intent(in) :: str
      integer, intent(in)          :: code
-   end subroutine alloc_error_report_interf
+   end subroutine alloc_error_report
    !
    ! Logger for memory events
    !
-   subroutine alloc_memory_event_interf(bytes,name)
+   subroutine alloc_memory_event(bytes,name)
      integer, intent(in)          :: bytes
      character(len=*), intent(in) :: name
-   end subroutine alloc_memory_event_interf
+   end subroutine alloc_memory_event
 end interface
-
-! These initializations are possible in F2008 and onwards
-
-procedure(alloc_error_report_interf), pointer ::  &
-     alloc_error_report => dummy_alloc_error_report
-
-procedure(alloc_memory_event_interf), pointer ::  &
-     alloc_memory_event => dummy_alloc_memory_event
 
   interface de_alloc
     module procedure &
-      dealloc_i1, dealloc_i2, dealloc_i3, dealloc_i4, &
-      dealloc_i5,                                     &
+      dealloc_i1, dealloc_i2, dealloc_i3,             &
       dealloc_E1,                                     &
       dealloc_r1, dealloc_r2, dealloc_r3, dealloc_r4, &
-      dealloc_r5,                                     &
       dealloc_d1, dealloc_d2, dealloc_d3, dealloc_d4, &
-      dealloc_d5,                                     &
-      dealloc_c1, dealloc_c2, dealloc_c3, dealloc_c4, &
-      dealloc_c5,                                     &
+      dealloc_c1, dealloc_c2,                         &
       dealloc_z1, dealloc_z2, dealloc_z3, dealloc_z4, &
-      dealloc_z5,                                     &
-      dealloc_l1, dealloc_l2, dealloc_l3, dealloc_l4, &
-      dealloc_l5,                                     &
+      dealloc_l1, dealloc_l2, dealloc_l3,             &
       dealloc_s1
   end interface
 
   interface re_alloc
     module procedure &
-      realloc_i1, realloc_i2, realloc_i3, realloc_i4, &
-      realloc_i5,                                     &
+      realloc_i1, realloc_i2, realloc_i3,             &
       realloc_E1,                                     &
       realloc_r1, realloc_r2, realloc_r3, realloc_r4, &
-      realloc_r5,                                     &
       realloc_d1, realloc_d2, realloc_d3, realloc_d4, &
-      realloc_d5,                                     &
-      realloc_c1, realloc_c2, realloc_c3, realloc_c4, &
-      realloc_c5,                                     &
-      realloc_z1, realloc_z2, realloc_z3, realloc_z4, &
-      realloc_z5,                                     &
-      realloc_l1, realloc_l2, realloc_l3, realloc_l4, &
-      realloc_l5,                                     &
+      realloc_c1, realloc_c2,                         &
+      realloc_z1, realloc_z2, realloc_z3, realloc_z4, & 
+      realloc_l1, realloc_l2, realloc_l3,             &
       realloc_s1
 !    module procedure & ! AG: Dangerous!!!
 !      realloc_i1s, realloc_i2s, realloc_i3s,              &
@@ -251,33 +228,6 @@ procedure(alloc_memory_event_interf), pointer ::  &
   logical :: ASSOCIATED_ARRAY, NEEDS_ALLOC, NEEDS_COPY, NEEDS_DEALLOC
 
 CONTAINS
-
-  ! ----------------
-  subroutine set_alloc_event_handler(func)
-    procedure(alloc_memory_event_interf) :: func
-    alloc_memory_event => func
-  end subroutine set_alloc_event_handler
-
-  subroutine set_alloc_error_handler(func)
-    procedure(alloc_error_report_interf) :: func
-    alloc_error_report => func
-  end subroutine set_alloc_error_handler
-
-  subroutine dummy_alloc_memory_event(bytes,name)
-    integer, intent(in) :: bytes
-    character(len=*), intent(in) :: name
-    !write(*,*) "alloc: allocated ", bytes, "bytes for "//trim(name)
-  end subroutine dummy_alloc_memory_event
-
-  subroutine dummy_alloc_error_report(name,code)
-    character(len=*), intent(in) :: name
-    integer, intent(in) :: code
-    write(*,*) "alloc: "//trim(name)
-    if (code == 0) then
-       STOP
-    endif
-  end subroutine dummy_alloc_error_report
-
 
 ! ==================================================================
 
@@ -383,7 +333,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -396,7 +346,7 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2)) =  &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -416,7 +366,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -424,7 +374,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -437,100 +387,11 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3)) =  &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_i3
-! ==================================================================
-SUBROUTINE realloc_i4( array, i1min,i1max, i2min,i2max, &
-  i3min,i3max, i4min,i4max, &
-name, routine, copy, shrink )
-implicit none
-character, parameter                   :: type='I'
-integer, parameter                     :: rank=4
-integer, dimension(:,:,:,:), pointer   :: array, old_array
-integer,                    intent(in) :: i1min,i1max, i2min,i2max, &
-                                          i3min,i3max, i4min,i4max
-character(len=*), optional, intent(in) :: name, routine
-logical,          optional, intent(in) :: copy, shrink
-integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_i4
-! ==================================================================
-SUBROUTINE realloc_i5( array, i1min,i1max, i2min,i2max, &
-i3min,i3max, i4min, i4max, i5min, i5max, &
-name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='I'
-integer, parameter                      :: rank=5
-integer, dimension(:,:,:,:,:), pointer  :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4), &
-  b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_i5
-
 ! ==================================================================
 SUBROUTINE realloc_E1( array, i1min, i1max, &
                        name, routine, copy, shrink )
@@ -571,7 +432,7 @@ call options( b, c, old_bounds, new_bounds, copy, shrink )
 
 ! Deallocate old space
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -587,7 +448,7 @@ end if
 ! Copy contents and deallocate old space
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -609,7 +470,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -617,7 +478,7 @@ new_bounds(1,:) = (/ i1min /)
 new_bounds(2,:) = (/ i1max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -629,7 +490,7 @@ if (NEEDS_ALLOC) then
 end if
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -647,7 +508,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -655,7 +516,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -668,7 +529,7 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2)) =  &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -695,7 +556,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -708,7 +569,7 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3)) =  &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -728,7 +589,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -736,7 +597,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min, i4min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max, i4max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -750,58 +611,11 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))= &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_r4
-! ==================================================================
-SUBROUTINE realloc_r5( array, i1min,i1max, i2min,i2max, &
-                       i3min,i3max, i4min, i4max, i5min, i5max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='R'
-integer, parameter                      :: rank=5
-real(SP), dimension(:,:,:,:,:), pointer :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4), &
-  b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._sp
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_r5
-
 ! ==================================================================
 ! Double precision real array reallocs
 ! ==================================================================
@@ -825,7 +639,7 @@ new_bounds(1,:) = (/ i1min /)
 new_bounds(2,:) = (/ i1max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -837,7 +651,7 @@ if (NEEDS_ALLOC) then
 end if
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -856,7 +670,7 @@ integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 integer                                :: i1, i2
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -864,7 +678,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -882,7 +696,7 @@ if (NEEDS_COPY) then
     array(i1,i2) = old_array(i1,i2)
   end do
   end do
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -902,7 +716,7 @@ integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 integer                                :: i1, i2, i3
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -910,7 +724,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -930,7 +744,7 @@ if (NEEDS_COPY) then
   end do
   end do
   end do
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -950,7 +764,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -958,7 +772,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min, i4min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max, i4max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -972,58 +786,11 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))= &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_d4
-! ==================================================================
-SUBROUTINE realloc_d5( array, i1min,i1max, i2min,i2max, &
-                              i3min,i3max, i4min,i4max, &
-                              i5min,i5max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='D'
-integer, parameter                      :: rank=5
-real(DP), dimension(:,:,:,:,:), pointer :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-                 b(1,3):b(2,3),b(1,4):b(2,4), &
-                 b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._dp
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-        c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-            c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_d5
 
 ! ==================================================================
 ! Single precision complex array reallocs
@@ -1048,7 +815,7 @@ new_bounds(1,:) = (/ i1min /)
 new_bounds(2,:) = (/ i1max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1060,7 +827,7 @@ if (NEEDS_ALLOC) then
 end if
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1079,7 +846,7 @@ integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 integer                                :: i1, i2
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1087,7 +854,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1105,154 +872,11 @@ if (NEEDS_COPY) then
     array(i1,i2) = old_array(i1,i2)
   end do
   end do
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_c2
-SUBROUTINE realloc_c3( array, i1min,i1max, i2min,i2max, i3min,i3max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                   :: type='c'
-integer, parameter                     :: rank=3
-complex(SP), dimension(:,:,:), pointer :: array, old_array
-integer,                    intent(in) :: i1min, i1max, i2min, i2max
-integer,                    intent(in) :: i3min, i3max
-character(len=*), optional, intent(in) :: name, routine
-logical,          optional, intent(in) :: copy, shrink
-integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
-integer                                :: i1, i2, i3
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2),b(1,3):b(2,3)), stat=IERR )
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._sp
-end if
-if (NEEDS_COPY) then
-!      array(c(1,1):c(2,1),c(1,2):c(2,2)) =  &
-!  old_array(c(1,1):c(2,1),c(1,2):c(2,2))
-  do i3 = c(1,3),c(2,3)
-  do i2 = c(1,2),c(2,2)
-  do i1 = c(1,1),c(2,1)
-    array(i1,i2,i3) = old_array(i1,i2,i3)
-  end do
-  end do
-  end do
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_c3
-SUBROUTINE realloc_c4( array, i1min,i1max, i2min,i2max, &
-                              i3min,i3max, i4min,i4max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                       :: type='C'
-integer, parameter                         :: rank=4
-complex(SP), dimension(:,:,:,:),  pointer  :: array, old_array
-integer,                    intent(in)     :: i1min, i1max, i2min, i2max, &
-                                              i3min, i3max, i4min, i4max
-character(len=*), optional, intent(in)     :: name, routine
-logical,          optional, intent(in)     :: copy, shrink
-integer, dimension(2,rank)                 :: b, c, new_bounds, old_bounds
-integer                                    :: i1, i2, i3, i4
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2),b(1,3):b(2,3),b(1,4):b(2,4)), &
-            stat=IERR )
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._sp
-end if
-if (NEEDS_COPY) then
-!      array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4)) =  &
-!  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))
-  do i4 = c(1,4),c(2,4)
-  do i3 = c(1,3),c(2,3)
-  do i2 = c(1,2),c(2,2)
-  do i1 = c(1,1),c(2,1)
-    array(i1,i2,i3,i4) = old_array(i1,i2,i3,i4)
-  end do
-  end do
-  end do
-  end do
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_c4
-SUBROUTINE realloc_c5( array, i1min,i1max, i2min,i2max, &
-                       i3min,i3max, i4min, i4max, i5min, i5max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='C'
-integer, parameter                      :: rank=5
-complex(SP), dimension(:,:,:,:,:), pointer :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4), &
-  b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._sp
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_c5
 
 ! ==================================================================
 ! Double precision complex array reallocs
@@ -1277,7 +901,7 @@ new_bounds(1,:) = (/ i1min /)
 new_bounds(2,:) = (/ i1max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1289,7 +913,7 @@ if (NEEDS_ALLOC) then
 end if
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1308,7 +932,7 @@ integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 integer                                :: i1, i2
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1316,7 +940,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1334,7 +958,7 @@ if (NEEDS_COPY) then
     array(i1,i2) = old_array(i1,i2)
   end do
   end do
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1353,7 +977,7 @@ integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 integer                                :: i1, i2, i3
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1361,7 +985,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1381,7 +1005,7 @@ if (NEEDS_COPY) then
   end do
   end do
   end do
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1437,52 +1061,6 @@ if (NEEDS_COPY) then
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_z4
-SUBROUTINE realloc_z5( array, i1min,i1max, i2min,i2max, &
-                       i3min,i3max, i4min, i4max, i5min, i5max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='Z'
-integer, parameter                      :: rank=5
-complex(DP), dimension(:,:,:,:,:), pointer :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4), &
-  b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = 0._dp
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_z5
-
 ! ==================================================================
 ! Logical array reallocs
 ! ==================================================================
@@ -1498,7 +1076,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1506,7 +1084,7 @@ new_bounds(1,:) = (/ i1min /)
 new_bounds(2,:) = (/ i1max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1518,7 +1096,7 @@ if (NEEDS_ALLOC) then
 end if
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1536,7 +1114,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1544,7 +1122,7 @@ new_bounds(1,:) = (/ i1min, i2min /)
 new_bounds(2,:) = (/ i1max, i2max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1557,7 +1135,7 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2)) = &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1576,7 +1154,7 @@ logical,          optional, intent(in) :: copy, shrink
 integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
 ASSOCIATED_ARRAY = associated(array)
 if (ASSOCIATED_ARRAY) then
-  old_array => array
+  old_array => array 
   old_bounds(1,:) = lbound(old_array)
   old_bounds(2,:) = ubound(old_array)
 end if
@@ -1584,7 +1162,7 @@ new_bounds(1,:) = (/ i1min, i2min, i3min /)
 new_bounds(2,:) = (/ i1max, i2max, i3max /)
 call options( b, c, old_bounds, new_bounds, copy, shrink )
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1597,100 +1175,11 @@ end if
 if (NEEDS_COPY) then
       array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3)) = &
   old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3))
-  call alloc_count( -size(old_array), type, name, routine )
+  call alloc_count( -size(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
 END SUBROUTINE realloc_l3
-! ==================================================================
-SUBROUTINE realloc_l4( array, i1min,i1max, i2min,i2max, &
-  i3min,i3max, i4min,i4max, &
-name, routine, copy, shrink )
-implicit none
-character, parameter                   :: type='L'
-integer, parameter                     :: rank=4
-logical, dimension(:,:,:,:), pointer   :: array, old_array
-integer,                    intent(in) :: i1min,i1max, i2min,i2max, &
-                                          i3min,i3max, i4min,i4max
-character(len=*), optional, intent(in) :: name, routine
-logical,          optional, intent(in) :: copy, shrink
-integer, dimension(2,rank)             :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-  new_bounds(1,:) = (/ i1min, i2min, i3min, i4min /)
-  new_bounds(2,:) = (/ i1max, i2max, i3max, i4max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = .false.
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_l4
-! ==================================================================
-SUBROUTINE realloc_l5( array, i1min,i1max, i2min,i2max, &
-                       i3min,i3max, i4min, i4max, i5min, i5max, &
-                       name, routine, copy, shrink )
-implicit none
-character, parameter                    :: type='L'
-integer, parameter                      :: rank=5
-logical, dimension(:,:,:,:,:), pointer  :: array, old_array
-integer,                    intent(in)  :: i1min,i1max, i2min,i2max, &
-                                           i3min,i3max, i4min,i4max, &
-                                           i5min,i5max
-character(len=*), optional, intent(in)  :: name, routine
-logical,          optional, intent(in)  :: copy, shrink
-integer, dimension(2,rank)              :: b, c, new_bounds, old_bounds
-ASSOCIATED_ARRAY = associated(array)
-if (ASSOCIATED_ARRAY) then
-  old_array => array
-  old_bounds(1,:) = lbound(old_array)
-  old_bounds(2,:) = ubound(old_array)
-end if
-new_bounds(1,:) = (/ i1min, i2min, i3min, i4min, i5min /)
-new_bounds(2,:) = (/ i1max, i2max, i3max, i4max, i5max /)
-call options( b, c, old_bounds, new_bounds, copy, shrink )
-if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-if (NEEDS_ALLOC) then
-  allocate( array(b(1,1):b(2,1),b(1,2):b(2,2), &
-  b(1,3):b(2,3),b(1,4):b(2,4), &
-  b(1,5):b(2,5)),stat=IERR)
-  call alloc_err( IERR, name, routine, new_bounds )
-  call alloc_count( size(array), type, name, routine )
-  array = .false.
-end if
-if (NEEDS_COPY) then
-  array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))= &
-  old_array(c(1,1):c(2,1),c(1,2):c(2,2),c(1,3):c(2,3),c(1,4):c(2,4), &
-  c(1,5):c(2,5))
-  call alloc_count( -size(old_array), type, name, routine )
-  deallocate(old_array,stat=IERR)
-  call alloc_err( IERR, name, routine, old_bounds )
-end if
-END SUBROUTINE realloc_l5
-
 ! ==================================================================
 ! Realloc routines with assumed lower bound = 1
 !AG: Extremely dangerous -- do not use.
@@ -1906,7 +1395,7 @@ call options( b, c, old_bounds, new_bounds, copy, shrink )
 
 ! Deallocate old space
 if (NEEDS_DEALLOC .and. .not.NEEDS_COPY) then
-  call alloc_count( -size(old_array)*len(old_array), type, name, routine )
+  call alloc_count( -size(old_array)*len(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1922,7 +1411,7 @@ end if
 ! Copy contents and deallocate old space
 if (NEEDS_COPY) then
   array(c(1,1):c(2,1)) = old_array(c(1,1):c(2,1))
-  call alloc_count( -size(old_array)*len(old_array), type, name, routine )
+  call alloc_count( -size(old_array)*len(old_array), type, name, routine ) 
   deallocate(old_array,stat=IERR)
   call alloc_err( IERR, name, routine, old_bounds )
 end if
@@ -1953,7 +1442,7 @@ implicit none
 integer, dimension(:,:),    pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'I', name, routine )
+  call alloc_count( -size(array), 'I', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 
@@ -1965,34 +1454,12 @@ implicit none
 integer, dimension(:,:,:),  pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'I', name, routine )
+  call alloc_count( -size(array), 'I', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 
 end if
 END SUBROUTINE dealloc_i3
-! ==================================================================
-SUBROUTINE dealloc_i4( array, name, routine )
-  implicit none
-  integer, dimension(:,:,:,:), pointer  :: array
-  character(len=*), optional, intent(in) :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'I', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_i4
-! ==================================================================
-SUBROUTINE dealloc_i5( array, name, routine )
-  implicit none
-  integer, dimension(:,:,:,:,:), pointer :: array
-  character(len=*), optional, intent(in)  :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'I', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_i5
 ! ==================================================================
 SUBROUTINE dealloc_E1( array, name, routine )
 
@@ -2003,7 +1470,7 @@ character(len=*), optional, intent(in) :: name
 character(len=*), optional, intent(in) :: routine
 
 if (associated(array)) then
-  call alloc_count( -size(array), 'I', name, routine )
+  call alloc_count( -size(array), 'I', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 
@@ -2017,7 +1484,7 @@ implicit none
 real(SP), dimension(:),     pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'R', name, routine )
+  call alloc_count( -size(array), 'R', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2028,7 +1495,7 @@ implicit none
 real(SP), dimension(:,:),   pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'R', name, routine )
+  call alloc_count( -size(array), 'R', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2039,7 +1506,7 @@ implicit none
 real(SP), dimension(:,:,:), pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'R', name, routine )
+  call alloc_count( -size(array), 'R', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2050,29 +1517,18 @@ implicit none
 real(SP), dimension(:,:,:,:), pointer  :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'R', name, routine )
+  call alloc_count( -size(array), 'R', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
 END SUBROUTINE dealloc_r4
-! ==================================================================
-SUBROUTINE dealloc_r5( array, name, routine )
-  implicit none
-  real(SP), dimension(:,:,:,:,:), pointer :: array
-  character(len=*), optional, intent(in)  :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'R', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-END SUBROUTINE dealloc_r5
 ! ==================================================================
 SUBROUTINE dealloc_d1( array, name, routine )
 implicit none
 real(DP), dimension(:),     pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'D', name, routine )
+  call alloc_count( -size(array), 'D', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2083,7 +1539,7 @@ implicit none
 real(DP), dimension(:,:),   pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'D', name, routine )
+  call alloc_count( -size(array), 'D', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2094,7 +1550,7 @@ implicit none
 real(DP), dimension(:,:,:), pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'D', name, routine )
+  call alloc_count( -size(array), 'D', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2105,22 +1561,11 @@ implicit none
 real(DP), dimension(:,:,:,:), pointer  :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'D', name, routine )
+  call alloc_count( -size(array), 'D', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
 END SUBROUTINE dealloc_d4
-! ==================================================================
-SUBROUTINE dealloc_d5( array, name, routine )
-implicit none
-real(DP), dimension(:,:,:,:,:), pointer :: array
-character(len=*), optional, intent(in)  :: name, routine
-if (associated(array)) then
-  call alloc_count( -size(array), 'D', name, routine )
-  deallocate(array,stat=IERR)
-  call alloc_err( IERR, name, routine )
-end if
-END SUBROUTINE dealloc_d5
 ! ==================================================================
 ! COMPLEX versions
 !
@@ -2129,7 +1574,7 @@ implicit none
 complex(SP), dimension(:),   pointer   :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'C', name, routine )
+  call alloc_count( -size(array), 'C', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2140,51 +1585,18 @@ implicit none
 complex(SP), dimension(:,:),  pointer  :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'C', name, routine )
+  call alloc_count( -size(array), 'C', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
 END SUBROUTINE dealloc_c2
-! ==================================================================
-SUBROUTINE dealloc_c3( array, name, routine )
-implicit none
-complex(SP), dimension(:,:,:), pointer :: array
-character(len=*), optional, intent(in) :: name, routine
-if (associated(array)) then
-  call alloc_count( -size(array), 'C', name, routine )
-  deallocate(array,stat=IERR)
-  call alloc_err( IERR, name, routine )
-end if
-END SUBROUTINE dealloc_c3
-! ==================================================================
-SUBROUTINE dealloc_c4( array, name, routine )
-implicit none
-complex(SP), dimension(:,:,:,:),  pointer  :: array
-character(len=*), optional, intent(in) :: name, routine
-if (associated(array)) then
-  call alloc_count( -size(array), 'C', name, routine )
-  deallocate(array,stat=IERR)
-  call alloc_err( IERR, name, routine )
-end if
-END SUBROUTINE dealloc_c4
-! ==================================================================
-SUBROUTINE dealloc_c5( array, name, routine )
-  implicit none
-  complex(SP), dimension(:,:,:,:,:), pointer :: array
-  character(len=*), optional, intent(in)  :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'C', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_c5
 ! ==================================================================
 SUBROUTINE dealloc_z1( array, name, routine )
 implicit none
 complex(DP), dimension(:),   pointer   :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'Z', name, routine )
+  call alloc_count( -size(array), 'Z', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2195,7 +1607,7 @@ implicit none
 complex(DP), dimension(:,:),  pointer  :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'Z', name, routine )
+  call alloc_count( -size(array), 'Z', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2206,7 +1618,7 @@ implicit none
 complex(DP), dimension(:,:,:), pointer :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'Z', name, routine )
+  call alloc_count( -size(array), 'Z', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2223,23 +1635,12 @@ if (associated(array)) then
 end if
 END SUBROUTINE dealloc_z4
 ! ==================================================================
-SUBROUTINE dealloc_z5( array, name, routine )
-  implicit none
-  complex(DP), dimension(:,:,:,:,:), pointer :: array
-  character(len=*), optional, intent(in)  :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'Z', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_z5
-! ==================================================================
 SUBROUTINE dealloc_l1( array, name, routine )
 implicit none
 logical, dimension(:),      pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'L', name, routine )
+  call alloc_count( -size(array), 'L', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2250,7 +1651,7 @@ implicit none
 logical, dimension(:,:),    pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'L', name, routine )
+  call alloc_count( -size(array), 'L', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2261,40 +1662,18 @@ implicit none
 logical, dimension(:,:,:),  pointer    :: array
 character(len=*), optional, intent(in) :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array), 'L', name, routine )
+  call alloc_count( -size(array), 'L', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
 END SUBROUTINE dealloc_l3
-! ==================================================================
-SUBROUTINE dealloc_l4( array, name, routine )
-  implicit none
-  logical, dimension(:,:,:,:), pointer  :: array
-  character(len=*), optional, intent(in) :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'L', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_l4
-! ==================================================================
-SUBROUTINE dealloc_l5( array, name, routine )
-  implicit none
-  logical, dimension(:,:,:,:,:), pointer :: array
-  character(len=*), optional, intent(in)  :: name, routine
-  if (associated(array)) then
-    call alloc_count( -size(array), 'L', name, routine )
-    deallocate(array,stat=IERR)
-    call alloc_err( IERR, name, routine )
-  end if
-  END SUBROUTINE dealloc_l5
 ! ==================================================================
 SUBROUTINE dealloc_s1( array, name, routine )
 implicit none
 character(len=*), dimension(:), pointer :: array
 character(len=*), optional, intent(in)  :: name, routine
 if (associated(array)) then
-  call alloc_count( -size(array)*len(array), 'H', name, routine )
+  call alloc_count( -size(array)*len(array), 'H', name, routine ) 
   deallocate(array,stat=IERR)
   call alloc_err( IERR, name, routine )
 end if
@@ -2331,10 +1710,10 @@ if (ASSOCIATED_ARRAY) then
   ! Check if array bounds have changed
   if ( all(new_bounds==old_bounds) ) then
     ! Old and new arrays are equal. Nothing needs to be done
-    NEEDS_ALLOC   = .false.
+    NEEDS_ALLOC   = .false. 
     NEEDS_DEALLOC = .false.
     NEEDS_COPY    = .false.
-  else
+  else 
 
     ! Want to shrink?
     if (present(shrink)) then
@@ -2347,7 +1726,7 @@ if (ASSOCIATED_ARRAY) then
         .and. all(new_bounds(1,:)>=old_bounds(1,:)) &
         .and. all(new_bounds(2,:)<=old_bounds(2,:)) ) then
       ! Old array is already fine. Nothing needs to be done
-      NEEDS_ALLOC   = .false.
+      NEEDS_ALLOC   = .false. 
       NEEDS_DEALLOC = .false.
       NEEDS_COPY    = .false.
     else
@@ -2378,7 +1757,7 @@ if (ASSOCIATED_ARRAY) then
 
 else
   ! Old array does not exist. Allocate new one
-  NEEDS_ALLOC   = .true.
+  NEEDS_ALLOC   = .true. 
   NEEDS_DEALLOC = .false.
   NEEDS_COPY    = .false.
   final_bounds(1,:) = new_bounds(1,:)
@@ -2417,12 +1796,10 @@ if (ierr/=0) then
      call alloc_error_report(trim(msg),4)
   endif
   if (present(bounds)) then
-    write(msg,'(a)') 'alloc_err: dim, lbound, ubound:'
-    call alloc_error_report(trim(msg),5)
-    do i=1,size(bounds,dim=2)
-       write(msg,'(i3,a,2i10)')  i, ':', bounds(1,i),bounds(2,i)
-       call alloc_error_report(trim(msg),5)
-    enddo
+     write(msg,'(a,i3,2i10)') ('alloc_err: dim, lbound, ubound:',  &
+          i,bounds(1,i),bounds(2,i),                         &
+          i=1,size(bounds,dim=2))            
+     call alloc_error_report(trim(msg),5)
   endif
   call alloc_error_report("alloc_err: end of error report",0)
 end if
@@ -2517,20 +1894,9 @@ END MODULE alloc
 !
 program testalloc
 use alloc, only: re_alloc, de_alloc
-use alloc, only: set_alloc_event_handler
-use alloc, only: set_alloc_error_handler
-
-external :: custom_alloc_memory_event
-external :: custom_alloc_error_report
 
 real, pointer :: x(:) => null()
 real(kind=kind(1.d0)), pointer :: y(:,:) => null()
-real(kind=kind(1.d0)), allocatable :: z(:,:)
-integer :: iostat
-character(len=256) :: errmsg = "-------------------"
-
-call set_alloc_event_handler(custom_alloc_memory_event)
-call set_alloc_error_handler(custom_alloc_error_report)
 
 call re_alloc(x,1,10,"x","testalloc")
 call re_alloc(y,-3,4,1,3,"y","testalloc")
@@ -2539,37 +1905,23 @@ print *, "Shape of y: ", shape(y)
 call de_alloc(x,"x","testalloc")
 call de_alloc(y,"y","testalloc")
 
-
-allocate(z(10000000,10000000),stat=iostat,errmsg=errmsg)
-write(*,*) 'Iostat for large z allocation: ', iostat
-write(*,*) 'Msg large z allocation: ', trim(errmsg)
-write(*,*) 'Size of z: ', size(z)
-
-write(*,*) "This should trigger an error:"
-call re_alloc(y,1,100000,1,100000,"y large","testalloc")
-write(*,*) 'Size of y: ', size(y)
-
 end program testalloc
 !
 ! Handlers
+! Note: In systems with weak symbols, these handlers
+! could be compiled marked as such. (Future extension)
 !
-subroutine custom_alloc_memory_event(bytes,name)
+subroutine alloc_memory_event(bytes,name)
 integer, intent(in) :: bytes
 character(len=*), intent(in) :: name
-if (bytes > 0) then
-   write(*,*) "Custom alloc event: +   allocated ", bytes, "bytes for "//trim(name)
-else
-   write(*,*) "Custom alloc event: - deallocated ", -bytes, "bytes for "//trim(name)
-endif
-end subroutine custom_alloc_memory_event
+write(*,*) "alloc: allocated ", bytes, "bytes for "//trim(name)
+end subroutine alloc_memory_event
 
-subroutine custom_alloc_error_report(name,code)
+subroutine alloc_error_report(name,code)
 character(len=*), intent(in) :: name
 integer, intent(in) :: code
-write(*,*) "Custom alloc error: "//trim(name)
-if (code == 0) then
-   stop
-endif
-end subroutine custom_alloc_error_report
+write(*,*) "alloc error: "//trim(name)
+end subroutine alloc_error_report
 
 #endif
+

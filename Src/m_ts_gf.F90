@@ -26,7 +26,6 @@ module m_ts_GF
 ! checks against array sizes. Thus a call to check_green is advised before 
 ! read_Green!
 ! This routine will also distribute the arrays in an MPI run.
-#include "mpi_macros.f"
 
   use precision, only : dp
 
@@ -52,9 +51,11 @@ contains
     use mpi_siesta
 #endif
     use m_os, only : file_exist
+    use m_spin, only : spin
     use m_ts_cctype
     use ts_electrode_m
     use m_ts_electrode, only : create_Green
+    use m_ts_electrode_spinor, only : create_Green_spinor
 
     use m_ts_contour_eq
     use m_ts_contour_neq
@@ -161,8 +162,11 @@ contains
       call MPI_Bcast(errorGF,1,MPI_Logical,0,MPI_Comm_World,MPIerror)
 #endif
     else
-      
-      call create_Green(El, ucell, nkpnt, kpoint, kweight, NEn, ce)
+      if ( spin%none .or. spin%Col) then
+        call create_Green(El, ucell, nkpnt, kpoint, kweight, NEn, ce)
+      else
+        call create_Green_spinor(El, ucell, nkpnt, kpoint, kweight, NEn, ce)
+      end if
 
     end if
 
@@ -200,8 +204,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_Bcast, MPI_Send, MPI_Recv
     use mpi_siesta, only : MPI_Sum, MPI_Integer, MPI_Double_Complex
-    use mpi_siesta, only : MPI_Comm_World
-    USE_MPI_ONLY_STATUS
+    use mpi_siesta, only : MPI_Status_Size, MPI_Comm_World
 #endif
 
 ! *********************
@@ -232,8 +235,7 @@ contains
     integer :: read_Size, read_Size_HS
 
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: Status
+    integer :: MPIerror, Status(MPI_Status_Size)
 #endif
 
     complex(dp) :: ZE_cur
@@ -259,6 +261,9 @@ contains
 
     ! Initial size of minimal size with expansion
     read_Size_HS = El%no_used ** 2 * El%Bloch%size() ! no_GS * no_GS * nq
+    if (El%nspin > 2) then
+       read_Size_HS = 4 * read_Size_HS
+    end if
     select case ( El%pre_expand )
     case ( 0 )
        ! Nothing is pre-expanded
@@ -415,9 +420,11 @@ contains
 #endif
 
     use ts_electrode_m
+    use m_spin,     only : spin
     use m_ts_cctype
     use m_ts_electrode, only: calc_next_GS_Elec
-      
+    use m_ts_electrode_spinor, only: calc_next_GS_Elec_spinor
+
     integer, intent(in) :: ispin, ikpt
     real(dp), intent(in) :: bkpt(3)
     type(ts_c_idx), intent(in) :: cE
@@ -545,15 +552,25 @@ contains
           ! This is necessary for the expansion to work.
           if ( present(DOS) ) then
             j = Elecs(i)%no_u
-            call calc_next_GS_Elec(Elecs(i),ispin,kpt,c%e, &
-                nzwork, zwork, DOS(1:j,i) , T(i) )
+            if ( spin%none .or. spin%Col ) then
+              call calc_next_GS_Elec(Elecs(i),ispin,kpt,c%e, &
+                  nzwork, zwork, DOS(1:j,i) , T(i) )
+            else
+              call calc_next_GS_Elec_spinor(Elecs(i),kpt,c%e, &
+                  nzwork, zwork, DOS(1:j,i) , T(i) )
+            end if
 #ifdef TBT_PHONON
              ! For phonons, we also require a factor of 2 * omega
              DOS(1:j,i) = 2._dp * real(cE%e,dp) * DOS(1:j,i)
 #endif
           else
-             call calc_next_GS_Elec(Elecs(i),ispin,kpt,c%e, &
+            if ( spin%none .or. spin%Col ) then
+              call calc_next_GS_Elec(Elecs(i),ispin,kpt,c%e, &
                   nzwork, zwork)
+            else
+              call calc_next_GS_Elec_spinor(Elecs(i),kpt,c%e, &
+                  nzwork, zwork)
+            end if
           end if
        end if
     end do
@@ -563,7 +580,6 @@ contains
 #endif
 
   end subroutine read_next_GS
-
 
 ! This routine requires a call to check_Green before.
 ! It will return the k-points of the electrode Green function file

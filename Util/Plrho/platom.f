@@ -13,8 +13,6 @@ c ************ Input ***********************************
 c character*(*) sname : System name
 c ******************************************************
 
-      use units, only: Ang
-
       implicit      none
       character*(*) sname
       real          alpha, beta, gamma
@@ -79,7 +77,7 @@ c       Draw bonds
           if (ja .le. ia) goto 10
           rij = sqrt( r2ij(jn) )
           range = (ratom(iza(ia))+ratom(iza(ja))) *
-     .            rtol * Ang
+     .            rtol / 0.5292d0
           if ( rij .gt. rijmin .and.
      .         rij .lt. range ) then
             do ix = 1,3

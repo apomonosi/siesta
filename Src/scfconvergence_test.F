@@ -15,7 +15,6 @@
      $                                conv_harris, conv_freeE,
      $                                converged)
       use precision, only: dp
-      use option_charges_m, only: OPT_CHARGE_SCF
       USE siesta_options
       use siesta_cml
       use m_wallclock, only : wallclock
@@ -28,15 +27,13 @@
       use dftu_specs,    only: switch_dftu, dTol_dftupop
       use m_dftu,        only: DFTU_dPop
 
-      use dm_charge_m,  only: dm_charge
-
       use m_ts_global_vars, only: TSrun
       use m_ts_options,  only: ts_dQtol, ts_converge_dQ
 
       use sparse_matrices, only:  Dscf, S, numh, listhptr, listh, maxnh
       use siesta_geom, only: na_u, isa
-      use atomlist, only:    no_l, no_u, lasto, iaorb, iphorb, indxuo
-      use m_spin,           only: h_spin_dim, SpOrb, spin
+      use atomlist, only:    no_u, lasto, iaorb, iphorb, indxuo
+      use m_spin,           only: h_spin_dim, SpOrb
 
       implicit none
 
@@ -83,23 +80,19 @@
       endif
 
 !     Print spin polarization at each SCF step if requested before mixing
-      if ( option_charges%spin%run(OPT_CHARGE_SCF) ) then
-         call dm_charge(spin, no_l, numh, listhptr,
-     &               S, Dscf, dummy_qspin)
+      if (spndeb) then
          call print_spin(dummy_qspin)
       endif
-
 !     Print populations at each SCF step if requested before mixing ......
-      if ( option_charges%mulliken%run(OPT_CHARGE_SCF) ) then
+      if (muldeb) then
         if (ionode) write (6,"(/a)") 'Using DM_out for analysis:'
         if ( SpOrb .and. orbmoms) then
            call moments( 1, na_u, no_u, maxnh, numh, listhptr,
      .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
      .           indxuo )
         endif
-
-        call mulliken( option_charges%mulliken%format, 
-     &                 na_u, no_u, maxnh,
+        ! Call this unconditionally
+        call mulliken( mullipop, na_u, no_u, maxnh,
      &                 numh, listhptr, listh, S, Dscf, isa,
      &                 lasto, iaorb, iphorb )
       endif
@@ -180,7 +173,7 @@
      &         dQ
          end if
 
-         if ( is_DFTU_conv ) then
+	 if ( is_DFTU_conv ) then
            ! Inform of DFT+U population convergence
            write(6,"(a)") 
      &         "DFT+U population converged by dTol_pop criteria:"

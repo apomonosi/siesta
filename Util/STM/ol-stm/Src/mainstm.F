@@ -12,7 +12,7 @@
 !     LDOS needed to simulate STM images or STS curves.
 !     Input:
 !     - WFSX file
-!     - .DIM and .PLD files
+!     - .DIM and .PLD files      
 !     - .ion files
 !     - .VH file (Only if STM.MaxZ >= STM.RefZ)
 !
@@ -24,7 +24,7 @@
 !     - A 'gridfunc' file with a single plane perpendicular to Z, and using
 !     the 'spin' dimension to store values for different energies.
 !     - An auxiliary file with the values of the energy used in sampling.
-
+      
 ! Coded by P. Ordejon, November 2004
 ! Modified by N. Lorente, August 2005
 ! Re-structured, adapted to NC/SOC, and extended to STS: Alberto Garcia, March 2019
@@ -32,10 +32,8 @@
 
       USE PRECISION, only:dp
       USE BASIS_IO, only: read_basis_ascii
-      use chemical, only: read_chemical_types
       USE LISTSC_MODULE, ONLY: LISTSC_INIT
       USE FDF
-      use units, only: inquire_unit
       use broadening, only: width, gaussian_broadener
 
       IMPLICIT NONE
@@ -72,8 +70,6 @@
       logical :: want_sts
       EXTERNAL :: REDATA, REINITSTM, VOLCEL
 
-      external :: die
-
 C ****** READ FROM SIESTA **********************************************
 ! integer ns                  : Total number of species
 C INTEGER NO_U                : Total number of orbitals in the unit cell
@@ -98,7 +94,7 @@ C                               (units in bohrs)
 
 C ****** INFORMATION FOR 3D GRID ***************************
 C INTEGER NPX, NPY, NPZ       : Number of points generated along x and y
-C                               (and z for 3D grids)
+C                               (and z for 3D grids) 
 C INTEGER IUNITCD             : Units of the charge density
 C REAL*8  ZREF                : Position of reference plane for wf. extrapol.
 C REAL*8  ZMIN, ZMAX          : Limits of the 3D grid for z-axis
@@ -108,7 +104,6 @@ C REAL*8  ARMUNI              : Conversion factors for the charge density
       FILEIN  = 'stdin'
       FILEOUT = 'out.fdf'
       CALL FDF_INIT(FILEIN,FILEOUT)
-      call fdf_set_unit_handler(inquire_unit)
 
       WRITE(6,*)
       WRITE(6,*) 'STM/STS Simulation program' //
@@ -135,7 +130,6 @@ C Read some variables from SIESTA --------------------------------------
      .             CELL, NSC, XA, RMAXO )
 
 C Read the information about the basis set -----------------------------
-      call read_chemical_types( )
       CALL READ_BASIS_ASCII(ns)
 
 C Initialize listsc ----------------------------------------------------
@@ -176,7 +170,7 @@ C Calculate unit cell vectors
 
       ! The file is now positioned to start reading wfs in routines 'stm' or 'sts'
 
-      CALL READSTM( VOLUME,
+      CALL READSTM( VOLUME, 
      .     IUNITCD, NPX, NPY, NPZ, ZREF, ZMIN, ZMAX, EMAX, EMIN,
      .     ARMUNI )
 
@@ -196,20 +190,20 @@ C Calculate unit cell vectors
 
 ! STS calculations can be done on several planes perpendicular to z
 ! at the same time. But note that the resulting data file might be large.
-! It can be argued that a single point, or line, might be enough. But
-! we can easily reuse the code for 'stm' in the 'sts' routine. In
+! It can be argued that a single point, or line, might be enough. But      
+! we can easily reuse the code for 'stm' in the 'sts' routine. In 
 ! postprocessing the extra information can be filtered.
 ! Besides, for the "projection" technique we need a full XY-unit cell,
-! since we need to fourier-transform the wavefunctions.
+! since we need to fourier-transform the wavefunctions.      
 
       ne = fdf_get('STS.NumberOfPoints',1)
       want_sts = (ne > 1)
-
+      
       if (want_sts) then
 
            ! Later: use function pointers for broadener
            width = fdf_get('STS.broadening',0.2_dp)  ! in eV
-
+          
            CALL STS ( NA_S, NO_S, NO_U, MAXNA, nspin,
      $               nspin_blocks, non_coll,
      .               ISA, IPHORB, INDXUO, LASTO, XA, CELL, UCELL,
@@ -228,7 +222,7 @@ C Calculate unit cell vectors
      .               ARMUNI, IUNITCD, RMAXO )
 
         endif
-
+        
         call io_close(wf_unit)
 
       END PROGRAM MAINSTM

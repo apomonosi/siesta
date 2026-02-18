@@ -88,6 +88,10 @@ contains
         nq = 1
       end if
     end if
+    if ( El%nspin > 2 ) then
+      no_used = 2 * no_used
+      no_tot  = 2 * no_tot
+    end if
     
     ! Save energy
     E = cE%e
@@ -473,7 +477,11 @@ contains
       if ( El%pre_expand == 1 .and. El%bloch%size() > 1 ) then
         
         ! Note that this is because the interface for H and S
-        no = El%no_used
+        if ( El%nspin > 2 ) then
+          no = El%no_used * 2
+        else
+          no = El%no_used
+        end if
 !$OMP parallel do default(shared), private(iuo,juo)
         do juo = 1 , no
           do iuo = 1 , no_s
@@ -499,6 +507,7 @@ contains
       end if
       
     else if ( El%repeat ) then
+      if ( El%nspin > 2 ) call die("update_UC_expansion_A: not for NC")
       call repeat(H, S, GS)
     else
       call El%bloch%unfold_HS_G(El%bkpt_cur, no_u, H, S, GS, Zenergy, HSE, GSE)
@@ -685,6 +694,7 @@ contains
     if ( no_u == no_s ) then
       call die('update_UC_expansion_A: error!')
     else if ( El%repeat ) then
+      if ( El%nspin > 2 ) call die("update_UC_expansion_A: not for NC")
       call repeat()
     else
       call El%Bloch%unfold_M(El%bkpt_cur, no_u, A, AE)

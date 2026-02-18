@@ -7,13 +7,13 @@
 !
 
 !> \brief General purpose of the m_occ_proj module
-!! In this subroutine we compute the projection of the Kohn-Sham orbitals into
-!! the states of a localized basis of LDA+U projectors,
+!! In this subroutine we compute the projection of the Kohn-Sham orbitals into 
+!! the states of a localized basis of LDA+U projectors, 
 !! \f$ \vert \phi_{m}^{I} \rangle \f$.
 !!
 !! Following Ref. \cite Himmetoglu:2014:RHC, Eq. (3)
 !! \f{eqnarray*}{
-!!       n^{I,\sigma}_{mm^\prime} & =
+!!       n^{I,\sigma}_{mm^\prime} & = 
 !!      \langle \phi_{m}^{I} \vert \hat{\rho}^{\sigma} \vert \phi_{m^\prime}^{I} \rangle
 !!      \nonumber \\
 !!       & = \langle \phi_{m}^{I} \vert \left( \sum_{\mu} \vert \phi_{\mu} \rangle \langle \tilde{\phi}^{\mu} \vert \right) \vert \hat{\rho}^{\sigma} \vert
@@ -29,56 +29,56 @@
 !!      \vert \phi_{m^\prime}^{I} \rangle,
 !! \f}
 !! where \f$ \vert \phi_{\mu} \rangle \f$ and \f$ \vert \phi_{\nu} \rangle \f$
-!! are numerical atomic orbitals of the SIESTA basis,
+!! are numerical atomic orbitals of the SIESTA basis, 
 !! \f$ \vert \phi^{\mu} \rangle \f$ and \f$ \vert \phi^{\nu} \rangle \f$
 !! are the duals of the atomic basis, that satisfy
-!! \f$ \langle \phi^{\mu} \vert \phi_{\nu} \rangle =
+!! \f$ \langle \phi^{\mu} \vert \phi_{\nu} \rangle = 
 !!     \langle \phi_{\mu} \vert \phi^{\nu} \rangle = \delta_{\mu \nu} \f$.
 !! In the previous equation, the one-particle density operator
 !! \f$ \hat{\rho}^{\sigma} \f$ is defined as
 !! \f{eqnarray*}{
-!!   \hat{\rho}^{\sigma} = \sum_{\mathbf{k}} \sum_{i}
+!!   \hat{\rho}^{\sigma} = \sum_{\mathbf{k}} \sum_{i} 
 !!   \vert \psi_{\mathbf{k} i}^{\sigma} \rangle
 !!   f_{\mathbf{k} i}^{\sigma}
 !!   \langle \psi_{\mathbf{k} i}^{\sigma} \vert,
 !! \f}
-!! where \f$ \vert \psi_{\mathbf{k} i}^{\sigma} \rangle \f$ are the orthonormal
+!! where \f$ \vert \psi_{\mathbf{k} i}^{\sigma} \rangle \f$ are the orthonormal 
 !! eigenstates of the Kohn-Sham one-particle Hamiltonian.
 !! The LCAO density matrix is then written in terms of the dual LCAO basis,
-!! \f$ \rho^{\sigma}_{\mu \nu} = \langle \phi^{\mu} \vert \hat{\rho}^{\sigma}
+!! \f$ \rho^{\sigma}_{\mu \nu} = \langle \phi^{\mu} \vert \hat{\rho}^{\sigma} 
 !! \vert \phi^{\nu} \rangle \f$.
 !!
-!! These occupations are stored in the pointer "occupation",
+!! These occupations are stored in the pointer "occupation", 
 !! which has four entries,
 !! that would correspond with \f$ {\rm occupation} (m, m^\prime, I, \sigma)
 !! \equiv n^{I,\sigma}_{mm^\prime} \f$.
 !!
-!! It is important to recall that LDA+U projectors,
+!! It is important to recall that LDA+U projectors, 
 !! \f$ \vert \phi_{m}^{I} \rangle \f$  , should be
 !! quite localized functions.  Otherwise the calculated populations
 !! loose their atomic character and physical meaning.
-!! In particular, they should not overlap with projectors belonging to
+!! In particular, they should not overlap with projectors belonging to 
 !! neighbour atoms, as specified in page 29 of Ref. \cite Himmetoglu:2014:RHC.
 !! If this is the case, the projectors form an orthogonal set of functions:
-!! between atoms, the overlap is zero. Within an atom, they are zero as
+!! between atoms, the overlap is zero. Within an atom, they are zero as 
 !! impossed by the inner product of the spherical harmonics.
 !! Therefore, due to the orthogonality, the basis of projectors is the same
 !! as the basis of their duals.
 !!
 !! We also compute the traces of the density matrix for every atom
 !! containing correlated shells
-!! \f$ {\rm tracetot} (I) \equiv n^{I} = \sum_{m} \sum_{\sigma} =
-!!     n^{I \sigma}_{m}\f$,
-!! where \f$ {\rm traceupup} (I) \equiv n^{I \uparrow \uparrow }_{m} =
+!! \f$ {\rm tracetot} (I) \equiv n^{I} = \sum_{m} \sum_{\sigma} = 
+!!     n^{I \sigma}_{m}\f$, 
+!! where \f$ {\rm traceupup} (I) \equiv n^{I \uparrow \uparrow }_{m} = 
 !!    n^{I \uparrow \uparrow}_{mm}\f$, and the same for the
-!!    \f$\downarrow \downarrow \f$, \f$\uparrow \downarrow \f$, and
+!!    \f$\downarrow \downarrow \f$, \f$\uparrow \downarrow \f$, and 
 !! \f$\downarrow \uparrow \f$.
 !!
-!! Finally the total number of correlated electrons and the
+!! Finally the total number of correlated electrons and the 
 !! magnetic moment of every individual atom is computed.
-!! Note that this magnetic moment is computed considering only the
+!! Note that this magnetic moment is computed considering only the 
 !! the charge on the LDA+U projectors (i.e. summing only over the correlated
-!! shell).
+!! shell). 
 !! Therefore, it might be different from the charge computed and written in the
 !! output file under the name of "spin moment:"
 !! Following Ref. \cite Bousquet-10, the total number of
@@ -97,7 +97,7 @@
 !! \f$ m^{I}_{z} = \sum_{m} \left(n^{I \uparrow \uparrow }_{mm} -
 !!                                n^{I \downarrow \downarrow }_{mm} \right) \f$
 !!
-!! The computation of the occupations are parallelized,
+!! The computation of the occupations are parallelized, 
 !! and all the nodes do have access to this information.
 !! The same happens with the traces and the magnetic moment
 !!
@@ -106,14 +106,14 @@
 module m_occ_proj
 
   use precision,     only : dp           ! Double precision
-  complex(dp), dimension(:,:,:,:), pointer, save :: occupation => null()
+  complex(dp), dimension(:,:,:,:), pointer, save :: occupation  
                                          ! Array used to store the
                                          !   occupations of the LDA+U proj.
                                          !   In the notation of Himmetoglu et al
-                                         !   Eq. (3) of Ref.
-                                         !   International Journal of Quantum
+                                         !   Eq. (3) of Ref. 
+                                         !   International Journal of Quantum 
                                          !   Chemistry 114, 14 (2014),
-                                         !   it corresponds to
+                                         !   it corresponds to 
                                          !   n(m,mprime,I,sigma),
                                          !   that corresponds to the projection
                                          !   of the oneparticle density operator
@@ -121,86 +121,64 @@ module m_occ_proj
                                          !   atomic centers of LDA+U projectors,
                                          !   \vert \phi_{I,m}^{\sigma} \rangle
                                          !   First index of occupation:
-                                         !      first LDA+U projector, m
+                                         !      first LDA+U projector, m 
                                          !   Second index of occupation:
                                          !      second LDA+U projector, mprime
                                          !   Third index of occupation:
-                                         !      atomic index where the LDA+U
+                                         !      atomic index where the LDA+U 
                                          !      projectors are centered
                                          !   Fourth index of occupation:
                                          !      spin index
-  complex(dp), dimension(:,:,:,:), pointer, save :: occupation_old => null()
+  complex(dp), dimension(:,:,:,:), pointer, save :: occupation_old  
                                          ! Same as occupations, but in the
                                          !    previous step
-  complex(dp), dimension(:), pointer, save :: traceupup => null()
+  complex(dp), dimension(:), pointer, save :: traceupup
                                          ! Sum over all the magnetic quantum
                                          !    number of the correlated shell
-                                         !    of the (up,up) terms of the
+                                         !    of the (up,up) terms of the 
                                          !    density matrix
-                                         !    n^{I \uparrow \uparrow} =
+                                         !    n^{I \uparrow \uparrow} = 
                                          !      \sum_{m} n^{I \up \up}_{m m}
-  complex(dp), dimension(:), pointer, save :: tracedndn => null()
+  complex(dp), dimension(:), pointer, save :: tracedndn
                                          ! Sum over all the magnetic quantum
                                          !    number of the correlated shell
-                                         !    of the (down,down) terms of the
+                                         !    of the (down,down) terms of the 
                                          !    density matrix
-                                         !    n^{I \downarrow \downarrow} =
+                                         !    n^{I \downarrow \downarrow} = 
                                          !      \sum_{m} n^{I \down \down}_{m m}
-  complex(dp), dimension(:), pointer, save :: traceupdn => null()
+  complex(dp), dimension(:), pointer, save :: traceupdn
                                          ! Sum over all the magnetic quantum
                                          !    number of the correlated shell
-                                         !    of the (up,down) terms of the
+                                         !    of the (up,down) terms of the 
                                          !    density matrix
-                                         !    n^{I \uparrow \downarrow} =
+                                         !    n^{I \uparrow \downarrow} = 
                                          !      \sum_{m} n^{I \up \down}_{m m}
-  complex(dp), dimension(:), pointer, save :: tracednup => null()
+  complex(dp), dimension(:), pointer, save :: tracednup
                                          ! Sum over all the magnetic quantum
                                          !    number of the correlated shell
-                                         !    of the (down,up) terms of the
+                                         !    of the (down,up) terms of the 
                                          !    density matrix
-                                         !    n^{I \downarrow \uparrow} =
+                                         !    n^{I \downarrow \uparrow} = 
                                          !      \sum_{m} n^{I \down \up}_{m m}
-  complex(dp), dimension(:), pointer, save :: tracetot => null()
+  complex(dp), dimension(:), pointer, save :: tracetot
                                          ! Sum over all the magnetic quantum
                                          !    number of the correlated shell
                                          !    of the trace of the
                                          !    density matrix
-                                         !    n^{I} =
-                                         !      \sum_{\sigma} \sum_{m}
+                                         !    n^{I} = 
+                                         !      \sum_{\sigma} \sum_{m} 
                                          !      n^{I \sigma}_{m m}
-  real(dp), dimension(:), pointer, save :: number_corr_electrons => null()
+  real(dp), dimension(:), pointer, save :: number_corr_electrons
                                          ! Number of correlated electrons
                                          !    in a given atom
-  real(dp), dimension(:,:), pointer, save :: magnetic_moment => null()
-                                         ! Magnetic moment of a
+  real(dp), dimension(:,:), pointer, save :: magnetic_moment
+                                         ! Magnetic moment of a 
                                          !   a given atom
 
 CONTAINS
 
-
-subroutine reset_proj_dftu()
-  use alloc,         only : de_alloc
-  implicit none
-
-  call de_alloc( occupation    , 'occupation'    , 'occ_proj_dftu' )
-  call de_alloc( occupation_old, 'occupation_old', 'occ_proj_dftu' )
-
-  call de_alloc( traceupup, 'traceupup', 'occ_proj_dftu' )
-  call de_alloc( tracedndn, 'tracedndn', 'occ_proj_dftu' )
-  call de_alloc( traceupdn, 'traceupdn', 'occ_proj_dftu' )
-  call de_alloc( tracednup, 'tracednup', 'occ_proj_dftu' )
-  call de_alloc( tracetot , 'tracetot',  'occ_proj_dftu' )
-  call de_alloc( number_corr_electrons, 'number_corr_electrons','occ_proj_dftu')
-  call de_alloc( magnetic_moment, 'magnetic_moment', 'occ_proj_dftu' )
-
-  nullify( occupation, occupation_old )
-  nullify( traceupup, tracedndn, traceupdn, tracednup, tracetot )
-  nullify( number_corr_electrons, magnetic_moment )
-end subroutine reset_proj_dftu
-
-
 subroutine occ_proj_dftu
-
+  
   use parallel,      only : Node         ! Local processor number
   use parallel,      only : Nodes        ! Total number of processors in a
                                          !   parallel run
@@ -226,14 +204,14 @@ subroutine occ_proj_dftu
                                          !   previous information is stored
   use atmfuncs,      only : nofis        ! Total number of basis functions for
                                          !   a given atomic species
-  use atmfuncs,      only : rcut         ! Returns cutoff radius of
+  use atmfuncs,      only : rcut         ! Returns cutoff radius of 
                                          !   Kleynman-Bylander projectors and
                                          !   atomic basis orbitals
-  use atmfuncs,      only : orb_gindex   ! Returns the global index of a
+  use atmfuncs,      only : orb_gindex   ! Returns the global index of a 
                                          !   basis orbital
-  use atmfuncs,      only : dftu_gindex  ! Returns the global index of a
+  use atmfuncs,      only : dftu_gindex  ! Returns the global index of a 
                                          !   LDA+U projector
-  use radial,        only : rad_func     ! Derived type where all the
+  use radial,        only : rad_func     ! Derived type where all the 
                                          !   information related with a radial
                                          !   function is stored
   use siesta_geom,   only : isa          ! Species index of each atom
@@ -245,11 +223,11 @@ subroutine occ_proj_dftu
                                          !   Second index: supercell vector
   use siesta_geom,   only : xa           ! Atomic positions
   use atomlist,      only : indxua       ! Index of the equivalent atom in the
-                                         !   unit cell
-  use atomlist,      only : no_s         ! Number of atomic orbitals in the
+                                         !   unit cell 
+  use atomlist,      only : no_s         ! Number of atomic orbitals in the 
                                          !   supercell
-  use atomlist,      only : no_l         ! Number of atomic orbitals in the
-                                         !   unit cell stored in the local node
+  use atomlist,      only : no_l         ! Number of atomic orbitals in the 
+                                         !   unit cell stored in the local node 
   use atomlist,      only : lasto        ! Position of last orbital
                                          !   of each atom
   use atomlist,      only : iphorb       ! Orbital index of each  orbital
@@ -271,9 +249,9 @@ subroutine occ_proj_dftu
   use sparse_matrices, only : listhptr   ! Pointer to start of each row
                                          !   of the hamiltonian matrix
   use sparse_matrices, only : Dscf       ! Density matrix
-  use matel_m,         only : matel      ! Returns the overlap matrix elements
+  use m_new_matel,     only : new_matel  ! Returns the overlap matrix elements
                                          !   between an atomic orbital and a
-                                         !   LDA+U projector
+                                         !   LDA+U projector 
 #ifdef MPI
   use m_mpi_utils, only: globalize_sum
 #endif
@@ -281,7 +259,7 @@ subroutine occ_proj_dftu
 
   implicit none
 
-  integer     :: is                      ! Counter for the loop on atomic
+  integer     :: is                      ! Counter for the loop on atomic 
                                          !   species
   integer     :: io                      ! Counter for the loop on atomic
                                          !   orbitals
@@ -290,16 +268,16 @@ subroutine occ_proj_dftu
   integer     :: io_local                ! Counter for the loop on atomic
                                          !   orbitals in the local node
   integer     :: ka                      ! Counter for the loop on atoms
-  integer     :: ina                     ! Counter for the loop on neighbour
+  integer     :: ina                     ! Counter for the loop on neighbour 
                                          !   atoms
-  integer     :: ino                     ! Counter for the loop on neighbour
+  integer     :: ino                     ! Counter for the loop on neighbour 
                                          !   orbitals
-  integer     :: jno                     ! Counter for the second loop on
+  integer     :: jno                     ! Counter for the second loop on 
                                          !   neighbour orbitals
   integer     :: iproj                   ! Counter for the loop LDA+U projectors
   integer     :: mproj                   ! Counter for the loop LDA+U projectors
   integer     :: mprojprime              ! Counter for the loop LDA+U projectors
-  integer     :: ix                      ! Counter for the loop on
+  integer     :: ix                      ! Counter for the loop on 
                                          !   cartesian directions
   integer     :: ispin                   ! Counter for the loop on spins
   integer     :: io_global               ! Global index of the atomic orbital
@@ -314,17 +292,17 @@ subroutine occ_proj_dftu
   integer     :: ks                      ! Kind of atomic species for atom kua
   integer     :: ndftuproj               ! Number of LDA+U projectors for atom
                                          !  kua
-  real(dp)    :: rmaxo                   ! Maximum range of the atomic orbitals
+  real(dp)    :: rmaxo                   ! Maximum range of the atomic orbitals 
   real(dp)    :: rmaxdftu                ! Maximum range of the lda+U projectors
-  real(dp)    :: rmax                    ! Total range to search the neighbour
+  real(dp)    :: rmax                    ! Total range to search the neighbour 
                                          !   of a LDA+U projector
   integer     :: nneig                   ! Number of neighbour atoms
-  integer     :: number_neig_orb         ! Number of neighbour orbitals of a
+  integer     :: number_neig_orb         ! Number of neighbour orbitals of a 
                                          !   given LDA+U projector
   integer     :: ia                      ! Neighbour atom
   real(dp)    :: rki                     ! Distance (in Bohr) between the two
                                          !   neighbour atoms
-  real(dp)    :: rci                     ! Cutoff distance of a given atomic
+  real(dp)    :: rci                     ! Cutoff distance of a given atomic 
                                          !   orbital
   real(dp)    :: Sik                     ! Overlap between a LDA+U projector
                                          !   and the first atomic orbital
@@ -338,7 +316,7 @@ subroutine occ_proj_dftu
                                          !   complex (2x2) matrices
   integer, save :: max_number_dftu_proj = 0
                                          ! Maximum number of LDA+U projectors
-  integer, save :: maxno = 500           ! Maximum number of basis orbitals
+  integer, save :: maxno = 500           ! Maximum number of basis orbitals 
                                          !   overlapping a KB projector
   logical          within                ! Determines whether an atomic orbital
                                          !    and a LDA+U projector overlaps
@@ -346,26 +324,26 @@ subroutine occ_proj_dftu
   logical, save :: firstime = .true.     ! First time that this
                                          !   subroutine is called?
   logical, dimension(:), pointer ::  listedall
-                                         ! List of all orbitals needed for
+                                         ! List of all orbitals needed for 
                                          !   this node
   logical, dimension(:), pointer ::  listed
                                          ! Determines whether a given orbital
                                          !   in the unit cell is neighbour of
                                          !   another orbital in the supercell
-  integer, dimension(:), pointer :: iono ! The nno-eme neighbour orbital
+  integer, dimension(:), pointer :: iono ! The nno-eme neighbour orbital 
                                          !   of the LDA+U projector is io,
-                                         !   where io runs between 1 and
+                                         !   where io runs between 1 and 
                                          !   the total number of orbitals
                                          !   in the supercell
-  integer, dimension(:), pointer :: iano ! The nno-eme neighbour orbital
-                                         !   of the LDA+U projector belongs
-                                         !   to atom ia, where ia runs between
+  integer, dimension(:), pointer :: iano ! The nno-eme neighbour orbital 
+                                         !   of the LDA+U projector belongs 
+                                         !   to atom ia, where ia runs between 
                                          !   1 and the total number of atoms
                                          !   in the supercell
   real(dp), dimension(:,:), pointer :: xno
-                                         ! The relative position between
+                                         ! The relative position between 
                                          !   the center of the LDA+U proj.
-                                         !   and the center of the nno-eme
+                                         !   and the center of the nno-eme 
                                          !   neighbour orbital is xno
   real(dp), dimension(:,:), pointer :: Ski
                                          ! Overlap between a LDA+U projector
@@ -373,7 +351,7 @@ subroutine occ_proj_dftu
                                          !   First  index: index of the LDA+U pr
                                          !   Second index: nno-eme neighbour
   real(dp), dimension(:,:,:), pointer :: grSki
-                                         ! Gradient of the overlap between a
+                                         ! Gradient of the overlap between a 
                                          !   LDA+U projector
                                          !   and a neighbour atomic orbital
                                          !   First  index: cartesian direction
@@ -382,7 +360,7 @@ subroutine occ_proj_dftu
   real(dp), dimension(:,:), pointer :: Di
                                          ! Density matrix row of an orbital
                                          !   in the unit cell
-                                         !   First  index: orbital in the
+                                         !   First  index: orbital in the 
                                          !                 supercell
                                          !   Second index: spin index
 
@@ -391,9 +369,9 @@ subroutine occ_proj_dftu
   type(rad_func),      pointer :: pp
 
 #ifdef MPI
-  complex(dp), dimension(:,:), pointer :: buffer1 => null() ! Variable used
-                                         ! Variable used to reduce the
-                                         ! occupations and transfer it to
+  complex(dp), dimension(:,:), pointer :: buffer1 => null() ! Variable used 
+                                         ! Variable used to reduce the 
+                                         ! occupations and transfer it to 
                                          ! all nodes
 #endif
 
@@ -425,28 +403,30 @@ subroutine occ_proj_dftu
 !   Allocate local array to store the occupations of the
 !   LDA+U projectors
     nullify( occupation, occupation_old )
-    call re_alloc( occupation, 1, max_number_dftu_proj, 1,max_number_dftu_proj,&
-                   1, na_u, 1, spin%Grid, 'occupation', 'occ_proj_dftu' )
-
-    call re_alloc( occupation_old, 1, max_number_dftu_proj, 1, &
-                   max_number_dftu_proj,&
-                   1, na_u, 1, spin%Grid, 'occupation_old', 'occ_proj_dftu' )
-    occupation     = 0.0_dp
+    allocate( occupation( max_number_dftu_proj,   &
+ &                        max_number_dftu_proj,   &
+ &                        na_u,                   &
+ &                        spin%Grid) )
+    call memory( 'A', 'D', size(occupation), 'occ_proj_dftu' )
+    allocate( occupation_old( max_number_dftu_proj,       &
+ &                            max_number_dftu_proj,       &
+ &                            na_u,                       &
+ &                            spin%Grid) )
+    call memory( 'A', 'D', size(occupation_old), 'occ_proj_dftu' )
     occupation_old = 0.0_dp
 
 !   Allocate array to store the traces of the occupations on the
 !   LDA+U projectors
     nullify( traceupup, tracedndn, traceupdn, tracednup, tracetot )
     nullify( number_corr_electrons, magnetic_moment )
-    call re_alloc( traceupup, 1 , na_u, 'traceupup', 'occ_proj_dftu' )
-    call re_alloc( tracedndn, 1 , na_u, 'tracedndn', 'occ_proj_dftu' )
-    call re_alloc( traceupdn, 1 , na_u, 'traceupdn', 'occ_proj_dftu' )
-    call re_alloc( tracednup, 1 , na_u, 'tracednup', 'occ_proj_dftu' )
-    call re_alloc( tracetot,  1 , na_u, 'tracetot',  'occ_proj_dftu' )
-    call re_alloc( number_corr_electrons, 1, na_u, 'number_corr_electrons',&
-                   'occ_proj_dftu' )
-    call re_alloc( magnetic_moment, 1, 3, 1, na_u, 'magnetic_moment',&
-                   'occ_proj_dftu' )
+    allocate( traceupup( na_u ) )
+    allocate( tracedndn( na_u ) )
+    allocate( traceupdn( na_u ) )
+    allocate( tracednup( na_u ) )
+    allocate( tracetot(  na_u ) )
+    allocate( number_corr_electrons( na_u ) )
+    allocate( magnetic_moment( 3, na_u ) )
+
     firstime  = .false.
   endif
 
@@ -461,7 +441,8 @@ subroutine occ_proj_dftu
 
 ! Allocate local variable for the density matrix
   nullify( Dij )
-  call re_alloc( Dij, 1, spin%grid, 'Dij', 'occ_proj_dftu' )
+  allocate( Dij( spin%grid ) )
+  call memory( 'A', 'D', size(Dij), 'occ_proj_dftu' )
 
 ! Make list of all orbitals needed for this node
   call re_alloc( listedall, 1, no_s,                        &
@@ -526,13 +507,13 @@ subroutine occ_proj_dftu
 !! For debugging
 !  write(6,'(a,i5)')                                         &
 ! &  'occ_proj_dftu: nspin = ' ,                             &
-! &                  spin%dm
+! &                  spin%dm  
 !  write(6,'(a,i5)')                                         &
 ! &  'occ_proj_dftu: maximum number of LDA+U projectors = ', &
 ! &                  max_number_dftu_proj
 !  write(6,'(a,3f12.5)')                                     &
 ! &  'occ_proj_dftu: rmaxo, rmaxdftu, rmax = ' ,             &
-! &                  rmaxo, rmaxdftu, rmax
+! &                  rmaxo, rmaxdftu, rmax 
 !! End debugging
 
 ! Initialize occupations
@@ -550,7 +531,7 @@ subroutine occ_proj_dftu
 !   We continue only if this atom has a non-vanishing number of LDA+U projectors
     if( ndftuproj == 0 ) cycle
 
-!   Find neighbour atoms within a range equal to the
+!   Find neighbour atoms within a range equal to the 
 !   maximum cutoff of the LDA+U projectors +
 !   maximum cutoff of the atomic orbitals
     call mneighb( scell, rmax, na_s, xa, ka, 0, nneig )
@@ -581,21 +562,21 @@ subroutine occ_proj_dftu
 
 !         Find if orbital is within range
           within = .false.
-!         Let us check whether this atomic orbital overlaps with
+!         Let us check whether this atomic orbital overlaps with 
 !         any of the LDA+U projectors of the atom ka
           do mproj = 1, ndftuproj
 !           Find the index of the LDA+U projector
             dftuidx = spp%pjdftu_index(mproj)
-!           Point to the place where all the information on this
+!           Point to the place where all the information on this 
 !           LDA+U projector is stored
             pp => spp%pjdftu(dftuidx)
 !           Check whether the distance between the atom ka and the neighbour
-!           atom is larger or smaller than the sum of the cutoffs of the
+!           atom is larger or smaller than the sum of the cutoffs of the 
 !           LDA+U projector plus the atomic orbital
             if ( rci + pp%cutoff > rki ) within = .true.
           enddo
 
-!         Find the overlap between the neighbour orbitals and
+!         Find the overlap between the neighbour orbitals and 
 !         the LDA+U projectors
           if (within) then
 !         Check maxno - if too small then increase array sizes
@@ -636,7 +617,7 @@ subroutine occ_proj_dftu
 !           and a neighbour atomic orbital
             do mproj = 1, ndftuproj
               kg  = dftu_gindex(ks,mproj)
-              call matel( 'S', kg, ig, xki(1:3,ina),        &
+              call new_matel( 'S', kg, ig, xki(1:3,ina),        &
  &                            Ski(mproj,number_neig_orb),       &
  &                            grSki(1:3,mproj,number_neig_orb) )
             enddo
@@ -693,7 +674,7 @@ subroutine occ_proj_dftu
         if ( listed(jo) ) then
 
 !         Loop on LDA+U projectors of atom ka
-          do mproj = 1, ndftuproj
+          do mproj = 1, ndftuproj      
 
 !           Find the overlap between projector and the first atomic orbital
             Sik = Ski(mproj,ino)
@@ -705,12 +686,12 @@ subroutine occ_proj_dftu
               Sjk = Ski(mprojprime,jno)
 
 !             Transform the density matrix between the two atomic orbital
-!             in a complex (2x2) matrix
-!             When SO coupling is considered, the density matrix and the
-!             Hamiltonian must be globally Hermitian
+!             in a complex (2x2) matrix 
+!             When SO coupling is considered, the density matrix and the 
+!             Hamiltonian must be globally Hermitian 
 !             (see last sentence of Section 7 of the
 !             technical SIESTA paper in JPCM 14, 2745 (2002).
-!             However, in diag3k, the sign of the imaginary part of the
+!             However, in diag3k, the sign of the imaginary part of the 
 !             (up,down) matrix elements is changed:
 !             Dnew(ind,1) = Dnew(ind,1) + real(D11,dp)
 !             Dnew(ind,2) = Dnew(ind,2) + real(D22,dp)
@@ -720,7 +701,7 @@ subroutine occ_proj_dftu
 !             Dnew(ind,6) = Dnew(ind,6) + aimag(D22)
 !             Dnew(ind,7) = Dnew(ind,7) + real(D21,dp)
 !             Dnew(ind,8) = Dnew(ind,8) + aimag(D21)
-!             In the subroutines to compute the corresponding DFT+U
+!             In the subroutines to compute the corresponding DFT+U 
 !             matrix elements:
 !             - We change locally the sign of this imaginary part, so the
 !               density matrix recovers all its properties
@@ -731,7 +712,7 @@ subroutine occ_proj_dftu
               Dij(4) =cmplx( Di(jo,7), Di(jo,8),           kind = dp )
 
               do ispin = 1, spin%grid
-!               Compute the product of the density matrix times the two
+!               Compute the product of the density matrix times the two 
 !               overlaps between the LDA+U projector and the two atomic orbitals
 !               as written in the documentation of the header
                 occupation(mproj,mprojprime,kua,ispin) =         &
@@ -740,7 +721,7 @@ subroutine occ_proj_dftu
 ! &                Dij * Sik * Sjk/(3.0_dp-dble(spin%grid))
               enddo
 
-            enddo
+            enddo 
 
           enddo  ! End loop on the LDA+U projectors of atom ka
 
@@ -792,13 +773,13 @@ subroutine occ_proj_dftu
       tracednup(ka)  = tracednup(ka) + occupation(iproj,iproj,ka,4)
       tracetot(ka)   = tracetot(ka)  + occupation(iproj,iproj,ka,1) + &
  &                                     occupation(iproj,iproj,ka,2)
-    enddo
+    enddo 
     number_corr_electrons(ka) = real(traceupup(ka) + tracedndn(ka), kind = dp)
     magnetic_moment(1,ka) = real(traceupdn(ka) + tracednup(ka), kind = dp)
     magnetic_moment(2,ka) = real((traceupdn(ka) - tracednup(ka)) * &
  &                               cmplx(0.0_dp, 1.0_dp, kind=dp) )
     magnetic_moment(3,ka) = real(traceupup(ka) - tracedndn(ka), kind = dp)
-  enddo
+  enddo 
 
 !! For debugging
 !  do ka = 1, na_u
@@ -813,8 +794,8 @@ subroutine occ_proj_dftu
 ! &          'occ_proj_dftu : Node, Nodes, ka, mproj, mprojprime, spin, occ =',&
 ! &                           Node, Nodes, ka, mproj, mprojprime, ispin,       &
 ! &                           occupation(mproj,mprojprime,ka,ispin)
-!        enddo
-!      enddo
+!        enddo 
+!      enddo 
 !    enddo
 !    write(6,'(a,3i5,2f12.5)')' occ_proj_dftu: Node, Nodes, ka, traceupup = ' , &
 ! &    Node, Nodes, ka, traceupup(ka)
@@ -830,21 +811,21 @@ subroutine occ_proj_dftu
 ! &    Node, Nodes, ka, number_corr_electrons(ka)
 !    write(6,'(a,3i5,3f12.5)')' occ_proj_dftu: Node, Nodes, ka, magnetic  = ' , &
 ! &    Node, Nodes, ka, magnetic_moment(:,ka)
-!  enddo
+!  enddo 
 !!  call die()
 !! End debugging
 
 ! Deallocate local memory
-  call de_alloc( grSki, name='grSki', routine='occ_proj_dftu' )
-  call de_alloc( Ski,   name='Ski', routine='occ_proj_dftu' )
-  call de_alloc( xno,   name='xno', routine='occ_proj_dftu' )
-  call de_alloc( iono,  name='iono', routine='occ_proj_dftu' )
-  call de_alloc( iano,  name='iano', routine='occ_proj_dftu' )
+  call de_alloc( grSki, name='grSki' )
+  call de_alloc( Ski,   name='Ski' )
+  call de_alloc( xno,   name='xno' )
+  call de_alloc( iono,  name='iono' )
+  call de_alloc( iano,  name='iano' )
 
-  call de_alloc( listedall, name='listedall', routine='occ_proj_dftu' )
-  call de_alloc( listed,    name='listed'   , routine='occ_proj_dftu' )
-  call de_alloc( Dij,       name='Dij'      , routine='occ_proj_dftu' )
-  call de_alloc( Di,        name='Di'       , routine='occ_proj_dftu' )
+  call de_alloc( listedall, name='listedall' )
+  call de_alloc( listed,    name='listed'    )
+  call de_alloc( Dij,       name='Dij'       )
+  call de_alloc( Di,        name='Di'        )
 
 ! Stop time counter
   call timer( 'occ_proj_dftu', 2 )

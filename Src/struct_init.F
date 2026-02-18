@@ -8,7 +8,7 @@
       module m_struct_init
       private
       public :: struct_init
-
+      
       CONTAINS
 
       subroutine struct_init()
@@ -29,8 +29,8 @@
       use files,          only : slabel
       use zmatrix,        only : lUseZmatrix
       use parallel,       only : IOnode
-      use m_steps,        only : inicoor, fincoor
 #ifdef NCDF_4
+      use m_steps, only : inicoor, fincoor
       use m_exp_coord, only : read_exp_coord_options
       use m_exp_coord, only : exp_coord_init
       use m_exp_coord, only : exp_coord_next
@@ -44,7 +44,7 @@
 
       real(dp), external :: volcel
       external :: automatic_cell, bonds, iozm, shaper
-
+      
       character(len=80) :: dummy_str
       logical           :: foundxv, foundzm
       real(dp)          :: local_charnet
@@ -56,8 +56,6 @@
       character(len=22) :: dyntyp
       character(len=60) :: restart_file
       logical :: found_restart, step_back
-
-      external :: die
 
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
@@ -75,13 +73,12 @@
       endif
       ucell = tmp_cell  ! initialize module variable
 
-!     Prepare iza here: it might be needed by ioxv
+!     Prepare iza here: it might be needed by ioxv      
       nullify( iza, va )
       call re_alloc( iza, 1, na_u, 'iza', 'struct_init' )
       call re_alloc( va, 1, 3, 1, na_u, 'va', 'struct_init' )
 
       ! Options read here instead of in siesta_options
-      usesaveddata = fdf_get('UseSaveData',.false.)
       usesavexv = fdf_get('MD.UseSaveXV', usesaveddata)
       usesavezm = fdf_get('MD.UseSaveZM', usesaveddata)
       writic    = fdf_get('WriteCoorInitial', .true.)
@@ -95,7 +92,7 @@
                 if (.not.foundzm) then
                    write(6,'(/,a)') 'siesta: WARNING: ZM file not found'
                 else
-                    write(6,'(/,a)')
+                    write(6,'(/,a)') 
      .        "! Info in XV file prevails over previous structure input"
                 endif
             endif
@@ -165,7 +162,7 @@
               if (.not. found_restart) then
                  ! dt_default = 1.0 (fs)
                  ! The user should not rely on the default here...
-                 ! The parameter dt_default is private to read_options
+                 ! The parameter dt_default is private to read_options 
                  dt = fdf_get('MD.LengthTimeStep',1.0_dp,'fs')
                  xa=xa-dt*va
                  if (IOnode) then
@@ -190,7 +187,7 @@
 
 ! Read cell shape and atomic positions from driver program
       if (siesta_server) then
-        call setPropertyForMaster('atomic_numbers',
+        call setPropertyForMaster('atomic_numbers', 
      .                             na_u, real(iza(:),dp), ' ')
         call coordsFromMaster( na_u, xa, ucell )
       end if
@@ -251,9 +248,9 @@
      .       coords=xa/Ang, elements=elem, atomRefs=cisa)
         call de_alloc( xang, 'xang', 'struct_init' )
 
-        call cmlAddLattice(xf=mainXML, cell=ucell,
+        call cmlAddLattice(xf=mainXML, cell=ucell, 
      .       units='siestaUnits:angstrom', dictref='siesta:ucell')
-        call cmlAddProperty(xf=mainXML, value=trim(shape),
+        call cmlAddProperty(xf=mainXML, value=trim(shape), 
      .       dictref='siesta:shape')
         call cmlEndModule(xf=mainXML)
       endif

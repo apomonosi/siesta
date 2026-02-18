@@ -1,4 +1,3 @@
-#include "mpi_macros.f"
 
       program main
 
@@ -11,9 +10,7 @@
       real(dp)  mypi, pi, pisub
       integer n, myid, numprocs, i, rc, ntotal, ierr
 
-      integer :: myid_sub
-      MPI_COMM_TYPE :: comm_sub
-      MPI_GROUP_TYPE :: group_world, group_sub
+      integer :: comm_sub, group_world, group_sub, myid_sub
       logical :: worker
 
 

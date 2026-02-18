@@ -36,7 +36,6 @@
         ! For threaded MPI
         public :: mpi_thread_single
         public :: mpi_thread_funneled
-        public :: mpi_thread_serialized
 
 
         ! Added by Toby White, <tow21@cam.ac.uk>; 24/03/2005

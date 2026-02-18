@@ -630,12 +630,12 @@ C If third derivative fit
         ! Choose
         if (use_charge_cutoff) then
            nchloc = nchloc_charge
-           write(6,"(a,i6,f10.6)") "Choosing charge chloc cutoff:",
+           write(6,"(a,i3,f10.6)") "Choosing charge chloc cutoff:",
      $          nchloc, rofi(nchloc)
         else
            ! classic behavior
            nchloc = nchloc_vlocal
-           write(6,"(a,i6,f10.6)") "Choosing vlocal chloc cutoff:",
+           write(6,"(a,i3,f10.6)") "Choosing vlocal chloc cutoff:",
      $          nchloc, rofi(nchloc)
         endif
 

@@ -45,11 +45,6 @@ program blacs_prb
 !
   call blacs_pinfo ( proc_me, proc_num )
 
-  if (proc_num < 4 ) then
-     write ( *, '(a)' ) '  You need at least 4 processes for this test'
-!!     stop
-  endif
-     
   if ( proc_me == 0 ) then
     call timestamp ( )
     write ( *, '(a)' ) ' '

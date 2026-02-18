@@ -20,6 +20,6 @@ Siesta program structure
 You can get more information from:
 
 * [Project webpage](http://www.icmab.es/siesta)
-* [Development platform](http://gitlab.com/siesta-project/siesta)
+* [Development platform](http://launchpad.net/siesta)
 
 

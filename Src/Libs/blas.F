@@ -1033,7 +1033,7 @@
       EXTERNAL XERBLA
       INTRINSIC MAX
       DOUBLE PRECISION TEMP
-      INTEGER I,INFO,J,L,NROWA,NROWB
+      INTEGER I,INFO,J,L,NCOLA,NROWA,NROWB
       LOGICAL NOTA,NOTB
       DOUBLE PRECISION ONE,ZERO
       PARAMETER (ONE=1.0D+0,ZERO=0.0D+0)
@@ -1041,8 +1041,10 @@
       NOTB = LSAME(TRANSB,'N')
       IF (NOTA) THEN
           NROWA = M
+          NCOLA = K
       ELSE
           NROWA = K
+          NCOLA = M
       END IF
       IF (NOTB) THEN
           NROWB = K
@@ -5037,19 +5039,19 @@
       RETURN
       END
 ! SOURCE-FILE = /home/nicpa/LA/lapack/BLAS/SRC/zdrot.f
-      SUBROUTINE ZDROT( N, ZX, INCX, ZY, INCY, C, S )
+      SUBROUTINE ZDROT( N, CX, INCX, CY, INCY, C, S )
       INTEGER            INCX, INCY, N
       DOUBLE PRECISION   C, S
-      COMPLEX*16         ZX( * ), ZY( * )
+      COMPLEX*16         CX( * ), CY( * )
       INTEGER            I, IX, IY
       COMPLEX*16         CTEMP
       IF( N.LE.0 )
      $   RETURN
       IF( INCX.EQ.1 .AND. INCY.EQ.1 ) THEN
          DO I = 1, N
-            CTEMP = C*ZX( I ) + S*ZY( I )
-            ZY( I ) = C*ZY( I ) - S*ZX( I )
-            ZX( I ) = CTEMP
+            CTEMP = C*CX( I ) + S*CY( I )
+            CY( I ) = C*CY( I ) - S*CX( I )
+            CX( I ) = CTEMP
          END DO
       ELSE
          IX = 1
@@ -5059,9 +5061,9 @@
          IF( INCY.LT.0 )
      $      IY = ( -N+1 )*INCY + 1
          DO I = 1, N
-            CTEMP = C*ZX( IX ) + S*ZY( IY )
-            ZY( IY ) = C*ZY( IY ) - S*ZX( IX )
-            ZX( IX ) = CTEMP
+            CTEMP = C*CX( IX ) + S*CY( IY )
+            CY( IY ) = C*CY( IY ) - S*CX( IX )
+            CX( IX ) = CTEMP
             IX = IX + INCX
             IY = IY + INCY
          END DO
@@ -5099,7 +5101,7 @@
       EXTERNAL XERBLA
       INTRINSIC DCONJG,MAX
       COMPLEX*16 TEMP
-      INTEGER I,INFO,J,L,NROWA,NROWB
+      INTEGER I,INFO,J,L,NCOLA,NROWA,NROWB
       LOGICAL CONJA,CONJB,NOTA,NOTB
       COMPLEX*16 ONE
       PARAMETER (ONE= (1.0D+0,0.0D+0))
@@ -5111,8 +5113,10 @@
       CONJB = LSAME(TRANSB,'C')
       IF (NOTA) THEN
           NROWA = M
+          NCOLA = K
       ELSE
           NROWA = K
+          NCOLA = M
       END IF
       IF (NOTB) THEN
           NROWB = K

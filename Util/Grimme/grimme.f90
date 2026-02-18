@@ -8,18 +8,17 @@
 
 ! This program has been implemented by:
 !  Nick Papior, 2014
-! Program for creating an output for fdf with the
+! Program for creating an output for fdf with the 
 ! input of a standard input file
 program grimme_program
 
   use fdf
-  use units, only: inquire_unit   ! Note that fdf_convfac is called
   use periodic_table
   use chemical, only: read_chemical_types, number_of_species, species_label
   use chemical, only: atomic_number, is_floating
   use precision, only : dp
 
-  implicit none
+  implicit none 
 
   type grimme
      integer :: Z = 0 ! atomic number H = 1
@@ -63,10 +62,7 @@ program grimme_program
   end if
 
 
-  ! open the fdf file
-  ! This needs to be done here due to the usage of fdf_convfac in add_grime.
-  call fdf_init(filein,"grimme.log")
-  call fdf_set_unit_handler(inquire_unit)
+
 
 
   ! add default parameters
@@ -86,6 +82,10 @@ program grimme_program
   ! *** insert new Grimme-parameters here
   ! **** *** *** *** *** ** *** *** ** ** *** *** **
 
+
+  ! open the fdf file
+  call fdf_init(filein,"grimme.log")
+
   ! create the data for the species list
   call read_chemical_types(silent=.true.)
   ns = number_of_species()
@@ -96,9 +96,9 @@ program grimme_program
   write(*,'(a)') 'MM.Grimme.S6     0.75 # Grimme-paper for PBE (correct for your functional)'
   write(*,'(a)') 'MM.Grimme.D     20.   # Grimme-paper (correct for your functional)'
   write(*,'(a)') '%block MM.Potentials'
-
+  
   do is = 1 , ns
-     ! we don't add the Grimme parameter for floating
+     ! we don't add the Grimme parameter for floating 
      ! orbitals
      if ( is_floating(is) ) cycle
 
@@ -124,7 +124,7 @@ contains
     character(len=3) :: latom
 
     real(dp), parameter :: NAvogadro = 6.022e23_dp
-
+    
 
     latom = symbol(Z)
     if ( present(atom) ) latom = atom
@@ -182,7 +182,7 @@ contains
 
     call associate_grimme(branch,is,igrim)
     call associate_grimme(branch,js,jgrim)
-
+    
     if ( .not. associated(igrim) ) then
        stop 'Could not find one of the species.. Weird'
     end if
@@ -202,7 +202,7 @@ contains
             sqrt(igrim%c6*jgrim%c6), & ! C6
             igrim%r0+jgrim%r0,trim(igrim%atom),trim(jgrim%atom)
     end if
-
+    
   end subroutine write_grimme
 
   subroutine associate_grimme(branch,is,grim)
@@ -211,7 +211,7 @@ contains
     type(grimme), pointer :: grim
     integer :: Z
     type(grimme), pointer :: n
-
+    
     ! nullify
     nullify(grim)
 
@@ -220,7 +220,7 @@ contains
     Z = atomic_number(is)
 
     n => branch
-    do
+    do 
        if ( n%z == Z ) then
           grim => n
           return
@@ -230,7 +230,7 @@ contains
     end do
 
   end subroutine associate_grimme
-
+  
   subroutine add_grimme_parameters()
     integer :: i
     ! All these values comes from the program dftd3 vs: 3.0.2

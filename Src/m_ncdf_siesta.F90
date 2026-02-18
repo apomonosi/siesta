@@ -3,7 +3,6 @@
 
 ! We rely on the NetCDF4 library and can
 ! utilise parallel IO or standard IO
-#include "mpi_macros.f"
 
 module m_ncdf_siesta
 
@@ -52,7 +51,6 @@ contains
     use siesta_options, only: SOLVE_DIAGON, SOLVE_ORDERN
     use siesta_options, only: SOLVE_MINIM, SOLVE_TRANSI
     use siesta_options, only: SOLVE_PEXSI
-    use siesta_options, only: SOLVE_ELSI
     use siesta_options, only: savehs
     use siesta_options, only: fixspin, total_spin
     use siesta_options, only: ia1, ia2, dx ! FC information
@@ -366,8 +364,6 @@ contains
       dic = dic//('method'.kv.'transiesta')
     else if ( isolve == SOLVE_PEXSI ) then
       dic = dic//('method'.kv.'pexsi')
-    else if ( isolve == SOLVE_ELSI ) then
-       dic = dic//('method'.kv.'elsi')
     end if
 
     ! Attributes are collective
@@ -607,7 +603,7 @@ contains
 #ifdef MPI
     if ( cdf_w_parallel ) then
       call ncdf_open(ncdf,fname, &
-          mode=ior(NF90_WRITE,NF90_MPIIO), comm=MPI_COMM_ID( MPI_Comm_World ))
+          mode=ior(NF90_WRITE,NF90_MPIIO), comm=MPI_Comm_World)
     else
 #endif
       call ncdf_open(ncdf,fname,mode=ior(NF90_WRITE,NF90_NETCDF4))
@@ -699,7 +695,7 @@ contains
     if ( cdf_w_parallel ) then
       call ncdf_open(ncdf,fname, group='GRID', &
           mode=ior(NF90_WRITE,NF90_MPIIO), &
-          comm=MPI_COMM_ID( MPI_Comm_World ))
+          comm=MPI_Comm_World)
     else
 #endif
       call ncdf_open(ncdf,fname, group='GRID', &

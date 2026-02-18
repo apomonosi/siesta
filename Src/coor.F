@@ -102,7 +102,7 @@ C Format of atomic coordinates
             write(6,"(/,2a)") 'coor: ERROR: Explicit lattice ',
      .        'constant is needed for ScaledCartesian format'
           endif
-          call die("stopping program")
+          call die()
         endif
         iscale = 2
         if (Node.eq.0) then
@@ -120,7 +120,7 @@ C Format of atomic coordinates
             write(6,"(/,2a)") 'coor: ERROR: Explicit lattice ',
      .        'constant is needed for Fractional format'
           endif
-          call die("stopping program")
+          call die()
         endif
         iscale = 3
         if (Node.eq.0) then
@@ -143,7 +143,7 @@ C Format of atomic coordinates
           write(6,"('coor: ',72('*'))")
         endif
 
-        call die("stopping program")
+        call die()
 
       endif
 

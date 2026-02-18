@@ -1,0 +1,9 @@
+These are sample configuration files with symbol definitions and compiler names and
+options for several machines.
+
+Remember to use 'arch.make' as the name of the file, and to include the lines:
+
+SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(SELF_DIR)build.mk
+
+at the *bottom* of arch.make.

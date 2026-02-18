@@ -128,7 +128,6 @@ program ts2ts
 
   ! Initialize the fdf
   call fdf_init(filein,"ts2ts.log")
-  call fdf_set_unit_handler(inquire_unit)
 
   ! Buffer atoms
   NBufL    = fdf_get('TS.BufferAtomsLeft',0)

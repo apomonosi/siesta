@@ -18,7 +18,6 @@ C Compute the density of charge at the points of a plane or a 3D grid
 C in real space
 C Coded by J. Junquera November'98
 C Modified by P. Ordejon to include 3D capabilities, June 2003
-C Modified by A. Alcaraz to print out cube files with atoms, September 2024
 C **********************************************************************
 
       use precision
@@ -641,13 +640,7 @@ C End y and z loops
        integer, intent(in) :: lun
        character(len=*), intent(in) :: fname
        ! rest by host association
-        if(NAINCELL.eq.0) then
-            write(*,*) 'A fake atom was place at the origin to avoid '
-            write(*,*) 'visualization errors with the cube file.'
-          NAINCELL = 1
-          IZA(1) = 99
-          XAINCELL(:,1) = 0.0
-        endif
+      
             WRITE(LUN,*) FNAME
             WRITE(LUN,*) FNAME
             WRITE(LUN,'(i5,4f12.6)') NAINCELL, XMIN, YMIN, ZMIN

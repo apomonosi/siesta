@@ -26,7 +26,7 @@ module kpoint_dos_m
   private
 
   logical, save :: gamma_dos
-  type(kpoint_t), target, save :: kpoints_dos
+  type(kpoint_t), save :: kpoints_dos
 
 contains
 

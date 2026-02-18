@@ -53,8 +53,8 @@ C
      .                    , npgrid
      .                    , nspcell, nspcellat, nspcellatptr
 #ifdef MPI
-      use mpi_siesta, only: mpi_comm_world, mpi_gather
-      use mpi_siesta, only: mpi_integer, mpi_max, MPI_AllReduce
+      use mpi_siesta, only: mpi_comm_world
+      use mpi_siesta, only: mpi_integer, mpi_max
 #endif
       implicit none
 C
@@ -588,7 +588,7 @@ C The lok[xyz] variable below are only necessary when using buffers.
               write(6,*) "Try specifying a number of nodes that is ",
      .                   "an exact factor of the number of cells:"
      .                   ,product(nspcell)
-              call die("stopping program")
+              call die()
            endif
         endif
         call de_alloc( ncellpernodelist, 'ncellpernodelist',

@@ -22,11 +22,11 @@ module kpoint_scf_m
   public :: reset_kpoint_scf
   public :: kpoint_scf
   public :: gamma_scf
-
+  
   private
 
   logical, save :: gamma_scf
-  type(kpoint_t), target, save :: kpoint_scf
+  type(kpoint_t), save :: kpoint_scf
 
 contains
 

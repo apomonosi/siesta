@@ -323,7 +323,7 @@ program dm_creator
 
                           else ! nspin = 4
                              ! taken from diag2k
-                             D12 = 0.5_dp * (D12 + conjg(D21))
+                             D12 = 0.5_dp * (D12 + dconjg(D21))
                              dmout(ind,1) = dmout(ind,1) + real(d11, dp)
                              dmout(ind,2) = dmout(ind,2) + real(d22, dp)
                              dmout(ind,3) = dmout(ind,3) + real(d12, dp)

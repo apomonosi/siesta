@@ -24,7 +24,6 @@ C
       use precision, only : dp
       use parallel,  only : Node
       use sys,       only : die
-      use units,     only : Ang
       use fdf
       implicit          none
 
@@ -39,6 +38,8 @@ C Internal variables
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
+C Lattice constant
+      alat = fdf_physical('LatticeConstant',0.0_dp,'Bohr')
 
 C Lattice vectors
 
@@ -49,13 +50,8 @@ C Lattice vectors
       endif
 
       if ( fdf_block('LatticeParameters',bfdf) ) then
-C Lattice constant
-        alat = fdf_physical('LatticeConstant',Ang,'Bohr')
-
         if (.not. fdf_bline(bfdf, pline))
-     .      call die('redcel: ERROR in LatticeParameters block')
-
-
+     .    call die('redcel: ERROR in LatticeParameters block')
         alp = fdf_bvalues(pline,1)
         blp = fdf_bvalues(pline,2)
         clp = fdf_bvalues(pline,3)
@@ -85,8 +81,6 @@ C Lattice constant
         where (abs(cell) < 1.0e-14) cell = 0.0_dp
 
       elseif ( fdf_block('LatticeVectors',bfdf) ) then
-C Lattice constant (vectors are in Ang)
-        alat = fdf_physical('LatticeConstant',Ang,'Bohr')
 
         do i = 1,3
           if (.not. fdf_bline(bfdf, pline))
@@ -95,11 +89,7 @@ C Lattice constant (vectors are in Ang)
           cell(2,i) = fdf_bvalues(pline,2)
           cell(3,i) = fdf_bvalues(pline,3)
         enddo
-
       else
-C Lattice constant (default 0 == molecule setting)
-        alat = fdf_physical('LatticeConstant',0._dp,'Bohr')
-
         do i = 1,3
           do j  = 1,3
             cell(i,j) = 0.0_dp

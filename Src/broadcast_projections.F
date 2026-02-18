@@ -14,9 +14,8 @@
 !     broadcast_basis by Alberto Garcia
 
       use trialorbitalclass        
-      use parallel,                  only : Node, Nodes
-      use m_switch_local_projection, only : numproj
-      use m_switch_local_projection, only : projections
+      use parallel,           only : Node, Nodes
+      use m_siesta2wannier90, only : numproj, projections
 
 #ifdef MPI
       use mpi_siesta
@@ -43,10 +42,7 @@
 
       call MPI_Bcast(numproj,1,MPI_integer,0,MPI_Comm_World,MPIerror)
 
-      if ( Node .ne. 0 ) then
-        if ( allocated(projections) ) deallocate(projections)
-        allocate (projections(numproj))
-      endif 
+      if ( Node .ne. 0 ) allocate (projections(numproj))
 
       do is = 1, numproj
         proj => projections(is)
@@ -69,12 +65,6 @@
         call MPI_Bcast(proj%rcut,1,MPI_double_precision,
      $                 0,MPI_Comm_World,MPIerror)
         call MPI_Bcast(proj%lmax,1,MPI_integer,
-     $                 0,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(proj%from_basis_orbital,1,MPI_logical,
-     $                 0,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(proj%iorb,1,MPI_integer,
-     $                 0,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(proj%iorb_gindex,1,MPI_integer,
      $                 0,MPI_Comm_World,MPIerror)
       enddo
 

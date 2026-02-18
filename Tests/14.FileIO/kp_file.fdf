@@ -1,5 +1,0 @@
-%include ../base_wat.fdf
-SystemLabel     kp_file
-
-kGrid.File kp_file.KP
-DM.UseSaveDM F

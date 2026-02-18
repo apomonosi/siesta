@@ -5,7 +5,6 @@
 
 program v_info
   use m_gridfunc
-  use units, only: Ang
 
   implicit none
 
@@ -14,6 +13,7 @@ program v_info
 
   integer, parameter :: dp = selected_real_kind(10,100)
   
+  real(dp), parameter :: Ang    = 1.0_dp / 0.529177_dp
   real(dp) :: z_coord
   integer :: i
 

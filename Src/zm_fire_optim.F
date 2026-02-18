@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -26,7 +26,7 @@ c logical varcel        : true if variable cell optimization
 c *************************** INPUT AND OUTPUT ******************************
 c real*8 xa(3,na)       : Atomic coordinates
 c                         input: current step; output: next step
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 stress(3,3)    : Stress tensor components
@@ -45,8 +45,7 @@ C
 
       use m_fire
       use siesta_options, only: dt
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
+
       use zmatrix,     only : VaryZmat, Zmat
       use zmatrix,     only : CartesianForce_to_ZmatForce
       use zmatrix,     only : ZmatForce,ZmatForceVar
@@ -76,10 +75,13 @@ C Internal variables and arrays
 C Saved internal variables:
       integer,       save :: ndeg
       logical,       save :: frstme = .true.
+      logical,       save :: constant_volume
       real(dp),      save :: initial_volume
-      real(dp),      save :: cellin(3,3)
-      real(dp),      save :: modcel(3)
-      real(dp),      save :: precon
+
+      real(dp),      save :: tstres(3,3) 
+      real(dp),      save :: cellin(3,3) 
+      real(dp),      save :: modcel(3) 
+      real(dp),      save :: precon 
       real(dp),      save :: strain(3,3)  ! Special treatment !!
 
       real(dp), dimension(:), allocatable    :: ftoln, dxmaxn
@@ -103,7 +105,7 @@ c ---------------------------------------------------------------------------
       volume = volcel(cell)
 
       if ( frstme ) then
-
+         
         fire_mass = fdf_get("MD.FIRE.Mass", 1.0_dp)
         fire_dt = fdf_get("MD.FIRE.TimeStep", dt)
         fire_dt_inc = fdf_get("MD.FIRE.TimeInc", FIRE_DEF_dt_inc)
@@ -145,7 +147,15 @@ c ---------------------------------------------------------------------------
 
         if ( varcel ) then
 
-          call set_target_stress(tp)
+          constant_volume = fdf_get("MD.ConstantVolume", .false.)
+
+          call get_target_stress(tp,tstres)
+
+            if (constant_volume) then
+               tstres(:,:) = 0.0_dp
+               write(6,"(a)") "***Target stress set to zero " //
+     $              "for constant-volume calculation"
+            endif
 
 C Moduli of original cell vectors for fractional coor scaling back to au ---
           do n = 1, 3
@@ -157,7 +167,7 @@ C Moduli of original cell vectors for fractional coor scaling back to au ---
           enddo
 
 C Scale factor for strain variables to share magnitude with coordinates
-C ---- (a length in Bohrs typical of bond lengths ..)
+C ---- (a length in Bohrs typical of bond lengths ..) 
 
           ! AG: This could better be volume^(1/3) by default
           precon = fdf_get('MD.PreconditionVariableCell',
@@ -165,7 +175,7 @@ C ---- (a length in Bohrs typical of bond lengths ..)
 
 C Initialize absolute strain and save initial cell vectors
 C Initialization to 1 for numerical reasons, later substracted
-
+       
           strain(1:3,1:3) = 1.0_dp
           cellin(1:3,1:3) = cell(1:3,1:3)
           initial_volume = volcel(cellin)
@@ -192,14 +202,14 @@ C Allocate local memory
         ! Inverse of matrix of cell vectors  (transpose of)
         call reclat( cell, celli, 0 )
 
-C Transform coordinates and forces to fractional ----------------------------
+C Transform coordinates and forces to fractional ---------------------------- 
 C but scale them again to Bohr by using the (fix) moduli of the original ----
 C lattice vectors (allows using maximum displacement as before) -------------
 C convergence is checked here for input forces as compared with ftol --------
 
         relaxd = .true.
         ndegi = 0
-        ! Loop over degrees of freedom, scaling
+        ! Loop over degrees of freedom, scaling 
         ! only cartesian coordinates to fractional
           do ia = 1,na
             do n = 1,3
@@ -218,10 +228,10 @@ C convergence is checked here for input forces as compared with ftol --------
                   force = ZmatForce(indi)
                 else
                   force = ZmatForceVar(vi)
-                endif
+                endif 
                 relaxd=relaxd.and.(dabs(force).lt.ftoln(ndegi))
                 if (ZmatType(indi).gt.2) then
-C Cartesian coordinate
+C Cartesian coordinate                
                   gxa(ndegi) = 0.0_dp
                   gfa(ndegi) = 0.0_dp
                   do i = 1,3
@@ -233,7 +243,7 @@ C Cartesian coordinate
                     else
                       force1 = ZmatForce(indi1)
                     endif
-                    gfa(ndegi) = gfa(ndegi)+
+                    gfa(ndegi) = gfa(ndegi)+ 
      .                          cell(i,n)*force1/modcel(n)
                   enddo
                 else
@@ -254,7 +264,7 @@ C Symmetrizing the stress tensor --------------------------------------------
 
 C Subtract target stress
 
-        stress_dif = stress - target_stress
+        stress_dif = stress - tstres
 !
 !       Take 1/3 of the trace out here if constant-volume needed
 !
@@ -265,7 +275,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append stress (substracting target stress) and strain to gxa and gfa ------
+C Append stress (substracting target stress) and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
         do i = 1,3
           do j = i,3
@@ -280,7 +290,7 @@ C Check stress convergence
         strtol = dabs(strtol)
         do i = 1,3
           do j = 1,3
-            relaxd = relaxd .and.
+            relaxd = relaxd .and. 
      .        ( dabs(stress_dif(i,j)) .lt. abs(strtol) )
           enddo
         enddo
@@ -343,7 +353,7 @@ C Set number of degrees of freedom & variables
            cell =  cell * (initial_volume/new_volume)**(1.0_dp/3.0_dp)
         endif
 
-C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
+C Output fractional coordinates to cartesian Bohr, and copy to xa ----------- 
         ndegi = 0
         do ia=1,na
             do k=1,3
@@ -351,7 +361,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
               if (VaryZmat(indi)) then
                 ndegi = ndegi + 1
                 j = indi
-                do while (j.ne.0)
+                do while (j.ne.0) 
                   if (ZmatType(j).gt.2) then
                     Zmat(j) = 0.0_dp
                     do n=1,3
@@ -369,12 +379,12 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
                 enddo
               endif
             enddo
-          enddo
+          enddo  
           call Zmat_to_Cartesian(xa)
 
       else
 C Fixed cell
-C Return coordinates to correct arrays
+C Return coordinates to correct arrays 
         ndegi = 0
           do ia = 1,na
             do k = 1,3

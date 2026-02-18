@@ -1,5 +1,0 @@
-%include ../base_mgco3.fdf
-SystemLabel      cg
-
-MD.TypeOfRun  cg
-

@@ -689,7 +689,7 @@ contains
         Gf => val(A_tri,n-1,n-1)
         ! Get X
         ztmp => Xn_div_Cn_p1(Gf_tri,n-1)
-
+          
         call GEMM ('N','N',sN,sNo,sNo, zm1, ztmp(1), sN, &
             Gf(1), sNo, z0, A(1), sN)
 
@@ -699,7 +699,7 @@ contains
         ! and calculate n,n
         Gf => A(:)
         A => val(A_tri,n,n)
-
+          
         call GEMM ('N','C',sN,sN,sNo, zm1, Gf(1), sN, &
             ztmp(1), sN, z0, A(1), sN)
 
@@ -714,7 +714,7 @@ contains
       Gf => val(A_tri,n,n)
       ! Get X
       ztmp => Xn_div_Cn_p1(Gf_tri,n)
-
+          
       call GEMM ('N','C',sN,sNo,sN, zm1, Gf(1), sN, &
           ztmp(1), sNo, z0, A(1), sN)
 

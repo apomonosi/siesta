@@ -96,7 +96,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 ! plane waves will be stored
   if ( .not. associated(delkmatgen) ) then
     nullify(delkmatgen)
-    call re_alloc(delkmatgen, 1, maxnh, 1, nncount, &
+    call re_alloc(delkmatgen, 1, nncount, 1, maxnh,                  &
  &                name='delkmatgen', routine='compute_pw_matrix')
   endif
   if ( .not. associated(delkmat) ) then
@@ -130,7 +130,7 @@ subroutine compute_pw_matrix( nncount, bvectorsfrac )
 !   in a permanent array,
 !   (array delkmatgen)
 !   So delkmat can be rewritten for the next wave vector.
-    delkmatgen(:,inn) = delkmat(:)
+    delkmatgen(inn,:) = delkmat(:)
 
 !! For debugging
 !      onlygamma = .false.
@@ -148,8 +148,8 @@ subroutine getkvector(frac, vector)
 ! Converts from fractional to Bohr^-1 coordinates in reciprocal space.
 !
 
-use m_switch_local_projection, only : reclatvec ! Reciprocal lattice vectors
-use precision,                 only : dp        ! Real double precision type
+use m_siesta2wannier90, only : reclatvec ! Reciprocal lattice vectors
+use precision,          only : dp        ! Real double precision type
 
 integer              :: i,j
 real(dp),intent(in)  :: frac(3)

@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -29,10 +29,10 @@ c Emilio Artacho, Feb. 1999
       real(dp), intent(in), target :: eo(maxo, nspinor, maxk)
       real(dp), intent(in) :: kpoints(3,nk)
       real(dp), intent(in) :: kweights(nk)
-
+      
       external          io_assign, io_close
 
-c Internal
+c Internal 
       integer           ik, iu, io, is
       real(dp), pointer :: eok(:)
 
@@ -40,9 +40,9 @@ c Internal
 c -------------------------------------------------------------------
 
       fname = trim(slabel) // '.EIG'
-
+      
       call io_assign( iu )
-      open( iu, file=fname, form='formatted', status='unknown' )
+      open( iu, file=fname, form='formatted', status='unknown' )      
 
       write(iu,"(e17.9)") ef/eV
       ! The output corresponds to the number of bands.
@@ -63,21 +63,11 @@ c -------------------------------------------------------------------
           ! bands, and independent loops over io and is, as in the
           ! second form below, would be wrong.
           call ravel(maxo * nspinor, eo(1,1,ik), eok)
-          if ( no*nspinor == 10 ) then
-            write(iu,"(i10,10(tr1,e17.9))")
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))")
      .        ik, (eok(io)/eV,io=1,no*nspinor)
-          else
-            write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))")
-     .        ik, (eok(io)/eV,io=1,no*nspinor)
-          endif
         else
-          if ( no*nspinor == 10 ) then
-            write(iu,"(i10,10(tr1,e17.9))")
+          write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))")
      .        ik, ((eo(io,is,ik)/eV,io=1,no),is=1,nspinor)
-          else
-            write(iu,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))")
-     .        ik, ((eo(io,is,ik)/eV,io=1,no),is=1,nspinor)
-          endif
         end if
       enddo
 
@@ -85,21 +75,21 @@ c -------------------------------------------------------------------
 
       if (cml_p) then
          call cmlStartPropertyList(xf=mainXML, title="Eigenvalues")
-         call cmlAddProperty(xf=mainXML, value=ef/eV,
-     .        title='Fermi Energy', dictref='siesta:E_Fermi',
+         call cmlAddProperty(xf=mainXML, value=ef/eV, 
+     .        title='Fermi Energy', dictref='siesta:E_Fermi', 
      .        fmt='r5', units='siestaUnits:ev')
-         call cmlAddProperty(xf=mainXML, value=nk,
+         call cmlAddProperty(xf=mainXML, value=nk, 
      .        title='Number of k-points', dictRef='siesta:nkpoints',
      .        units='cmlUnits:countable')
          if ( nspin > nspinor ) then
            call cmlStartPropertyList(mainXML, dictRef='siesta:kpt_band')
            do ik = 1, nk
-             call cmlAddKPoint(xf=mainXML, coords=kpoints(:, ik),
+             call cmlAddKPoint(xf=mainXML, coords=kpoints(:, ik), 
      .           weight=kweights(ik))
              ! ensure we catch users doing neigwanted calculations
              call ravel(maxo * nspinor, eo(1,1,ik), eok)
              call cmlAddProperty(xf=mainXML,
-     .           value=eok(1:no*nspinor)/eV,
+     .           value=eok(no*nspinor)/eV,
      .           dictRef='siesta:eigenenergies',
      .           units='siestaUnits:ev')
            end do
@@ -109,16 +99,16 @@ c -------------------------------------------------------------------
             call cmlStartPropertyList(mainXML,
      .           dictRef='siesta:kpt_band')
             if ( is == 1 .and. nspinor > 1 ) then
-               call cmlAddProperty(xf=mainXML, value="up",
+               call cmlAddProperty(xf=mainXML, value="up", 
      .              dictRef="siesta:spin")
             else if ( nspinor > 1) then
-               call cmlAddProperty(xf=mainXML, value="down",
+               call cmlAddProperty(xf=mainXML, value="down", 
      .              dictRef="siesta:spin")
             end if
             do ik = 1, nk
-               call cmlAddKPoint(xf=mainXML, coords=kpoints(:, ik),
+               call cmlAddKPoint(xf=mainXML, coords=kpoints(:, ik), 
      .              weight=kweights(ik))
-               call cmlAddProperty(xf=mainXML, value=eo(1:no,is,ik)/eV,
+               call cmlAddProperty(xf=mainXML, value=eo(1:no,is,ik)/eV, 
      .              dictRef='siesta:eigenenergies',
      .              units='siestaUnits:ev')
             enddo
@@ -136,5 +126,5 @@ c -------------------------------------------------------------------
       real(dp), pointer :: eop(:)
       eop => eo(:)
       end subroutine
-
+      
       end subroutine ioeig

@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -9,13 +9,10 @@
 ! MODULE m_fft
 ! 3-D fast complex Fourier transform
 ! Written by J.D.Gale (July 1999)
-! Modified by Rogeli Grima (June 2022)
 !******************************************************************************
 !
 !   PUBLIC procedures available from this module:
-! fft_init   : Initiallization of the FFT
-! getFFTLims : Returns the limits of the arrays in the Transformed domain
-! fft        : 3-D complex FFT
+! fft   : 3-D complex FFT. Old version of J.D.Gale
 !
 !   PUBLIC parameters, types, and variables available from this module:
 ! none
@@ -26,6 +23,7 @@
 ! use sys,          only: die           ! Termination routine
 ! use alloc,        only: de_alloc      ! De-allocation routine
 ! use alloc,        only: re_alloc      ! Re-allocation routine
+! use parallelsubs, only: HowManyMeshPerNode
 ! use fft1d,        only: gpfa          ! 1-D FFT routine
 ! use fft1d,        only: setgpfa       ! Sets gpfa routine
 ! use m_timer,      only: timer_start   ! Start counting CPU time
@@ -46,815 +44,773 @@
 ! timer   : CPU time counter
 !
 !******************************************************************************
-#include "mpi_macros.f"
 
       MODULE m_fft
 
       use precision,    only : dp, grid_p
-      use, intrinsic :: iso_c_binding, only : C_PTR, C_DOUBLE_COMPLEX
-      use, intrinsic :: iso_c_binding, only : c_loc, c_f_pointer
-      use parallel,     only : Node, Nodes, processorY
-      use moreMeshSubs, only : UNIFORM, getMeshBox
+      use parallel,     only : Node, Nodes, ProcessorY
+      use parallelsubs, only : HowManyMeshPerNode
       use sys,          only : die
       use alloc,        only : re_alloc, de_alloc
       use mesh,         only : nsm
       use gpfa_fft,     only : gpfa        ! 1-D FFT routine
       use gpfa_fft,     only : setgpfa=>setgpfa_check     ! Sets gpfa routine
       use m_timer,      only : timer_start ! Start counting CPU time
-      use m_timer,      only : timer_stop ! Stop counting CPU time
+      use m_timer,      only : timer_stop  ! Stop counting CPU time
 #ifdef MPI
       use mpi_siesta
-#endif
-#ifdef SIESTA__FFTW
-      use fftw3_siesta_wrapper
 #endif
 
       implicit none
 
-      PUBLIC :: fft
-      PUBLIC :: fft_init
-      PUBLIC :: getFFTLims
-      PUBLIC :: fft_set_fftw
-      PUBLIC :: fft_trigs_reset
+      PUBLIC:: 
+     .  fft      ! 3D complex FFT
 
       PRIVATE ! Nothing is declared public beyond this point
-      logical :: frsttime = .TRUE.
-
-#ifdef SIESTA__FFTW
-      type(C_PTR), target :: plan_fw(3)
-      type(C_PTR), target :: plan_bw(3)
-      logical             :: use_fftw = .true.
-#endif
-      integer :: maxtrigs = 256
-      real(dp), pointer :: trigs(:,:) => null()
-      integer :: OldMesh(3) = (/ 0, 0, 0 /)
-
-      integer :: gmesh(3)
-      integer :: ProcessorZ
-      integer :: PY
-      integer :: PZ
-#ifdef MPI
-      MPI_COMM_TYPE :: COMM_Y
-      MPI_COMM_TYPE :: COMM_Z
-#endif
-      logical :: k_pin_x_distribution = .false.
-      integer, pointer :: xdispl(:) => null()
-      integer, pointer :: ydispl(:) => null()
-      integer, pointer :: zdispl(:) => null()
-      integer, pointer :: xzdisp(:) => null()
-      integer, pointer :: yzdisp(:) => null()
 
       CONTAINS
 
 !******************************************************************************
-      subroutine fft_trigs_reset()
-        implicit none
 
-        call de_alloc( trigs, 'trigs', 'fft' )
-      end subroutine fft_trigs_reset
-
-      subroutine fft_set_fftw( use_fftw_in )
-        !! Sets FFTW usage at runtime.
-        implicit none
-        logical, intent(in) :: use_fftw_in
-#ifdef SIESTA__FFTW
-        use_fftw = use_fftw_in
-        if ( use_fftw ) then
-          if ( node == 0 ) write(6,'(A)') "FFT: Using FFTW."
-        else
-          if ( node == 0 ) write(6,'(A)') "FFT: Using regular FFT."
-        endif
-#else
-        if ( use_fftw_in .and. (node == 0)) write(6,'(A)')
-     &     "FFT: FFTW support is not enabled in this compilation."
-#endif
-      end subroutine fft_set_fftw
-
-      subroutine fft_init( nMesh, size1, size2,  pin_x_distribution )
-C **********************************************************************
-C Initiallize data structures to compute the FFT:
-C   INTEGER PROCESSORZ : NODES/PROCESSORY
-C   INTEGER PY, PZ     : INDICES of the current process in a 2-D grid of
-C                        processors of size PROCESSORY by PROCESSORZ.
-C   INTEGER COMM_Y     : global communicator for Y dimension
-C   INTEGER COMM_Z     : global communicator for Z dimension
-C   INTEGER XDISPL()   : (ProcessorY) cuts in the X direction
-C   INTEGER YDISPL()   : (ProcessorY) cuts in the Y direction
-C   INTEGER ZDISPL()   : (ProcessorZ) cuts in the Z direction
-C   INTEGER XZDISP()   : (ProcessorZ) cuts in the X direction (if needed)
-C   INTEGER YZDISP()   : (ProcessorZ) cuts in the Y direction (if needed)
-C Initiallize the FFT plans
-C Rogeli Grima (June 2022)
-C ************ INPUT ***************************************************
-C LOGICAL  pin_x_distribution :
-C   true: To keep the original distribution (Pencil in X direction)
-C   false: If we swap from X to Z (forward) or from Z to X (backward)
-C INTEGER nMesh(3)  : Global mesh dimension
-C INTEGER SIZE1     : returns the size needed for the first array
-C INTEGER SIZE2     :  returns the size needed for the second array
-C **********************************************************************
+      subroutine fft( f, nMesh, isn )
+C
+C  Parallel FFT based on FFT routine of Templeton
+C
+C  On input :
+C
+C  real*8 f()       : contains data to be Fourier transformed
+C  integer nMesh(3) : contains global dimensions of grid
+C  integer isn      : indicates the direction of the transform
+C
+C  On exit :
+C
+C  real*8 f()      : contains data Fourier transformed
+C
+C  Julian Gale, July 1999
+C
       implicit none
-      logical :: pin_x_distribution                      ! Keep original distribution
-      integer :: nMesh(3), size1, size2
-      integer, pointer :: box(:,:,:)
-      integer :: i, di, mo, s1, s2, s3
-      integer :: ierr, maxmaxtrigs, ntrigs
-      logical :: lredimension
-#ifdef SIESTA__FFTW
-      integer :: rank, n(1), howmany, inembed(1), istride, idist
-      complex(C_DOUBLE_COMPLEX) :: in(1)
-#endif
-      gmesh(1:3) = nMesh(1:3)
-
-      if (frsttime) then
-#ifdef SIESTA__FFTW
-        if ( .not. use_fftw ) then
-          nullify(trigs)
-          call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-        endif
-#else
-        nullify(trigs)
-        call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-#endif
-        ProcessorZ = NODES/ProcessorY
-        PY = mod(Node,ProcessorY)+1
-        PZ = Node/ProcessorY+1
+C
+C  Passed arguments
+C
+      real(grid_p)
+     .  f(*)
+      integer
+     .  nMesh(3), isn
+C
+C  Local variables
+C 
+      integer
+     .  maxmaxtrigs, ntrigs,
+     .  n1, n2, n3, n2l, n3l, CMeshG(3), CMeshL(3), i, n,
+     .  nf, nft, ng, nmeshl, ProcessorZ, IOffSet, OldMesh(3)
+      integer, save ::
+     .  maxtrigs
+      logical
+     .  LocalPoints, lredimension
+      real(dp)
+     .  scale
+      real(dp), dimension(:,:), pointer, save ::   trigs => null()
 #ifdef MPI
-        call MPI_Comm_Split( MPI_Comm_World, PZ, PY, COMM_Y, ierr )
-        call MPI_Comm_Split( MPI_Comm_World, PY, PZ, COMM_Z, ierr )
+      integer
+     .  n1lf, nrem, Py, Pz
+      real(grid_p), dimension(:), pointer  ::   ft
 #endif
-        call re_alloc( xdispl, 1, ProcessorY+1, 'xdispl', 'fft' )
-        call re_alloc( ydispl, 1, ProcessorY+1, 'ydispl', 'fft' )
-        call re_alloc( zdispl, 1, ProcessorZ+1, 'zdispl', 'fft' )
-        call re_alloc( xzdisp, 1, ProcessorZ+1, 'xzdisp', 'fft' )
-        yzdisp => xzdisp
 
-        frsttime = .false.
-      endif
-#ifdef MPI
-#else
-        size1 = gMesh(1)*gMesh(2)*gMesh(3)
-        size2 = 0
-#endif
-C
-C     Recompute plans and displacements if there is a change in the grid size or
-C     in the value of k_pin_x_distribution
-C
-      if ( any(OldMesh/=gmesh) .or.
-     $     (pin_x_distribution .neqv. k_pin_x_distribution) ) then
-C
-C       Compute the limits of the differents pencils in each possible direction
-C
-        call getMeshBox( UNIFORM, box )
-        di = gmesh(1)/ProcessorY
-        mo = mod(gmesh(1),ProcessorY)
-        xdispl(1) = 1
-        do i= 1, ProcessorY
-          xdispl(i+1) = xdispl(i) + di + merge(1,0,i<=mo)
-        enddo
-        ydispl(1) = 1
-        do i= 1, ProcessorY
-          ydispl(i+1) = box(2,2,i)*NSM+1
-        enddo
-        zdispl(1) = 1
-        do i= 1, ProcessorZ
-          zdispl(i+1) = box(2,3,(i-1)*ProcessorY+1)*NSM+1
-        enddo
-        if (pin_x_distribution) then
-          di = gmesh(1)/ProcessorZ
-          mo = mod(gmesh(1),ProcessorZ)
-          xzdisp(1) = 1
-          do i= 1, ProcessorZ
-            xzdisp(i+1) = xzdisp(i) + di + merge(1,0,i<=mo)
-          enddo
-        else
-          di = gmesh(2)/ProcessorZ
-          mo = mod(gmesh(2),ProcessorZ)
-          yzdisp(1) = 1
-          do i= 1, ProcessorZ
-            yzdisp(i+1) = yzdisp(i) + di + merge(1,0,i<=mo)
-          enddo
-        endif
-#ifdef SIESTA__FFTW
-        if ( use_fftw ) then
+      save OldMesh
+      data OldMesh/0,0,0/
 
-        if (any(OldMesh/=0)) then
-          call fftw_destroy_plan( plan_fw(1) )
-          call fftw_destroy_plan( plan_fw(2) )
-          call fftw_destroy_plan( plan_fw(3) )
-          call fftw_destroy_plan( plan_bw(1) )
-          call fftw_destroy_plan( plan_bw(2) )
-          call fftw_destroy_plan( plan_bw(3) )
-        endif
-        rank = 1
-        n = (/ gmesh(1) /)
-        howmany = (ydispl(py+1)-ydispl(py))*(zdispl(pz+1)-zdispl(pz))
-        inembed = (/ gmesh(1) /)
-        istride = 1
-        idist   = gmesh(1)
-        plan_fw(1) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
-        plan_bw(1) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
-        n = (/ gmesh(2) /)
-        howmany = (xdispl(py+1)-xdispl(py))
-        inembed = (/ gmesh(2) /)
-        istride = (xdispl(py+1)-xdispl(py))
-        idist   = 1
-        plan_fw(2) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
-        plan_bw(2) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
-
-        n = (/ gmesh(3) /)
-        if (pin_x_distribution) then
-          howmany = (xzdisp(pz+1)-xzdisp(pz))*(ydispl(py+1)-ydispl(py))
-        else
-          howmany = (xdispl(py+1)-xdispl(py))*(yzdisp(pz+1)-yzdisp(pz))
-        endif
-        istride = howmany
-        idist   = 1
-        inembed = (/ gmesh(3) /)
-        plan_fw(3) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_FORWARD, FFTW_ESTIMATE )
-        plan_bw(3) = fftw_plan_many_dft( rank, n, howmany,
-     &                                    in, inembed, istride, idist,
-     &                                    in, inembed, istride, idist,
-     &                                    FFTW_BACKWARD, FFTW_ESTIMATE )
-        OldMesh = gmesh
-
-      else ! use_fftw = false
-#endif
-C       Initialise the tables for the FFT if the mesh has changed
-        do
-          lredimension = .false.
-          maxmaxtrigs = maxtrigs
-          do i=1,3
-            if (OldMesh(i).ne.gmesh(i)) then
-              call setgpfa( trigs(:,i), maxtrigs, ntrigs, gmesh(i) )
-              if (ntrigs.gt.maxmaxtrigs) then
-                lredimension = .true.
-                maxmaxtrigs = ntrigs
-              else
-                OldMesh(i) = gmesh(i)
-              endif
-            endif
-          enddo
-          if (.not. lredimension) exit
-C
-C         Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
-C
-          maxtrigs = maxmaxtrigs
-          call re_alloc( trigs, 1, maxtrigs, 1, 3, 'trigs', 'fft' )
-          OldMesh(1:3) = 0
-        enddo
-
-#ifdef SIESTA__FFTW
-      endif ! use_fftw
-#endif
-      endif
-#ifdef MPI
-C
-C       Compute the size of the local pencils before
-C       the allocation of input arrays
-C
-        s1 = gMesh(1)*(ydispl(py+1)-ydispl(py))*
-     &                (zdispl(pz+1)-zdispl(pz))
-        s2 = gMesh(2)*(xdispl(py+1)-xdispl(py))*
-     &                (zdispl(pz+1)-zdispl(pz))
-      if (pin_x_distribution) then
-        s3 = gMesh(3)*(ydispl(py+1)-ydispl(py))*
-     &                (xzdisp(pz+1)-xzdisp(pz))
-        size1 = s1
-        size2 = max(s2,s3)
-      else
-        s3 = gMesh(3)*(xdispl(py+1)-xdispl(py))*
-     &       (yzdisp(pz+1)-yzdisp(pz))
-        size1 = max(s1,s3)
-        size2 = s2
-      endif
-#else
-        size1 = gMesh(1)*gMesh(2)*gMesh(3)
-        size2 = 0
-#endif
-      k_pin_x_distribution = pin_x_distribution
-      end subroutine fft_init
-
-      subroutine getFFTLims( lbox )
-C **********************************************************************
-C Get the limits of the local pencil in the transformed domain
-C Rogeli Grima (June 2022)
-C ************ INPUT ***************************************************
-C   INTEGER LBOX(2,3) : Local limits
-C **********************************************************************
-      implicit none
-      integer :: lbox(2,3)
-#ifdef MPI
-      if (k_pin_x_distribution) then
-        lbox(1,1) = 1
-        lbox(2,1) = gmesh(1)
-        lbox(1,2) = ydispl(py)
-        lbox(2,2) = ydispl(py+1)-1
-        lbox(1,3) = zdispl(pz)
-        lbox(2,3) = zdispl(pz+1)-1
-      else
-        lbox(1,1) = xdispl(py)
-        lbox(2,1) = xdispl(py+1)-1
-        lbox(1,2) = yzdisp(pz)
-        lbox(2,2) = yzdisp(pz+1)-1
-        lbox(1,3) = 1
-        lbox(2,3) = gmesh(3)
-      endif
-#else
-      lbox(1,1:3) = 1
-      lbox(2,1:3) = gmesh(1:3)
-#endif
-      end subroutine getFFTLims
-
-      subroutine fft( f1, f2, isn )
-C **********************************************************************
-C Computes the 3-D FFT
-C In order to compute the 3D FFT we have to reorder our data in 3 different
-C directions: pencil-X, pencil-Y and pencil-Z.
-C The user can set two modes for k_pin_x_distribution
-C   true: To keep the original distribution (Pencil in X direction)
-C         FFT-X MOV(X=>Y) FFT-Y MOV(Y=>X) MOV(X=>Z) FFT-Z MOV(Z=>X)
-C   false: If we swap from X to Z (forward) or from Z to X (backward)
-C         FFT-X MOV(X=>Y) FFT-Y MOV(Y=>Z) FFT-Z (forward mode)
-C         FFT-Z MOV(Z=>Y) FFT-Y MOV(Y=>X) FFT-X (backward mode)
-C When we set k_pin_x_distribution to false we can achieve the 3-D FFT with less
-C communications, but we have to adapt the calling code in order to work
-C with the pencil-Z data distribution
-C Rogeli Grima (June 2022)
-C ************ INPUT ***************************************************
-C   real f1(*) : Input array
-C   real f2(*) : Auxiliar array
-C   integer isn : FFT direction
-C **********************************************************************
-      implicit none
-      real(grid_p), target :: f1(*), f2(*)
-      integer :: isn
-      integer :: ierr, n, n1, n2, n3, n2a, n3a, n1b, n3b, n1c, n2c
-      integer :: i, j, k, ng, ioffset
-      real(dp) :: scale
-#ifdef SIESTA__FFTW
-      complex(grid_p), pointer :: in(:)
-      type(C_PTR), pointer :: plan(:)
-#endif
-#ifdef DEBUG
-      call write_debug( '    PRE fft' )
-#endif
       call timer( 'fft', 1 )
+C
+C  Set mesh size variables
+C
+      n1 = nMesh(1)
+      n2 = nMesh(2)
+      n3 = nMesh(3)
+      CMeshG(1) = n1/nsm
+      CMeshG(2) = n2/nsm
+      CMeshG(3) = n3/nsm
+      call HowManyMeshPerNode(CMeshG, Node, Nodes, nmeshl, CMeshL)
+      n2l = CMeshL(2)*nsm
+      n3l = CMeshL(3)*nsm
 
-      n1 = gmesh(1)
-      n2 = gmesh(2)
-      n3 = gmesh(3)
-#ifdef SIESTA__FFTW
-      if (isn<0) then
-        plan => plan_fw
-      else
-        plan => plan_bw
+      n = n1*n2l*n3l
+      ng = n1*n2*n3
+      nf = 2*ng   ! size(f)
+
+C
+C  Set logical as to whether there are any locally stored points
+C
+      LocalPoints = (n.gt.0) 
+
+C
+C  Work out processor grid size
+C
+      ProcessorZ = Nodes/ProcessorY
+      if (ProcessorY*ProcessorZ.ne.Nodes) 
+     $     call die('ERROR: ProcessorY must be a factor of the' //
+     $     ' number of processors!')
+
+C
+C  Allocate trigs array
+C
+      if (.not.associated(trigs)) then
+        maxtrigs = 256
+        nullify( trigs )
+        call re_alloc( trigs, 1, maxtrigs, 1, 3, name='trigs',
+     &                 routine='fft' )
       endif
-#endif
+C
+C  Initialise the tables for the FFT if the mesh has changed
+C
+ 10   lredimension = .false.
+      maxmaxtrigs = maxtrigs
+      do i=1,3
+        if (OldMesh(i).ne.nMesh(i)) then
+          call setgpfa(trigs(:,i), maxtrigs, ntrigs, nMesh(i))
+          if (ntrigs.gt.maxmaxtrigs) then
+            lredimension = .true.
+            maxmaxtrigs = ntrigs
+          else
+            OldMesh(i) = nMesh(i)
+          endif
+        endif
+      enddo
+      if (lredimension) then
+C
+C  Resize FFT array for trig factors and set OldMesh to 0 to force recalculation
+C
+        maxtrigs = maxmaxtrigs
+        call re_alloc( trigs, 1, maxtrigs, 1, 3, name='trigs',
+     &                 routine='fft' )
+        OldMesh(1:3) = 0
+        goto 10
+      endif
+
+C
+C  FFT in X direction
+C
+      if (LocalPoints) then
+        call gpfa(f(1:nf),f(2:nf),trigs(:,1),2,2*n1,n1,n2l*n3l,-isn)
+      endif
 #ifdef MPI
-      if (k_pin_x_distribution) then
-        n2a = ydispl(py+1)-ydispl(py)
-        n3a = zdispl(pz+1)-zdispl(pz)
-        n1b = xdispl(py+1)-xdispl(py)
-        n3b = n3a
-        n1c = xzdisp(pz+1)-xzdisp(pz)
-        n2c = n2a
+C***********************
+C  2-D Processor Grid  *
+C***********************
+      n1lf = n1/ProcessorY
+      nrem = n1 - n1lf*ProcessorY
+      Py = (Node/ProcessorZ) + 1
+      Pz = Node - (Py - 1)*ProcessorZ + 1
+      if (Py.le.nrem) n1lf = n1lf + 1
 C
-C       FFT in X direction
+C  Allocate local memory
 C
-        n = n1*n2a*n3a
-        if (n>0) then
-#ifdef SIESTA__FFTW
-          if ( use_fftw ) then
-            call c_f_pointer( c_loc(f1), in, shape=[n] )
-            call fftw_execute_dft( plan(1), in, in )
-          else
-#endif
-            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
-     &                 n2a*n3a, -isn )
-#ifdef SIESTA__FFTW
-          endif ! use_fftw
-#endif
-        endif
+      nullify( ft )
+      call re_alloc( ft, 1, 2*n1lf*n2*n3l, name='ft', routine='fft' )
 C
-C       Transpose data from X to Y direction
+C  Redistribute data to be distributed by X and Z
 C
-        call redistributePencil( 1, n1, n2a, n3a, f1,
-     &                           2, n1b, n2, n3b, f2,
-     &                           py, ProcessorY, xdispl, ydispl,
-     &                           COMM_Y )
-C
-C       FFT in Y direction
-C
-        n = n1b*n2*n3b
-        if (n>0) then
-          IOffSet = 1
-          do i= 1, n3b
-#ifdef SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
-     &                          in, shape=[n1b*n2] )
-              call fftw_execute_dft( plan(2), in, in )
-            else
-#endif
-              call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
-     .              2*n1b, 2, n2, n1b, -isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-            IOffSet = Ioffset + 2*n1b*n2
-          enddo
-        endif
-C
-C       Transpose data from Y to X and then to Z direction
-C
-        call redistributePencil( 2, n1b, n2, n3b, f2,
-     &                           1, n1, n2a, n3a, f1,
-     &                           py, ProcessorY, ydispl, xdispl,
-     &                           COMM_Y )
-        call redistributePencil( 1, n1, n2a, n3a, f1,
-     &                           3, n1c, n2c, n3, f2,
-     &                           pz, ProcessorZ, xzdisp, zdispl,
-     &                           COMM_Z )
-C
-C       FFT in Z direction
-C
-        n = n3*n1c*n2c
-        if (n>0) then
-#ifdef SIESTA__FFTW
-          if ( use_fftw ) then
-            call c_f_pointer( c_loc(f2), in, shape=[n] )
-            call fftw_execute_dft( plan(3), in, in )
-          else
-#endif
-            call gpfa( f2(1:2*n), f2(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
-     &                 n3, n1c*n2c,-isn )
-#ifdef SIESTA__FFTW
-          endif ! use_fftw
-#endif
-        endif
-C
-C       Transpose data back from Z to X
-C
-        call redistributePencil( 3, n1c, n2c, n3, f2,
-     &                           1, n1, n2a, n3a, f1,
-     &                           pz, ProcessorZ, zdispl, xzdisp,
-     &                           COMM_Z )
-C
-C       Scale values
-C
-        if (isn.gt.0) then
-          ng = n1*n2*n3
-          scale=1.0_dp/dble(ng)
-          do i=1,2*n
-            f1(i)=f1(i)*scale
-          enddo
-        endif
-      else ! .not. k_pin_x_distribution
-        n2a = ydispl(py+1)-ydispl(py)
-        n3a = zdispl(pz+1)-zdispl(pz)
-        n1b = xdispl(py+1)-xdispl(py)
-        n3b = n3a
-        n1c = n1b
-        n2c = yzdisp(pz+1)-yzdisp(pz)
-        if (isn==-1) then
-C
-C         FFT in X direction
-C
-          n = n1*n2a*n3a
-          if (n>0) then
-#ifdef SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f1), in, shape=[n] )
-              call fftw_execute_dft( plan(1), in, in )
-            else
-#endif
-            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
-     &                  n2a*n3a, -isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-           endif
-C
-C         Transpose data from X to Y direction
-C
-          call redistributePencil( 1, n1, n2a, n3a, f1,
-     &                             2, n1b, n2, n3b, f2,
-     &                             py, ProcessorY, xdispl, ydispl,
-     &                             COMM_Y )
-C
-C         FFT in Y direction
-C
-          n = n1b*n2*n3b
-          if (n>0) then
-            IOffSet = 1
-            do i= 1, n3b
-#ifdef SIESTA__FFTW
-              if ( use_fftw ) then
-                call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
-     &                            in, shape=[n1b*n2] )
-                call fftw_execute_dft( plan(2), in, in )
-              else
-#endif
-              call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:2*n), trigs(:,2),
-     .              2*n1b, 2, n2, n1b, -isn )
-#ifdef SIESTA__FFTW
-              endif ! use_fftw
-#endif
-              IOffSet = Ioffset + 2*n1b*n2
-            enddo
-          endif
-C
-C         Transpose data from Y to Z direction
-C
-          call redistributePencil( 2, n1b, n2, n3b, f2,
-     &                             3, n1c, n2c, n3, f1,
-     &                             pz, ProcessorZ, yzdisp, zdispl,
-     &                             COMM_Z )
-C
-C         FFT in Z direction
-C
-          n = n3*n1c*n2c
-          if (n>0) then
-#ifdef SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f1), in, shape=[n] )
-              call fftw_execute_dft( plan(3), in, in )
-            else
-#endif
-              call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
-     &                   n3, n1c*n2c,-isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-          endif
-        else ! isn==1
-C
-C         FFT in Z direction
-C
-          n = n3*n1c*n2c
-          if (n>0) then
-#ifdef  SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f1), in, shape=[n] )
-              call fftw_execute_dft( plan(3), in, in )
-            else
-#endif
-            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,3), 2*n1c*n2c, 2,
-     &      n3, n1c*n2c,-isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-          endif
-C
-C         Transpose data from Z to Y direction
-C
-          call redistributePencil( 3, n1c, n2c, n3, f1,
-     &                             2, n1b, n2, n3b, f2,
-     &                             pz, ProcessorZ, zdispl, yzdisp,
-     &                             COMM_Z )
-C
-C         FFT in Y direction
-C
-          n = n1b*n2*n3b
-          if (n>0) then
-            IOffSet = 1
-            do i= 1, n3b
-#ifdef  SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f2(IOffSet:IOffSet+n1b*n2-1)),
-     &                  in, shape=[n1b*n2] )
-              call fftw_execute_dft( plan(2), in, in )
-            else
-#endif
-              call gpfa(f2(IOffSet:2*n),f2(IOffSet+1:n), trigs(:,2),
-     .              2*n1b, 2, n2, n1b, -isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-              IOffSet = Ioffset + 2*n1b*n2
-            enddo
-          endif
-C
-C         Transpose data from Y to X direction
-C
-          call redistributePencil( 2, n1b, n2, n3b, f2,
-     &                             1, n1, n2a, n3a, f1,
-     &                             py, ProcessorY, ydispl, xdispl,
-     &                             COMM_Y )
-C
-C         FFT in X direction
-C
-          n = n1*n2a*n3a
-          if (n>0) then
-#ifdef SIESTA__FFTW
-            if ( use_fftw ) then
-              call c_f_pointer( c_loc(f1), in, shape=[n] )
-              call fftw_execute_dft( plan(1), in, in )
-            else
-#endif
-            call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
-     &                  n2a*n3a, -isn )
-#ifdef SIESTA__FFTW
-            endif ! use_fftw
-#endif
-C
-C           SCALE the result
-C
-            ng = n1*n2*n3
-            scale=1.0_dp/dble(ng)
-            do i=1,2*n
-              f1(i)=f1(i)*scale
-            enddo
-          endif
-        endif
-      endif
-#else /* NOT MPI */
-
-        n = n1*n2*n3
-C
-C       FFT in X direction
-C
-#ifdef SIESTA__FFTW
-        if ( use_fftw ) then
-          call c_f_pointer( c_loc(f1), in, shape=[n] )
-          call fftw_execute_dft( plan(1), in, in )
-        else
-#endif
-        call gpfa( f1(1:2*n), f1(2:2*n), trigs(:,1), 2, 2*n1, n1,
-     &             n2*n3, -isn )
-#ifdef SIESTA__FFTW
-        endif ! use_fftw
-#endif
+      call redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,1,nsm,Node,Nodes)
 C
 C  FFT in Y direction
 C
-      IOffSet = 1
+      if (LocalPoints) then
+        nft = size(ft)
+        do i=0,n3l-1
+          IOffSet=2*n1lf*n2*i
+          call gpfa(ft(IOffSet+1:nft),ft(IOffSet+2:nft),trigs(:,2),
+     .            2*n1lf,2,n2,n1lf,-isn)
+        enddo
+      endif
+C
+C  Redistribute data back to original form
+C
+      call redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,-1,nsm,Node,Nodes)
+C
+C  Free local memory ready for re-use
+C
+      call de_alloc( ft, name='ft', routine='fft' )
+C
+C  Find new distributed x dimension
+C
+      n1lf = n1/ProcessorZ
+      nrem = n1 - n1lf*ProcessorZ
+      if (Pz.le.nrem) n1lf = n1lf + 1
+C
+C  Allocate local memory
+C
+      nullify( ft )   ! AG
+      call re_alloc( ft, 1, 2*n1lf*n2l*n3, name='ft', routine='fft' )
+C
+C  Redistribute data to be distributed by X and Y
+C
+      call redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,1,nsm,Node,Nodes)
+C
+C  FFT in Z direction
+C
+      if (LocalPoints) then
+        nft = size(ft)
+        call gpfa(ft(1:nft),ft(2:nft),trigs(:,3),
+     $            2*n1lf*n2l,2,n3,n1lf*n2l,-isn)
+      endif
+C
+C  Redistribute data to be distributed by Z again
+C
+      call redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,-1,nsm,Node,Nodes)
+C
+C  Free local memory
+C
+      call de_alloc( ft, name='ft', routine='fft' )
+#else
+C
+C  FFT in Y direction
+C
       do i=0,n3-1
-#ifdef  SIESTA__FFTW
-        if ( use_fftw ) then
-          call c_f_pointer( c_loc(f1(IOffSet:IOffSet+n1*n2-1)),
-     &              in, shape=[n1*n2] )
-          call fftw_execute_dft( plan(2), in, in )
-        else
-#endif
-        call gpfa(f1(IOffSet:2*n),f1(IOffSet+1:n),trigs(:,2),
+         IOffSet=2*n1*n2*i
+         call gpfa(f(IOffSet+1:nf),f(IOffSet+2:nf),trigs(:,2),
      .             2*n1,2,n2,n1,-isn)
-#ifdef SIESTA__FFTW
-        endif ! use_fftw
-#endif
-        IOffSet = Ioffset + 2*n1*n2
       enddo
 C
 C  FFT in Z direction
 C
-#ifdef  SIESTA__FFTW
-      if ( use_fftw ) then
-        call c_f_pointer( c_loc(f1), in, shape=[n] )
-        call fftw_execute_dft( plan(3), in, in )
-      else
+      call gpfa(f(1:nf),f(2:nf),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
 #endif
-      call gpfa(f1(1:2*n),f1(2:2*n),trigs(:,3),2*n1*n2,2,n3,n1*n2,-isn)
-#ifdef SIESTA__FFTW
-        endif ! use_fftw
-#endif
+
 C
 C  Scale values
 C
-      if (isn.gt.0) then
-        scale=1.0_dp/dble(n)
+      if (LocalPoints.and.isn.gt.0) then
+        scale=1.0_dp/dble(ng)
         do i=1,2*n
-          f1(i)=f1(i)*scale
+          f(i)=f(i)*scale
         enddo
       endif
-#endif /* MPI */
+
       call timer( 'fft', 2 )
-#ifdef DEBUG
-      call write_debug( '    POS fft' )
-#endif
+
+      return
       end subroutine fft
 
+
+!******************************************************************************
+
 #ifdef MPI
-      subroutine redistributePencil( src, s1, s2, s3, fsrc,
-     &                               dst, d1, d2, d3, fdst,
-     &                               p, np, srcd, dstd, comm )
+      subroutine redistribXZ(f,n1,n2l,n3l,ft,n1lf,n2,idir,nsm,
+     .  Node,Nodes)
+C
+C  This routine redistributes the data over the Nodes as needed
+C  for the FFT routines between the arrays f and ft
+C
+C  Array f is distributed in the Y/Z direction while ft is distributed
+C  in the X/Z direction
+C
+C  idir = direction of redistribution : > 0 => f->ft
+C                                       < 0 => ft->f
+C
+C  Use the processor grid to divide communicator according to Z
+C
+C  Julian Gale, July 1999
+C
+
       implicit none
-      integer :: src, dst, s1, s2, s3, d1, d2, d3
-      integer :: p, np, srcd(np+1), dstd(np+1)
-      real*8 :: fsrc(2,s1,s2,s3), fdst(2,d1,d2,d3)
-      integer :: i, j, k, l, ii, jj, kk, pi, pl, pr, nsend, nrecv
-      integer :: ierr
-      MPI_REQUEST_TYPE :: r_recv
-      MPI_REQUEST_TYPE :: r_send
-      MPI_STATUS_TYPE :: Status
-      MPI_COMM_TYPE   :: COMM
-      integer :: bsize_s, bsize_r
-      integer :: sbox(2,3), dbox(2,3)
-      real(grid_p), pointer  :: sbuf(:,:) => null(), rbuf(:,:) => null()
-      sbox(1,:) = 1
-      sbox(2,:) = (/ s1, s2, s3 /)
-      dbox(1,:) = 1
-      dbox(2,:) = (/ d1, d2, d3 /)
-C     Compute the buffer sizes
-      bsize_s = (s1*s2*s3/sbox(2,src))*(srcd(2)-srcd(1))
-      bsize_r = (d1*d2*d3/dbox(2,dst))*(dstd(2)-dstd(1))
-      call re_alloc( sbuf, 1, 2, 1, bsize_s, 'sbuf', 'fft' )
-      call re_alloc( rbuf, 1, 2, 1, bsize_r, 'rbuf', 'fft' )
+
 C
-C     Handle transfer of terms which are purely local
+C  Passed arguments
 C
-      sbox(1,src) = srcd(p)
-      sbox(2,src) = srcd(p+1)-1
-      dbox(1,dst) = dstd(p)
-      dbox(2,dst) = dstd(p+1)-1
-      ii = dbox(1,3)
-      do i= sbox(1,3), sbox(2,3)
-        jj = dbox(1,2)
-        do j= sbox(1,2), sbox(2,2)
-          kk = dbox(1,1)
-          do k= sbox(1,1), sbox(2,1)
-            fdst(:,kk,jj,ii) = fsrc(:,k,j,i)
-            kk = kk+1
-          enddo
-          jj = jj+1
-        enddo
-        ii =ii+1
-      enddo
+      integer
+     .  n1, n2, n2l, n1lf, n3l, Node, Nodes, idir, nsm
+      real(grid_p)
+     .  f(2,n1,n2l,n3l), ft(2,n1lf,n2,n3l)
 C
-C  Loop over all Node-Node vectors exchanging local data
+C  Local variables
 C
-      do pi=1, NP-1
-        ! Let's receive from left node and send to the right node
-        pl = mod(p-1+NP-pi,NP)+1
-        pr = mod(p-1+pi,NP)+1
-        ! Destination boxes
-        dbox(1,dst) = dstd(pl)
-        dbox(2,dst) = dstd(pl+1)-1
-        sbox(1,src) = srcd(pr)
-        sbox(2,src) = srcd(pr+1)-1
-        ! Number of elements to send/receive
-        nsend = 2*PRODUCT( sbox(2,:)-sbox(1,:)+1 )
-        nrecv = 2*PRODUCT( dbox(2,:)-dbox(1,:)+1 )
+      integer
+     .  BlockSizeY, BlockSizeYMax, jmin, jmax, jloc, n1lmax, NRemY,
+     .  i, j, k, jl, kl, BNode, INode, SNode, jminS, jmaxS
+
+      integer
+     .  MPIerror, RequestR, RequestS, Status(MPI_Status_Size)
+
+      integer, save ::
+     .  ProcessorZ, Py, Pz, ZCommunicator, ZNode, ZNodes
+
+      logical, save :: firsttimeZ = .true.
+
+      real(grid_p), dimension(:,:,:,:), pointer  :: ftmp,ftmp2
+
+      if (firsttimeZ) then
 C
-C       Collect data to send
+C  Determine processor grid coordinates
 C
-        l = 1
-        do i= sbox(1,3), sbox(2,3)
-          do j= sbox(1,2), sbox(2,2)
-            do k= sbox(1,1), sbox(2,1)
-              sbuf(:,l) = fsrc(:,k,j,i)
-              l = l+1
-            enddo
-          enddo
-        enddo
+        ProcessorZ = Nodes/ProcessorY
+        if (ProcessorY*ProcessorZ.ne.Nodes) 
+     $     call die('ERROR: ProcessorY must be a factor of the' //
+     $     ' number of processors!')
+        Py = (Node/ProcessorZ) + 1
+        Pz = Node - (Py - 1)*ProcessorZ + 1
 C
-C       Exchange data - send to right and receive from left
+C  Group processors into subsets by Z
 C
-        call MPI_IRecv( rbuf(1,1), nrecv,
-     .    MPI_grid_real, pl-1, 1, COMM, r_recv, ierr )
-        call MPI_ISend( sbuf(1,1), nsend,
-     .    MPI_grid_real, pr-1, 1, COMM, r_send, ierr )
+        call MPI_Comm_Split(MPI_Comm_World, Pz, Py, ZCommunicator,
+     .    MPIerror)
+        call MPI_Comm_Rank(ZCommunicator,ZNode,MPIerror)
+        call MPI_Comm_Size(ZCommunicator,ZNodes,MPIerror)
+        firsttimeZ = .false.
+      endif
+
+      BlockSizeY = ((n2/nsm)/ProcessorY)*nsm
+      NRemY = (n2 - ProcessorY*BlockSizeY)/nsm
+      if (NRemY.gt.0) then
+        BlockSizeYMax = BlockSizeY + nsm
+      else
+        BlockSizeYMax = BlockSizeY
+      endif
+      n1lmax = ((n1-1)/ProcessorY) + 1
 C
-C       Wait for receive to complete
+C  Work out local dimensions
 C
-        call MPI_Wait( r_recv, Status, ierr )
+      jmin = (Py-1)*BlockSizeY + nsm*min(Py-1,NRemY) + 1
+      jmax = jmin + BlockSizeY - 1
+      if (Py-1.lt.NRemY) jmax = jmax + nsm
+      jmax = min(jmax,n2)
+      jloc = jmax - jmin + 1
 C
-C       Place received data into correct array
+C  Allocate local memory and initialise
 C
-        l = 1
-        do i= dbox(1,3), dbox(2,3)
-          do j= dbox(1,2), dbox(2,2)
-            do k= dbox(1,1), dbox(2,1)
-              fdst(:,k,j,i) = rbuf(:,l)
-              l = l+1
-            enddo
+      nullify( ftmp )
+      call re_alloc( ftmp, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
+     &               name='ftmp', routine='redistribXZ' )
+      nullify( ftmp2 )
+      call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, BlockSizeYMax, 1, n3l,
+     &               name='ftmp2', routine='redistribXZ' )
+
+      do i = 1,n3l
+        do j = 1,BlockSizeYMax
+          do k = 1,n1lmax
+            ftmp(1,k,j,i) = 0.0_grid_p
+            ftmp(2,k,j,i) = 0.0_grid_p
+            ftmp2(1,k,j,i) = 0.0_grid_p
+            ftmp2(2,k,j,i) = 0.0_grid_p
           enddo
         enddo
-C
-C  Wait for send to complete
-C
-        call MPI_Wait( r_send, Status, ierr )
       enddo
 
-      call de_alloc( sbuf, 'sbuf', 'fft' )
-      call de_alloc( rbuf, 'rbuf', 'fft' )
-      end subroutine redistributePencil
-#endif /* MPI */
+      if (idir.gt.0) then
+C***********
+C  F -> FT *
+C***********
+C
+C  Handle transfer of terms which are purely local
+C
+        do i = 1,n3l
+          do j = jmin,jmax
+            jl = j - jmin + 1
+            kl = 0
+            do k = 1+ZNode, n1, ZNodes
+              kl = kl + 1
+              ft(1,kl,j,i) = f(1,k,jl,i)
+              ft(2,kl,j,i) = f(2,k,jl,i)
+            enddo
+          enddo
+        enddo
+
+C  Loop over all Node-Node vectors exchanging local data
+C
+        do INode = 1,ProcessorY-1
+          BNode = (ZNode+INode)
+          BNode = mod(BNode,ProcessorY)
+          SNode = (ZNode-INode)
+          SNode = mod(SNode+ProcessorY,ProcessorY)
+C
+C  Collect data to send
+          do i = 1,n3l
+            do jl = 1,jloc
+              kl = 0
+              do k = 1+BNode, n1, ZNodes
+                kl = kl + 1
+                ftmp(1,kl,jl,i) = f(1,k,jl,i)
+                ftmp(2,kl,jl,i) = f(2,k,jl,i)
+              enddo
+            enddo
+          enddo
+
+C
+C  Exchange data - send to right and receive from left
+C
+          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
+     .      MPI_grid_real,SNode,1,ZCommunicator,RequestR,MPIerror)
+          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
+     .      MPI_grid_real,BNode,1,ZCommunicator,RequestS,MPIerror)
+C
+C  Wait for receive to complete
+C
+          call MPI_Wait(RequestR,Status,MPIerror)
+C
+C  Place received data into correct array
+C
+          jminS = SNode*BlockSizeY + nsm*min(SNode,NRemY) + 1
+          jmaxS = jminS + BlockSizeY - 1
+          if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
+          jmaxS = min(jmaxS,n2)
+          do i = 1,n3l
+            do j = jminS,jmaxS
+              jl = j - jminS + 1
+              kl = 0
+              do k = 1+ZNode, n1, ZNodes
+                kl = kl + 1
+                ft(1,kl,j,i) = ftmp2(1,kl,jl,i)
+                ft(2,kl,j,i) = ftmp2(2,kl,jl,i)
+              enddo
+            enddo
+          enddo
+
+C  Wait for send to complete
+C
+          call MPI_Wait(RequestS,Status,MPIerror)
+        enddo
+      elseif (idir.lt.0) then
+C***********
+C  FT -> F *
+C***********
+C
+C  Handle transfer of terms which are purely local
+
+        do i = 1,n3l
+          do j = jmin,jmax
+            jl = j - jmin + 1
+            kl = 0
+            do k = 1+ZNode, n1, ZNodes
+              kl = kl + 1
+              f(1,k,jl,i) = ft(1,kl,j,i) 
+              f(2,k,jl,i) = ft(2,kl,j,i) 
+            enddo
+          enddo
+        enddo
+
+C  Loop over all Node-Node vectors exchanging local data
+C
+        do INode = 1,ProcessorY-1
+          BNode = (ZNode+INode)
+          BNode = mod(BNode,ProcessorY)
+          SNode = (ZNode-INode)
+          SNode = mod(SNode+ProcessorY,ProcessorY)
+C
+C  Collect data to send
+C
+          jminS = SNode*BlockSizeY + nsm*min(SNode,NRemY) + 1
+          jmaxS = jminS + BlockSizeY - 1
+          if (SNode.lt.NRemY) jmaxS = jmaxS + nsm
+          jmaxS = min(jmaxS,n2)
+          do i = 1,n3l
+            do j = jminS,jmaxS
+              jl = j - jminS + 1
+              kl = 0
+              do k = 1+ZNode, n1, ZNodes
+                kl = kl + 1
+                ftmp(1,kl,jl,i) = ft(1,kl,j,i) 
+                ftmp(2,kl,jl,i) = ft(2,kl,j,i) 
+              enddo
+            enddo
+          enddo
+
+C  Exchange data - send to right and receive from left
+C
+          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
+     .      MPI_grid_real,BNode,1,ZCommunicator,RequestR,MPIerror)
+          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*BlockSizeYMax*n3l,
+     .      MPI_grid_real,SNode,1,ZCommunicator,RequestS,MPIerror)
+C
+C  Wait for receive to complete
+C
+          call MPI_Wait(RequestR,Status,MPIerror)
+C
+C  Place received data into correct array
+
+          do i = 1,n3l
+            do jl = 1,jloc
+              kl = 0
+              do k = 1+BNode, n1, ZNodes
+                kl = kl + 1
+                f(1,k,jl,i) = ftmp2(1,kl,jl,i) 
+                f(2,k,jl,i) = ftmp2(2,kl,jl,i) 
+              enddo
+            enddo
+          enddo
+
+C  Wait for send to complete
+C
+          call MPI_Wait(RequestS,Status,MPIerror)
+        enddo
+      endif
+C
+C  Free local memory
+C
+      call de_alloc( ftmp2, name='ftmp2', routine='redistribXZ' )
+      call de_alloc( ftmp, name='ftmp', routine='redistribXZ' )
+
+      end subroutine redistribXZ
+
+!******************************************************************************
+
+      subroutine redistribXY(f,n1,n2l,n3l,ft,n1lf,n3,idir,nsm,
+     .  Node,Nodes)
+C
+C  This routine redistributes the data over the Nodes as needed
+C  for the FFT routines between the arrays f and ft
+C
+C  Array f is distributed in the Y/Z direction while ft is distributed
+C  in the X/Y direction
+C
+C  idir = direction of redistribution : > 0 => f->ft
+C                                       < 0 => ft->f
+C
+C  Use the processor grid to divide communicator according to Y
+C
+C  Currently written in not the most efficient but simple way! 
+C  Need to improve communication later.
+C
+C  Julian Gale, July 1999
+C
+
+      implicit none
+
+C
+C  Passed arguments
+C
+      integer
+     .  n1, n3, n2l, n1lf, n3l, nsm, Node, Nodes, idir
+      real(grid_p)
+     .  f(2,n1,n2l,n3l), ft(2,n1lf,n2l,n3)
+C
+C  Local variables
+C
+      integer
+     .  i, j, k, il, kl, BNode, BlockSizeZ, imin, imax, iloc,
+     .  INode, n1lmax, SNode, iminS, imaxS, NRemZ, BlockSizeZMax
+
+      integer
+     .  MPIerror, RequestR, RequestS, Status(MPI_Status_Size)
+
+      integer, save ::
+     .  ProcessorZ, Py, Pz, YCommunicator, YNode, YNodes
+
+      logical, save :: firsttimeY = .true.
+
+      real(grid_p), dimension(:,:,:,:), pointer :: ftmp,ftmp2
+
+      if (firsttimeY) then
+C
+C  Determine processor grid coordinates
+C
+        ProcessorZ = Nodes/ProcessorY
+        if (ProcessorY*ProcessorZ.ne.Nodes) 
+     $     call die('ERROR: ProcessorY must be a factor of the' //
+     $     ' number of processors!')
+        Py = (Node/ProcessorZ) + 1
+        Pz = Node - (Py - 1)*ProcessorZ + 1
+C
+C  Group processors into subsets by Y
+C
+        call MPI_Comm_Split(MPI_Comm_World, Py, Pz, YCommunicator,
+     .    MPIerror)
+        call MPI_Comm_Rank(YCommunicator,YNode,MPIerror)
+        call MPI_Comm_Size(YCommunicator,YNodes,MPIerror)
+        firsttimeY = .false.
+      endif
+
+      BlockSizeZ = ((n3/nsm)/ProcessorZ)*nsm
+      NRemZ = (n3 - ProcessorZ*BlockSizeZ)/nsm
+      if (NRemZ.gt.0) then
+        BlockSizeZMax = BlockSizeZ + nsm
+      else
+        BlockSizeZMax = BlockSizeZ
+      endif
+      n1lmax = ((n1-1)/ProcessorZ) + 1
+C
+C  Allocate local memory and initialise
+C
+      nullify( ftmp )
+      call re_alloc( ftmp, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
+     &               name='ftmp', routine='redistribXY' )
+      nullify( ftmp2 )
+      call re_alloc( ftmp2, 1, 2, 1, n1lmax, 1, n2l, 1, BlockSizeZMax,
+     &               name='ftmp2', routine='redistribXY' )
+
+      do i = 1,BlockSizeZMax
+        do j = 1,n2l
+          do k = 1,n1lmax
+            ftmp(1,k,j,i) = 0.0_grid_p
+            ftmp(2,k,j,i) = 0.0_grid_p
+            ftmp2(1,k,j,i) = 0.0_grid_p
+            ftmp2(2,k,j,i) = 0.0_grid_p
+          enddo
+        enddo
+      enddo
+
+C  Work out local dimensions
+C
+      imin = (Pz-1)*BlockSizeZ + nsm*min(Pz-1,NRemZ) + 1
+      imax = imin + BlockSizeZ - 1
+      if (Pz-1.lt.NRemZ) imax = imax + nsm
+      imax = min(imax,n3)
+      iloc = imax - imin + 1
+
+      if (idir.gt.0) then
+C***********
+C  F -> FT *
+C***********
+C
+C  Handle transfer of terms which are purely local
+
+        do i = imin,imax
+          il = i - imin + 1
+          do j = 1,n2l
+            kl = 0
+            do k = 1+YNode, n1, YNodes
+              kl = kl + 1
+              ft(1,kl,j,i) = f(1,k,j,il)
+              ft(2,kl,j,i) = f(2,k,j,il)
+            enddo
+          enddo
+        enddo
+
+C  Loop over all Node-Node vectors exchanging local data
+C
+        do INode = 1,ProcessorZ-1
+          BNode = (YNode+INode)
+          BNode = mod(BNode,ProcessorZ)
+          SNode = (YNode-INode)
+          SNode = mod(SNode+ProcessorZ,ProcessorZ)
+C
+C  Collect data to send
+
+          do il = 1,iloc
+            do j = 1,n2l
+              kl = 0
+              do k = 1+BNode, n1, YNodes
+                kl = kl + 1
+                ftmp(1,kl,j,il) = f(1,k,j,il)
+                ftmp(2,kl,j,il) = f(2,k,j,il)
+              enddo
+            enddo
+          enddo
+
+C  Exchange data - send to right and receive from left
+C
+          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
+     .      MPI_grid_real,SNode,1,YCommunicator,RequestR,MPIerror)
+          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
+     .      MPI_grid_real,BNode,1,YCommunicator,RequestS,MPIerror)
+C
+C  Wait for receive to complete
+C
+          call MPI_Wait(RequestR,Status,MPIerror)
+C
+C  Place received data into correct array
+C
+          iminS = SNode*BlockSizeZ + nsm*min(SNode,NRemZ) + 1
+          imaxS = iminS + BlockSizeZ - 1
+          if (SNode.lt.NRemZ) imaxS = imaxS + nsm
+          imaxS = min(imaxS,n3)
+          do i = iminS,imaxS
+            il = i - iminS + 1
+            do j = 1,n2l
+              kl = 0
+              do k = 1+YNode, n1, YNodes
+                kl = kl + 1
+                ft(1,kl,j,i) = ftmp2(1,kl,j,il)
+                ft(2,kl,j,i) = ftmp2(2,kl,j,il)
+              enddo
+            enddo
+          enddo
+
+C  Wait for send to complete
+C
+          call MPI_Wait(RequestS,Status,MPIerror)
+        enddo
+      elseif (idir.lt.0) then
+C***********
+C  FT -> F *
+C***********
+C
+C  Handle transfer of terms which are purely local
+
+        do i = imin,imax
+          il = i - imin + 1
+          do j = 1,n2l
+            kl = 0
+            do k = 1+YNode, n1, YNodes
+              kl = kl + 1
+              f(1,k,j,il) = ft(1,kl,j,i)
+              f(2,k,j,il) = ft(2,kl,j,i)
+            enddo
+          enddo
+        enddo
+
+C  Loop over all Node-Node vectors exchanging local data
+C
+        do INode = 1,ProcessorZ-1
+          BNode = (YNode+INode)
+          BNode = mod(BNode,ProcessorZ)
+          SNode = (YNode-INode)
+          SNode = mod(SNode+ProcessorZ,ProcessorZ)
+C
+C  Collect data to send
+C
+          iminS = SNode*BlockSizeZ + nsm*min(SNode,NRemZ) + 1
+          imaxS = iminS + BlockSizeZ - 1
+          if (SNode.lt.NRemZ) imaxS = imaxS + nsm
+          imaxS = min(imaxS,n3)
+          do i = iminS,imaxS
+            il = i - iminS + 1
+            do j = 1,n2l
+              kl = 0
+              do k = 1+YNode, n1, YNodes
+                kl = kl + 1
+                ftmp(1,kl,j,il) = ft(1,kl,j,i)
+                ftmp(2,kl,j,il) = ft(2,kl,j,i)
+              enddo
+            enddo
+          enddo
+
+C
+C  Exchange data - send to right and receive from left
+C
+          call MPI_IRecv(ftmp2(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
+     .      MPI_grid_real,BNode,1,YCommunicator,RequestR,MPIerror)
+          call MPI_ISend(ftmp(1,1,1,1),2*n1lmax*n2l*BlockSizeZMax,
+     .      MPI_grid_real,SNode,1,YCommunicator,RequestS,MPIerror)
+C
+C  Wait for receive to complete
+C
+          call MPI_Wait(RequestR,Status,MPIerror)
+C
+C  Place received data into correct array
+C
+          do il = 1,iloc
+            do j = 1,n2l
+              kl = 0
+              do k = 1+BNode, n1, YNodes
+                kl = kl + 1
+                f(1,k,j,il) = ftmp2(1,kl,j,il)
+                f(2,k,j,il) = ftmp2(2,kl,j,il)
+              enddo
+            enddo
+          enddo
+
+C  Wait for send to complete
+C
+          call MPI_Wait(RequestS,Status,MPIerror)
+        enddo
+      endif
+C
+C  Free local memory
+C
+      call de_alloc( ftmp2, name='ftmp2', routine='redistribXY' )
+      call de_alloc( ftmp, name='ftmp', routine='redistribXY' )
+
+      return
+      end subroutine redistribXY
+#endif
 
 !******************************************************************************
 

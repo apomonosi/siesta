@@ -1,15 +1,13 @@
-!
-!     Copyright (C) 1996-2025	The SIESTA group
+!     
+!     Copyright (C) 1996-2016	The SIESTA group
 !     This file is distributed under the terms of the
 !     GNU General Public License: see COPYING in the top directory
 !     or http://www.gnu.org/copyleft/gpl.txt.
 !     See Docs/Contributors.txt for a list of contributors.
-!
-#include "mpi_macros.f"
-
+!     
       module m_mpi_utils
 
-      use precision, only: dp, sp, i8b
+      use precision, only: dp, sp
       use sys, only: die
 #ifdef MPI
       use mpi_siesta
@@ -22,60 +20,47 @@
       public :: globalize_or, globalize_min
       public :: barrier
       private
-
+      
       interface globalize_max
        module procedure globalize_max_dp, globalize_max_int
       end interface
-
       interface globalize_min
        module procedure globalize_min_dp, globalize_min_int
       end interface
-
       interface globalize_sum
-       ! these can be called outside #ifdef MPI sections
-       module procedure globalize_sum_dp
-       module procedure globalize_sum_int
-       module procedure globalize_sum_long
+       module procedure globalize_sum_dp, globalize_sum_int
        module procedure globalize_sum_v_dp
        module procedure globalize_sum_vv_dp
        module procedure globalize_sum_vv_cmplx
-       ! in-place versions must be explicitly wrapped by #ifdef MPI
-#ifdef MPI
-       module procedure globalize_sum_inplace_dp
-       module procedure globalize_sum_inplace_v_dp
-       module procedure globalize_sum_inplace_vv_dp
-#endif
       end interface
-
       interface broadcast
        module procedure broadcast_dp, broadcast_int, broadcast_logical
        module procedure broadcast_sp, broadcast_char
        module procedure broadcast_v_dp, broadcast_v_int
        module procedure broadcast_vv_dp, broadcast_vv_int
        module procedure broadcast_vvv_dp, broadcast_vvv_int
-       module procedure broadcast_v_logical
       end interface
 
       CONTAINS
 
       subroutine barrier(comm)
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
       endif
-      call MPI_Barrier(MPI_Comm,MPIerror)
+      call MPI_Barrier(MPI_Comm_World,MPIerror)
 #endif
       end subroutine barrier
 
       subroutine broadcast_dp(scalar,comm)
       real(dp), intent(inout) :: scalar
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -87,10 +72,10 @@
 
       subroutine broadcast_v_dp(a,comm)
       real(dp), dimension(:), intent(inout) :: a
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -103,10 +88,10 @@
       subroutine broadcast_vv_dp(a,comm)
       real(dp), dimension(:,:), intent(inout) :: a
 !! Only for contiguous array sections !!
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -119,10 +104,10 @@
       subroutine broadcast_vvv_dp(a,comm)
       real(dp), dimension(:,:,:), intent(inout) :: a
 !! Only for contiguous array sections !!
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -134,10 +119,10 @@
 
       subroutine broadcast_sp(scalar,comm)
       real(sp), intent(inout) :: scalar
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -149,10 +134,10 @@
 
       subroutine broadcast_int(scalar,comm)
       integer, intent(inout) :: scalar
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -164,10 +149,10 @@
 
       subroutine broadcast_v_int(a,comm)
       integer, dimension(:), intent(inout) :: a
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -179,10 +164,10 @@
 
       subroutine broadcast_vv_int(a,comm)
       integer, dimension(:,:), intent(inout) :: a
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -194,10 +179,10 @@
 
       subroutine broadcast_vvv_int(a,comm)
       integer, dimension(:,:,:), intent(inout) :: a
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -209,10 +194,10 @@
 
       subroutine broadcast_char(str,comm)
       character(len=*), intent(inout) :: str
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -224,10 +209,10 @@
 
       subroutine broadcast_logical(scalar,comm)
       logical, intent(inout) :: scalar
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -237,28 +222,14 @@
 #endif
       end subroutine broadcast_logical
 
-      subroutine broadcast_v_logical(a,comm)
-      logical, dimension(:), intent(inout) :: a
-      MPI_COMM_TYPE, intent(in), optional :: comm
-
-#ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
-      mpi_comm = mpi_comm_world
-      if (present(comm)) then
-         mpi_comm = comm
-      endif
-      call MPI_Bcast(a,size(a),MPI_integer,0,
-     $     MPI_Comm,MPIerror)
-#endif
-      end subroutine broadcast_v_logical
 
       subroutine Globalize_or(local,global,comm)
       logical, intent(in) :: local
       logical, intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -273,10 +244,10 @@
       subroutine Globalize_sum_dp(local,global,comm)
       real(dp), intent(in) :: local
       real(dp), intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -291,10 +262,10 @@
       subroutine Globalize_sum_v_dp(local,global,comm)
       real(dp), intent(in), dimension(:)  :: local
       real(dp), intent(out), dimension(:) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
       integer :: n
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
 
       n = size(local)
       if ( n /= size(global))
@@ -315,10 +286,10 @@
       subroutine Globalize_sum_vv_dp(local,global,comm)
       real(dp), intent(in), dimension(:,:)  :: local
       real(dp), intent(out), dimension(:,:) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
       integer :: n
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
 
       n = size(local)
       if ( n /= size(global))
@@ -341,10 +312,10 @@
       subroutine Globalize_sum_vv_cmplx(local,global,comm)
       complex(dp), intent(in), dimension(:,:)  :: local
       complex(dp), intent(out), dimension(:,:) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
       integer :: n
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
 
       n = size(local)
       if ( n /= size(global))
@@ -368,9 +339,9 @@
       subroutine Globalize_sum_int(local,global,comm)
       integer, intent(in) :: local
       integer, intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
 #ifdef MPI
       mpi_comm = mpi_comm_world
       if (present(comm)) then
@@ -383,31 +354,13 @@
 #endif
       end subroutine Globalize_sum_int
 
-      subroutine Globalize_sum_long(local,global,comm)
-      integer(i8b), intent(in) :: local
-      integer(i8b), intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
-
-      MPI_COMM_TYPE :: mpi_comm
-#ifdef MPI
-      mpi_comm = mpi_comm_world
-      if (present(comm)) then
-         mpi_comm = comm
-      endif
-      call MPI_AllReduce(local,global,1,MPI_integer8,
-     $     MPI_sum,MPI_Comm,MPIerror)
-#else
-      global = local
-#endif
-      end subroutine Globalize_sum_long
-
       subroutine Globalize_max_dp(local,global,comm)
       real(dp), intent(in) :: local
       real(dp), intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -422,10 +375,10 @@
       subroutine Globalize_max_int(local,global,comm)
       integer, intent(in) :: local
       integer, intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -440,10 +393,10 @@
       subroutine Globalize_min_dp(local,global,comm)
       real(dp), intent(in) :: local
       real(dp), intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -458,10 +411,10 @@
       subroutine Globalize_min_int(local,global,comm)
       integer, intent(in) :: local
       integer, intent(out) :: global
-      MPI_COMM_TYPE, intent(in), optional :: comm
+      integer, intent(in), optional :: comm
 
 #ifdef MPI
-      MPI_COMM_TYPE :: mpi_comm
+      integer :: mpi_comm
       mpi_comm = mpi_comm_world
       if (present(comm)) then
          mpi_comm = comm
@@ -473,46 +426,5 @@
 #endif
       end subroutine Globalize_min_int
 
-#ifdef MPI
-!--------------------------------------------------------------
-!     In-place versions of 'dp' interfaces for Globalize_sum
-!     Note that 'comm' is mandatory
-!     They need to import MPI_IN_PLACE and MPI_AllReduce
-!     from the 'mpi'/'mpi_f08' module since this particular form is not in
-!     the legacy interfaces
-!
-!     These are also wrapped in a global ifdef MPI
-
-      subroutine Globalize_sum_inplace_dp(var,comm)
-      USE_MPI, only: MPI_IN_PLACE, MPI_AllReduce
-      real(dp), intent(inout) :: var
-      MPI_COMM_TYPE, intent(in) :: comm
-
-      call MPI_AllReduce(MPI_IN_PLACE,var,1,MPI_double_precision,
-     &     MPI_sum,comm,MPIerror)
-
-      end subroutine Globalize_sum_inplace_dp
-
-      subroutine Globalize_sum_inplace_v_dp(var,comm)
-      USE_MPI, only: MPI_IN_PLACE, MPI_AllReduce
-      real(dp), intent(inout), dimension(:)  :: var
-      MPI_COMM_TYPE, intent(in) :: comm
-
-      call MPI_AllReduce(MPI_IN_PLACE,var(1),size(var),
-     &     MPI_double_precision, MPI_sum,comm,MPIerror)
-
-      end subroutine Globalize_sum_inplace_v_dp
-
-      subroutine Globalize_sum_inplace_vv_dp(var,comm)
-      USE_MPI, only: MPI_IN_PLACE, MPI_AllReduce
-      real(dp), intent(inout), dimension(:,:)  :: var
-      MPI_COMM_TYPE, intent(in) :: comm
-
-      call MPI_AllReduce(MPI_IN_PLACE,var(1,1),size(var),
-     &     MPI_double_precision, MPI_sum,comm,MPIerror)
-
-      end subroutine Globalize_sum_inplace_vv_dp
-#endif
-      
       end module m_mpi_utils
 

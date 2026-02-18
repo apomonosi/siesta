@@ -1293,10 +1293,10 @@ contains
           ! Save the current gathered data
 #ifdef NCDF_4
           call state_cdf_save(TBTcdf, ikpt, nE, N_Elec, Elecs, &
-               DOS, T, N_eigen, Teig, save_DATA)
+               DOS, T, N_eigen, Teig, save_DATA=save_DATA)
 #else
           call state_save(iounits,r_oDev%n, nE,N_Elec,Elecs,DOS, T, &
-               N_eigen, Teig, save_DATA )
+               N_eigen, Teig, save_DATA=save_DATA )
 #endif
 
           call timer('analysis',2)

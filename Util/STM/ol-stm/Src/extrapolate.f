@@ -25,13 +25,12 @@ C complex*8 CW(0:NPX-1,0:NPY-1): Values of wavefunction at reference plane
 C real*8  E                : Energy of the wavefunction
 C real*8  K(3)             : K-point of wave function
 C ************************ OUTPUT ***************************************
-C complex*8 CWE(0:NPX-1,0:NPY-1,0:NPZ-1):
+C complex*8 CWE(0:NPX-1,0:NPY-1,0:NPZ-1): 
 C                            Wave Function extrapolated at all heights
 C ***********************************************************************
 
       use precision, only: dp
-      use fftw3_siesta_wrapper
-      use, intrinsic :: iso_c_binding
+      USE fftw3_mymod
 
       IMPLICIT NONE
 
@@ -58,7 +57,6 @@ C INTERNAL VARIABLES
 
       LOGICAL, SAVE :: FIRST = .true.
 
-      type(C_PTR) :: plan
       EXTERNAL  VOLCEL
 
 C CHANGE UNITS OF ENERGY TO A.U.
@@ -81,7 +79,7 @@ C INITIALIZE VARIABLES ............
 !     N.L. Fevrier 2005
 
 !! .... but what is the physical meaning of a decay *towards* the surface?? (AG)
-
+         
 !       IF (ZMIN .LT. ZREF) THEN
 !         WRITE(6,*) 'error: the reference plane can not be above'
 !         WRITE(6,*) '       the simulation area'
@@ -93,7 +91,7 @@ C INITIALIZE VARIABLES ............
 
         IF (NPZ .NE. 1) THEN
           STEPZ = (ZMAX - ZMIN) / (NPZ - 1)
-        ELSE
+        ELSE 
           STEPZ = 0.0D0
         ENDIF
 C
@@ -108,17 +106,17 @@ C
 
       ENDIF
 
-C DO DIRECT FOURIER TRANSFORM TO GET SPATIAL FREQUENCIES OF WF AT
+C DO DIRECT FOURIER TRANSFORM TO GET SPATIAL FREQUENCIES OF WF AT 
 C REFERENCE PLANE ........
 
       ! Reverse dimensions for f2003 interface !!!
-      plan =  fftw_plan_dft_2d (NPY,NPX,CW,CW,FFTW_FORWARD,
+      plan =  fftw_plan_dft_2d (NPY,NPX,CW,CW,FFTW_FORWARD, 
      .                        FFTW_ESTIMATE)
       call fftw_execute_dft (plan,cw,cw)
       call fftw_destroy_plan(plan)
 
 C LOOP OVER SIMULATION HEIGHTS ........
-      plan = fftw_plan_dft_2d (NPY,NPX,EXPSI,EXPSI,FFTW_BACKWARD,
+      plan = fftw_plan_dft_2d (NPY,NPX,EXPSI,EXPSI,FFTW_BACKWARD, 
      .                        FFTW_ESTIMATE)
 
       DO NZ = 1, NPZ
@@ -126,8 +124,8 @@ C LOOP OVER SIMULATION HEIGHTS ........
 
         ! NOTE: No "inward propagation...", despite what Nicolas says above
         ! Points with Z < ZREF are computed from un-propagated wfs
-        IF (Z < ZREF) CYCLE
-
+        IF (Z < ZREF) CYCLE  
+        
 C LOOP OVER POINTS IN XY PLANE ...
         DO NY = 1, NPY
           NY1 = NY-1
@@ -142,16 +140,16 @@ C G COMPONENTS
             GY = IA1*VEC1(2) + IA2*VEC2(2)
 
 C CALCULATE EXPONENT OF DECAY
-           DECAY = SQRT( 2.0D0*(V0AU-EAU) +
+           DECAY = SQRT( 2.0D0*(V0AU-EAU) + 
      .                    (GX+K(1))**2 + (GY+K(2))**2)
 
 C EXTEND WAVE FUNCTION TO CURRENT HEIGHT
-            EXPSI(NX1,NY1) = CW(NX1,NY1) * EXP(-DECAY*ABS(Z-ZREF)) /
+            EXPSI(NX1,NY1) = CW(NX1,NY1) * EXP(-DECAY*ABS(Z-ZREF)) / 
      .                       (NPX*NPY)
           ENDDO
         ENDDO        !  LOOP XY
 
-C DO BACK FOURIER TRANSFORM TO GET REAL SPACE WF AT
+C DO BACK FOURIER TRANSFORM TO GET REAL SPACE WF AT 
 C REFERENCE PLANE .....
 
         call fftw_execute_dft (plan,expsi,expsi)
@@ -159,7 +157,7 @@ C REFERENCE PLANE .....
         CWE(:,:,NZ-1) = EXPSI(:,:)
 
       ENDDO     !  LOOP Z
-
+      
       call fftw_destroy_plan(plan)
 
       RETURN

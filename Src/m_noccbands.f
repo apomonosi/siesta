@@ -28,7 +28,6 @@
       use precision
       use parallel,     only: IOnode
       use atmfuncs,     only: zvalfis
-      use atmfuncs,     only: floating
       use siesta_geom,  only: na_s, na_u, isa
       use alloc,        only: re_alloc
       use sys,          only: die
@@ -59,9 +58,7 @@
 
         do ia = 1, na_u
           is = isa(ia) 
-          if (.not. floating(is)) then
-            ntote_real = ntote_real + zvalfis(is)
-          endif 
+          ntote_real = ntote_real + zvalfis(is)
         enddo
 
         if ((nint(ntote_real) - ntote_real) .gt. 1.0e-6_dp) then

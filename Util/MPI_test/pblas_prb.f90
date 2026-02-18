@@ -34,7 +34,6 @@ program pblas_prb
   integer descb(dlen_)
   integer descc(dlen_ )
   double precision mem(memsiz)
-  integer work(memsiz)
   double precision, parameter :: one = 1.0D+00
   character ( len = 80 ) outfile
 !
@@ -50,13 +49,7 @@ program pblas_prb
 !  Get starting information.
 !
   call BLACS_PINFO( iam, NPROCS )
-
-  if (nprocs < 4 ) then
-     write ( *, '(a)' ) '  You need at least 4 processes for this test'
-     stop
-  endif
-
-  call PDPBLASINFO( OUTFILE, nout, M, N, K, nb, NPROW, NPCOL, work, &
+  call PDPBLASINFO( OUTFILE, nout, M, N, K, nb, NPROW, NPCOL, mem, &
                     iam, NPROCS )
 !
 !  Define process grid.

@@ -38,6 +38,7 @@ contains
     use sparse_matrices, only: n_nzs => maxnh
     use sparse_matrices, only: Dold, Dscf, H
     use sparse_matrices, only: H_kin_1D, H_vkb_1D
+    use sparse_matrices, only: H_so_on_2D, H_so_off_2D
     use sparse_matrices, only: sp => sparse_pattern
     
     use m_ts_method
@@ -49,10 +50,11 @@ contains
     use class_Sparsity
     use class_dSpData1D
     use class_dSpData2D
+    use class_zSpData2D
 
     use geom_helper, only : UCORB
     use ts_electrode_m, only: electrode_t
-    use m_energies, only: NEGF_Ebs, NEGF_Ekin, NEGF_Etot, NEGF_Enl
+    use m_energies, only: NEGF_Ebs, NEGF_Ekin, NEGF_Eso, NEGF_Etot, NEGF_Enl
     use m_energies, only: NEGF_DEharr
 
 ! **********************
@@ -60,19 +62,24 @@ contains
 ! **********************
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     integer :: no_lo, no_u, lio, io, ind, jo, ir, jr, r, ispin
-    real(dp), pointer :: H_vkb(:), H_kin(:)
-    real(dp) :: Etmp(4,0:1+1+N_Elec*2)
+    real(dp), pointer :: H_vkb(:), H_kin(:), H_so_on(:,:)
+    complex(dp), pointer :: H_so_off(:,:)
+    complex(dp) :: Dc(4)
+    real(dp) :: Etmp(5,0:1+1+N_Elec*2)
 #ifdef MPI
-    real(dp) :: tmp(4,0:1+1+N_Elec*2)
+    real(dp) :: tmp(5,0:1+1+N_Elec*2)
     integer :: MPIerror
 #endif
 
-    if ( spin%NCol .or. spin%SO ) then
-      call die('ts_energies: Not implemented for non-colinear or spin-orbit')
-    end if
-
     H_vkb => val(H_vkb_1D)
     H_kin => val(H_kin_1D)
+    if ( spin%SO ) then
+      if ( spin%SO_offsite ) then
+        H_so_off => val(H_so_off_2D)
+      else if ( spin%SO_onsite ) then
+        H_so_on => val(H_so_on_2D)
+      end if
+    end if
 
     ! Retrieve information about the sparsity pattern
     call attach(sp, &
@@ -83,7 +90,7 @@ contains
     Etmp(:,:) = 0._dp
     
 !$OMP parallel do default(shared), &
-!$OMP&private(lio,io,ir,ind,jo,jr,r,ispin), &
+!$OMP&private(lio,io,ir,ind,jo,jr,r,ispin,Dc), &
 !$OMP&reduction(+:Etmp)
     do lio = 1 , no_lo
 
@@ -115,7 +122,23 @@ contains
         end if
 
         ! Ebs
-        Etmp(1,r) = Etmp(1,r) + sum(H(ind,:) * Dscf(ind,:) )
+        if ( spin%SO ) then
+          Etmp(1,r) = Etmp(1,r) + H(ind,1) * Dscf(ind,1) &
+                                + H(ind,2) * Dscf(ind,2) &
+                                + H(ind,3) * Dscf(ind,7) &
+                                + H(ind,4) * Dscf(ind,8) &
+                                - H(ind,5) * Dscf(ind,5) &
+                                - H(ind,6) * Dscf(ind,6) &
+                                + H(ind,7) * Dscf(ind,3) &
+                                + H(ind,8) * Dscf(ind,4)
+        else if ( spin%NCol ) then
+          Etmp(1,r) = Etmp(1,r) + H(ind,1) * Dscf(ind,1) &
+                                + H(ind,2) * Dscf(ind,2) &
+                                + (H(ind,3) * Dscf(ind,3) &
+                                +  H(ind,4) * Dscf(ind,4) ) * 2
+        else
+          Etmp(1,r) = Etmp(1,r) + sum(H(ind,:) * Dscf(ind,:) )
+        end if
 
         do ispin = 1, spin%spinor
           ! Ekin
@@ -125,9 +148,50 @@ contains
         end do
 
         ! DEharr
-        do ispin = 1, spin%spinor
-          Etmp(4,r) = Etmp(4,r) + H(ind,ispin) * (Dscf(ind,ispin) - Dold(ind,ispin))
-        end do
+        if ( spin%SO ) then
+          Etmp(4,r) = Etmp(4,r) + H(ind,1) * ( Dscf(ind,1) - Dold(ind,1) )  &
+                                + H(ind,2) * ( Dscf(ind,2) - Dold(ind,2) )  &
+                                + H(ind,3) * ( Dscf(ind,7) - Dold(ind,7) )  &
+                                + H(ind,4) * ( Dscf(ind,8) - Dold(ind,8) )  &
+                                - H(ind,5) * ( Dscf(ind,5) - Dold(ind,5) )  &
+                                - H(ind,6) * ( Dscf(ind,6) - Dold(ind,6) )  &
+                                + H(ind,7) * ( Dscf(ind,3) - Dold(ind,3) )  &
+                                + H(ind,8) * ( Dscf(ind,4) - Dold(ind,4) )
+        else if ( spin%NCol ) then
+          Etmp(4,r) = Etmp(4,r) + H(ind,1) * ( Dscf(ind,1) - Dold(ind,1) )  &
+                                + H(ind,2) * ( Dscf(ind,2) - Dold(ind,2) )  &
+                       + 2.0_dp * H(ind,3) * ( Dscf(ind,3) - Dold(ind,3) )  &
+                       + 2.0_dp * H(ind,4) * ( Dscf(ind,4) - Dold(ind,4) )
+        else
+          do ispin = 1, spin%spinor
+            Etmp(4,r) = Etmp(4,r) + H(ind,ispin) * (Dscf(ind,ispin) - Dold(ind,ispin))
+          end do
+        end if
+
+        ! Eso
+        if ( spin%SO ) then
+          if ( spin%SO_offsite ) then
+            ! The computation of the trace is different here, as H_so_off has
+            ! a different structure from H and the DM.
+            Dc(1) = cmplx(Dscf(ind,1),Dscf(ind,5), dp)
+            Dc(2) = cmplx(Dscf(ind,2),Dscf(ind,6), dp)
+            Dc(3) = cmplx(Dscf(ind,3),Dscf(ind,4), dp)
+            Dc(4) = cmplx(Dscf(ind,7),Dscf(ind,8), dp)
+            Etmp(5,r) = Etmp(5,r) + real( H_so_off(ind,1)*Dc(1), dp) &
+                                  + real( H_so_off(ind,2)*Dc(2), dp) &
+                                  + real( H_so_off(ind,3)*Dc(3), dp) &
+                                  + real( H_so_off(ind,4)*Dc(4), dp)
+
+          else if ( spin%SO_onsite ) then
+            Etmp(5,r) = Etmp(5,r) + H_so_on(ind,1)*Dscf(ind,7) &
+                                  + H_so_on(ind,2)*Dscf(ind,8) &
+                                  + H_so_on(ind,5)*Dscf(ind,3) &
+                                  + H_so_on(ind,6)*Dscf(ind,4) &
+                                  - H_so_on(ind,3)*Dscf(ind,5) &
+                                  - H_so_on(ind,4)*Dscf(ind,6)
+          end if
+        end if
+
 
       end do
     end do
@@ -158,6 +222,7 @@ contains
     NEGF_Ekin = Etmp(2,2)
     NEGF_Enl = Etmp(3,2)
     NEGF_DEharr = Etmp(4,2)
+    NEGF_Eso = Etmp(5,2)
 
   end subroutine ts_compute_energies
 

@@ -68,12 +68,13 @@ contains
     use files,          only : label_length            
     use m_ntm
     use m_forces,       only: fa
+    use m_energies,     only: Ef, Efs
     use m_eo
     use m_spin,         only: nspin
     use m_spin,         only: spinor_dim 
     use m_diagon,       only: diagon
     use m_dhscf,        only: dhscf
-    use partial_charges_m, only: want_partial_charges
+    use m_partial_charges, only: want_partial_charges
 
     integer :: dummy_iscf = 1
 
@@ -84,7 +85,7 @@ contains
     real(dp)  :: dummy_dipol(3)
 
     real(dp)  :: factor, g2max, dummy_Entrop
-    integer :: want_partial_charges_save ! to skip Voronoi/Hirshfeld in LDOS calculation
+    logical :: want_partial_charges_save ! to skip Voronoi/Hirshfeld in LDOS calculation
 
     type(block_fdf)            :: bfdf
     type(parsed_line), pointer :: pline
@@ -152,7 +153,7 @@ contains
           occtol, dummy_iscf, neigwanted)
 
       want_partial_charges_save = want_partial_charges
-      want_partial_charges = 0
+      want_partial_charges = .false.
 
       ! Find the LDOS in the real space mesh
       filesOut%rho = trim(slabel) // '.LDOS'

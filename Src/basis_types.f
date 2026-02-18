@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -14,17 +14,17 @@
 !     is read from the fdf file by routine 'basis_specs.basis_read', and
 !     then converted to the form expected by routine 'atom.atom_main'
 !
-!     At present, for historical reasons, these data structures are
+!     At present, for historical reasons, these data structures are 
 !     different from those in module 'atm_types', but in principle could
 !     be made to contain the same information (except for the mapping
 !     of 'nl' to 'nlm' orbitals and projectors and the polarization
-!     orbitals) by the use of the 'rad_func' pointers indicated within
+!     orbitals) by the use of the 'rad_func' pointers indicated within 
 !     types 'shell_t' and 'kbshell_t'. (See module 'radial')
-!
+!     
 !
       use atmparams, only: lmaxd, nzetmx, nsemx, nkbmx
       use m_ncps, only: pseudopotential_t => froyen_ps_t
-      use m_ncps, only: pseudo_init_constant, pseudo_reset
+      use m_ncps, only: pseudo_init_constant
       use m_psml, only: psml_t => ps_t
       use precision, only: dp
       use sys, only : die
@@ -67,7 +67,7 @@
           ! To build an array of pointers
           type(shell_t), pointer    :: s => null()
       end type ref_container
-
+          
       type, public :: lshell_t
           integer                   ::  l          ! angular momentum
           integer                   ::  nn         ! number of n's for this l
@@ -86,11 +86,11 @@
                                                    !   of the atomic orbital
                                                    !   where the U correction
                                                    !   will be applied
-          integer                   ::  l          ! angular quantum number
+          integer                   ::  l          ! angular quantum number 
                                                    !   of the atomic orbital
                                                    !   where the U correction
                                                    !   will be applied
-          real(dp)                  ::  rinn       ! Soft confinement
+          real(dp)                  ::  rinn       ! Soft confinement 
                                                    !   inner radius
           real(dp)                  ::  vcte       ! Soft confinement potential
                                                    !  prefactor of the potential
@@ -100,7 +100,7 @@
           real(dp)                  ::  lambda     ! Contraction factors
           real(dp)                  ::  dnrm_rc    ! Parameter used to determine
                                                    !   the cutoff radius of the
-                                                   !   Fermi distrib. used
+                                                   !   Fermi distrib. used 
                                                    !   to cut the DFT+U proj.
           real(dp)                  ::  width      ! Width of the Fermi distrib.
                                                    !   to cut the DFT+U proj.
@@ -108,57 +108,53 @@
           real(dp)                  ::  j          ! Value of the J parameter
           !!! type(rad_func), pointer  ::  dftu_proj(:) => null() ! Actual projectors
                                                    !   all these radial function
-                                                   !   are now defined in the
+                                                   !   are now defined in the 
                                                    !   derived type "species"
                                                    !   in module atm_types
       end type dftushell_t
 
       ! For options set in pao-polarization-scheme
       type, public :: qconf_options_t
-         real(dp)    ::  qcoe
-         real(dp)    ::  qyuk
-         real(dp)    ::  qwid
+         real(dp)    ::  qcoe 
+         real(dp)    ::  qyuk 
+         real(dp)    ::  qwid 
       end type qconf_options_t
 
-!
+!     
 !     Main data structure
 !
       type, public :: basis_def_t
           character(len=20)         ::  label      ! Long label
-          character(len=256)        ::  ps_file_spec   ! PS file spec
           integer                   ::  z          ! Atomic number
           type(ground_state_t)      ::  ground_state
-          type(ground_state_t)      ::  ground_state_tables
           type(pseudopotential_t)   ::  pseudopotential
           type(psml_t)              ::  psml_handle
           logical                   ::  has_psml_ps
-          integer                   ::  nsemic_shells(0:3)
           integer                   ::  lmxo       ! Max l for basis
           integer                   ::  lmxkb      ! Max l for KB projs
           integer                   ::  lmxdftupj  ! Max l for DFT+U projs
-          type(lshell_t), pointer   ::  lshell(:) => null() ! One shell per l
+          type(lshell_t), pointer   ::  lshell(:) => null() ! One shell per l 
           type(kbshell_t), pointer  ::  kbshell(:) => null() ! One KB shell per l
           real(dp)                  ::  ionic_charge
-          real(dp)                  ::  mass
+          real(dp)                  ::  mass   
           !
           ! The rest of the components are auxiliary
-          !
-          logical                   ::  floating
+          ! 
+          logical                   ::  floating   
           logical                   ::  bessel
           logical                   ::  synthetic
-          logical                   ::  custom_valence_config
           character(len=20)         ::  basis_type
           character(len=20)         ::  basis_size
-          logical                   ::  semic      !
+          logical                   ::  semic      ! 
           integer                   ::  nshells_tmp
           integer                   ::  nkbshells
           integer                   ::  ndftushells      ! For a given atomic
                                                          !  species, on how many
-                                                         !  orbitals we are
+                                                         !  orbitals we are 
                                                          !  going to apply the
                                                          !  U correction
           integer                   ::  ndftuprojs_lm    ! How many projectors
-                                                         !  including angular
+                                                         !  including angular 
                                                          !  dependencies.
           logical                   ::  in_pao_basis_block = .false.
           integer                   ::  lmxkb_requested
@@ -168,7 +164,7 @@
           logical                  ::  non_pert_polorbs_fallback=.false.
           logical                   ::  non_perturbative_polorbs=.false.
           logical                   ::  polorb_with_semicore =.false.
-          logical                   :: qconf_options_polorbs_set=.false.
+          logical                   ::  qconf_options_polorbs_set
           type(qconf_options_t)     ::  qconf_options_polorbs
           type(shell_t), pointer    ::  tmp_shell(:) => null()
           type(dftushell_t), pointer::  dftushell(:) => null()
@@ -213,7 +209,7 @@
 !-----------------------------------------------------------------------
 
       interface destroy
-        module procedure destroy_shell, destroy_kbshell,
+        module procedure destroy_shell, 
      $                   destroy_lshell, destroy_basis_def
       end interface
       interface initialize
@@ -226,7 +222,6 @@
       public  :: write_basis_specs, basis_specs_transfer
       public  :: deallocate_spec_arrays
       public  :: print_dftushell, print_shell
-      public  :: basis_parameters_reset
 !---------------------------------------------------------
 
       PRIVATE
@@ -236,7 +231,7 @@
 !-----------------------------------------------------------------------
       subroutine copy_shell(source,target)
 !
-!     This is a "deep-copy" of a structure, including the
+!     This is a "deep-copy" of a structure, including the 
 !     *allocated memory* associated to the internal pointer components.
 !
       type(shell_t), intent(in)          :: source
@@ -389,13 +384,14 @@
       type(lshell_t), pointer   :: q
 
       if (.not. associated(p)) return
-      do i = 0, size(p)-1
+      do i = 1, size(p)
          q=>p(i)
          call destroy_shell(q%shell)
       enddo
       deallocate(p)
       end subroutine destroy_lshell
 
+      
       subroutine destroy_dftushell(p)
       type(dftushell_t), pointer   :: p(:)
 
@@ -403,18 +399,6 @@
       deallocate(p)
       end subroutine destroy_dftushell
 
-
-      subroutine destroy_kbshell(p)
-      type(kbshell_t), pointer   :: p(:)
-      integer i
-
-      if (.not. associated(p)) return
-      do i = 0, size(p)-1
-         if (.not. associated(p(i)%erefkb)) return
-         deallocate( p(i)%erefkb )
-      enddo
-      deallocate(p)
-      end subroutine destroy_kbshell
 !-----------------------------------------------------------------------
       subroutine destroy_basis_def(p)
       use m_psml, only: ps_destroy
@@ -424,10 +408,7 @@
       call destroy_lshell(p%lshell)
       call destroy_shell(p%tmp_shell)
       call ps_destroy(p%psml_handle)
-      call destroy_kbshell(p%kbshell)
-      call pseudo_reset(p%pseudopotential)
-
-      if (allocated(p%shell_of)) deallocate(p%shell_of)
+      ! call pseudo_destroy(p%pseudopotential)
       end subroutine destroy_basis_def
 
 !-----------------------------------------------------------------------
@@ -555,7 +536,7 @@
       end if
 
       write(6,*) '------------SPECIES'
-      write(6,*)
+      write(6,*) 
 
       end subroutine print_basis_def
 
@@ -605,19 +586,19 @@
       lmax = max(lmax,lmaxkb)
       if (lmax .gt. lmaxd) then
          write(6,*) "Increment lmaxd to ", lmax
-         call die("lmaxd too small")
+         call die()
       endif
       if (nzeta_max .gt. nzetmx) then
          write(6,*) "Increment nzetmx to ", nzeta_max
-         call die("nzetmx too small")
+         call die()
       endif
       if (nsemi_max .gt. nsemx) then
          write(6,*) "Increment nsemx to ", nsemi_max
-         call die("nsemx too small")
+         call die()
       endif
       if (nkb_max .gt. nkbmx) then
          write(6,*) "Increment nkbmx to ", nkb_max
-         call die("nkbmx too small")
+         call die()
       endif
 !
 !     ALLOCATE old arrrays
@@ -707,7 +688,7 @@
       semic(:) = .false.
       nsemic(:,:) = 0
       cnfigmx(:,:) = 0
-
+      
       do isp=1,nsp
 
          basp=>basis_parameters(isp)
@@ -729,7 +710,7 @@
 !           (Kludge for now until future reorganization)
 !
             nsemic(l,isp) = max(ls%nn -1 ,0)
-
+            
             cnfigmx(l,isp) = 0
             do n=1,ls%nn
                s=>ls%shell(n)
@@ -823,7 +804,7 @@
 !!     $                    'non-perturbatively due to the presence ' //
 !!     $                    'of lower-lying shell with same l'
 !!      endif
-
+      
       do l=0,lmxo(is)
          write(lun,'(a2,i1,2x,a7,i1,2x,a8,i1)')
      $        'L=', l, 'Nsemic=', nsemic(l,is),
@@ -858,7 +839,7 @@
                ! Maybe warn about this?
                write(lun,'(tr2,a)')  '(empty shell (??) )'
                CYCLE  shells  ! Do not write any more information
-
+               
             else if (basp%lshell(l)%shell(n)%polarized) then
                write(lun,'(tr2,a)')
      $              '(to be polarized perturbatively)'
@@ -879,21 +860,21 @@
             endif
 
             if (basistype(is).eq.'filteret') then
-               write(lun,'(10x,a10,2x,g12.5)')
+               write(lun,'(10x,a10,2x,g12.5)') 
      $              'fcutoff:', filtercut(l,n,is)
             else
-               write(lun,'(10x,a10,2x,g12.5)')
+               write(lun,'(10x,a10,2x,g12.5)') 
      $              'splnorm:', split_norm(l,n,is)
             end if
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'vcte:', vcte(l,n,is)
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'rinn:', rinn(l,n,is)
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'qcoe:', qcoe(l,n,is)
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'qyuk:', qyuk(l,n,is)
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'qwid:', qwid(l,n,is)
             write(lun,'(10x,a10,2x,4g12.5)') 'rcs:',
      $           (rco(i,l,n,is),i=1,min(4,nzeta(l,n,is)))
@@ -916,21 +897,21 @@
             dftu => basp%dftushell(l)
             write(lun,'(a2,i1,2x,a2,i1)')
      $           'L=', dftu%l, 'n=', dftu%n
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'U:', dftu%U
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'J:', dftu%J
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'rinn:', dftu%rinn
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'vcte:', dftu%vcte
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'lambda:', dftu%lambda
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'width:', dftu%width
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'rc:', dftu%rc
-            write(lun,'(10x,a10,2x,g12.5)')
+            write(lun,'(10x,a10,2x,g12.5)') 
      $           'dnrm_rc:', dftu%dnrm_rc
          end do
       end if
@@ -971,19 +952,6 @@
 !      call de_alloc( atm_label, 'atm_label', 'basis_types' )
 !
       end subroutine deallocate_spec_arrays
-
-      subroutine basis_parameters_reset
-         implicit none
-         integer :: ibas
-
-         if (allocated(basis_parameters)) then
-            do ibas = 1, size(basis_parameters,1)
-               call destroy_basis_def(basis_parameters(ibas))
-            enddo
-            deallocate( basis_parameters )
-         endif
-
-      end subroutine basis_parameters_reset
 
 !-----------------------------------------------------------------------
       end module basis_types

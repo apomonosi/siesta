@@ -40,6 +40,7 @@ contains
     use class_Sparsity
     use geom_helper, only : UCORB
     use ts_electrode_m
+    use m_spin, only : spin
 
 ! **********************
 ! * INPUT variables    *
@@ -49,18 +50,19 @@ contains
     ! SIESTA local sparse pattern (not changed)
     type(Sparsity), intent(inout) :: sp
     ! Number of non-zero elements
+    ! TODO NW nspin is no longer required
     integer, intent(in) :: nspin, n_nzs
     ! The density matrix and overlap
-    real(dp), intent(in) :: DM(n_nzs,nspin), S(n_nzs)
+    real(dp), intent(in) :: DM(n_nzs,spin%DM), S(n_nzs)
     ! The charge in the regions
-    real(dp), intent(out), optional :: Q(0:1+1+N_Elec*2, nspin), Qtot
+    real(dp), intent(out), optional :: Q(0:1+1+N_Elec*2, spin%spinor), Qtot
     
 ! **********************
 ! * LOCAL variables    *
 ! **********************
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     integer :: no_lo, no_u, lio, io, ind, jo, ir, jr, r
-    real(dp) :: Qtmp(0:1+1+N_Elec*2, nspin)
+    real(dp) :: Qtmp(0:1+1+N_Elec*2, spin%spinor)
 #ifdef MPI
     real(dp) :: tmp
     integer :: MPIerror
@@ -105,7 +107,7 @@ contains
           else
             r = 0 ! other
           end if
-          Qtmp(r,:) = Qtmp(r,:) + DM(ind,:) * S(ind)
+          Qtmp(r,:) = Qtmp(r,:) + DM(ind,:spin%spinor) * S(ind)
        end do
     end do
 !$OMP end parallel do
@@ -144,6 +146,7 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
     use geom_helper, only : UCORB
+    use m_spin, only : spin
 
     ! **********************
     ! * INPUT variables    *
@@ -156,9 +159,10 @@ contains
     ! SIESTA local sparse pattern (not changed)
     type(Sparsity), intent(inout) :: sp
     ! Number of non-zero elements
+    ! TODO NW nspin is no longer required
     integer, intent(in) :: nspin, n_nzs
     ! The density matrix and overlap
-    real(dp), intent(in) :: DM(n_nzs,nspin), S(n_nzs)
+    real(dp), intent(in) :: DM(n_nzs,spin%DM), S(n_nzs)
     ! The method by which it should be printed out...
     integer, intent(in), optional :: method
 
@@ -173,8 +177,9 @@ contains
     lmethod = TS_Q_INFO_FULL
     if ( present(method) ) lmethod = method
 
-    allocate(Q(0:2+N_Elec*2,nspin))
+    allocate(Q(0:2+N_Elec*2,spin%spinor))
 
+    ! TODO NW remove nspin here after removing it from ts_charge_get
     call ts_charge_get(N_Elec,dit, sp, nspin, n_nzs, DM, S, Q = Q)
     has_buffer = sum(Q(1,:)) > 0._dp
 
@@ -186,7 +191,7 @@ contains
 
     if ( lmethod == TS_Q_INFO_FULL ) then
       write(*,'(/,a,f12.5)') 'transiesta: Charge distribution, target = ',Qtot
-      if ( nspin > 1 ) then
+      if ( spin%DM > 1 ) then
         write(*,'(a,3(tr1,f12.5))') &
             'Total charge                  [Q]  :', &
             sum(Q(:,1)),sum(Q(:,2)),sum(Q)
@@ -225,7 +230,7 @@ contains
             'Other                         [O]  :',Q(0,1)
       end if
       write(*,'(a,tr1,es12.5,/)') &
-          'Excess charge                [dQ]  :',sum(Q) - Qtot
+          'Excess charge                [dQ]  :',sum(Q(:,:spin%spinor)) - Qtot
 
 
     else if ( lmethod == TS_Q_INFO_SCF ) then
@@ -242,19 +247,19 @@ contains
       if ( has_buffer ) then
         write(*,'(1x,a9)',advance='no') 'B'
       end if
-      if ( nspin > 1 ) then
+      if ( spin%DM == 2 ) then
         write(*,'(2(1x,a10))') 'dQ','Qup-Qdn'
       else
         write(*,'(1x,a10)') 'dQ'
       end if
-      write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', sum(Q(2,:))
+      write(*,'(a,1x,f9.3)',advance='no') 'ts-q:', sum(Q(2,:spin%spinor))
       do i = 1 , N_Elec
-        write(*,'(2(1x,f9.3))',advance='no') sum(Q(3+(i-1)*2,:)),sum(Q(4+(i-1)*2,:))
+        write(*,'(2(1x,f9.3))',advance='no') sum(Q(3+(i-1)*2,:spin%spinor)),sum(Q(4+(i-1)*2,:spin%spinor))
       end do
       if ( has_buffer ) then
-        write(*,'(1x,f9.3)',advance='no') sum(Q(1,:))
+        write(*,'(1x,f9.3)',advance='no') sum(Q(1,:spin%spinor))
       end if
-      if ( nspin == 2 ) then
+      if ( spin%DM == 2 ) then
         write(*,'(2(1x,e10.3))') sum(Q) - Qtot, sum(Q(:,1)) - sum(Q(:,2))
       else
         write(*,'(1x,e10.3)') sum(Q) - Qtot

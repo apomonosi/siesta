@@ -70,7 +70,7 @@ contains
 
           ! Read in number of items
           i1 = -1
-          call fdf_bilists(pline,il,i1,list(n+1:))
+          call fdf_blists(pline,il,i1,list(n+1:))
           if ( i1 + n > size(list) ) then
             print *,'Parsed line: ',trim(pline%line)
             call die('fdf_brange: number of elements in block list &
@@ -84,7 +84,7 @@ contains
           end if
 
           ! Read in actual list
-          call fdf_bilists(pline,il,i1,list(n+1:n+i1))
+          call fdf_blists(pline,il,i1,list(n+1:n+i1))
 
           do i = 1 , i1
             list(n+i) = correct(list(n+i),low,high)

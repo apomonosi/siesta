@@ -15,7 +15,7 @@ module reinit_m
 
 contains
 
-  subroutine reinit(sname, skip_cmdargs)
+  subroutine reinit(sname)
 
     ! Subroutine to initialise the reading of the data for SIESTA
     !
@@ -34,16 +34,10 @@ contains
     use files,       only : slabel, label_length
     use files,       only : stdin_file, stdout_file
     use siesta_master, only: input_file  ! fdf data file
-    use units,         only: inquire_unit
 
-#ifdef MPI
-      use mpi_siesta, only: mpi_comm_world
-#endif
     implicit none
 
     character(len=*), intent(out) :: sname
-    ! Prevent command-line processing by Siesta if the API is in use
-    logical, intent(in), optional :: skip_cmdargs
 
     ! Internal variables .................................................
     character(len=50) :: fileout
@@ -54,37 +48,21 @@ contains
     character(len=label_length) :: aux_str
     logical :: stdin_file_found
 
-    logical :: debug_input, file_exists, skip
+    logical :: debug_input, file_exists
     character(len=8) :: mydate
     character(len=10) :: mytime
 
-    external :: die
-    
     ! Default input-file
     stdin_file = "fdf_input"
-
-    skip = .false.
-    if (present(skip_cmdargs)) then
-       skip=skip_cmdargs
-    endif
-
 
     if (Node.eq.0) then
        ! Print Welcome ........................................................
        write(6,'(/a)') '                           *********************** '
        write(6,'(a)')  '                           *  WELCOME TO SIESTA  * '
        write(6,'(a)')  '                           *********************** '
-       write(6,'(/a)') ' NOTE: Siesta V5 introduces some new defaults for basis-set generation'
-       write(6,'(a)')  ' NOTE: which might lead to slightly different numerical results.'
-       write(6,'(a/)') ' NOTE: Please see the manual for full details and compatibility measures.'
 
-       if( skip ) then
-          ! skip the command line arguments
-          narg = 0
-       else
-          ! Number of arguments provided in the command line.
-          narg = command_argument_count()
-       endif
+       ! Number of arguments provided in the command line.
+       narg = command_argument_count()
 
        ! Initialisation: stdin file yet to be determined.
        stdin_file_found = .false.
@@ -200,24 +178,11 @@ contains
     ! the string used below conforms to ISO 8601 with millisecond precision.
     write(fileout,"(a)") 'fdf.' // mydate // 'T' // mytime // ".log"
 
-    if (Node .eq. 0) then
-       call fdf_init(stdin_file, trim(fileout))
-    else
-       ! the other nodes will get the data structure
-    endif
+    call fdf_init(stdin_file, trim(fileout))
 
-    ! Parse the command line (only if not using the Siesta API)
-    ! Note that there can be modifications to the fdf structure
-    if (.not. skip) then
-       call parse_command_line(info=.false.)
-    endif
+    ! Parse the command line
+    call parse_command_line(info=.false.)
 
-#ifdef MPI
-      call broadcast_fdf_struct(0,mpi_comm_world)
-#endif
-
-    call fdf_set_unit_handler(inquire_unit)
-    
     ! Define Name of the system ...
     sname = fdf_string('SystemName', ' ')
     if (Node.eq.0) then
@@ -277,7 +242,7 @@ contains
     use mpi_siesta
 #endif
     use parallel,     only: Node
-    use siesta_version_info, only: siesta_print_version
+    use version_info, only: prversion
     implicit none
 
     ! Arguments
@@ -413,11 +378,8 @@ contains
 
       case ('electrode', 'elec')
         if (process_fdf) then
-          line = 'SaveHS true'
+          line = 'TS.HS.Save true'
           call fdf_overwrite(line)
-          ! This is deprecated, so lets not force write *another* file
-          !line = 'TS.HS.Save true'
-          !call fdf_overwrite(line)
           line = 'TS.DE.Save true'
           call fdf_overwrite(line)
         end if
@@ -426,7 +388,7 @@ contains
         ! If a version option is found,
         ! print version information...
         if (process_info) then
-          if (Node == 0) call siesta_print_version
+          if (Node == 0) call prversion
 
           ! ... and quietly end execution
           ! (do not call die to avoid the bye message)
@@ -523,7 +485,7 @@ contains
     write(stderr,'(a)')'  -V <value>:<unit>'
     write(stderr,'(a)')'      Short-hand for setting TS.Voltage.'
     write(stderr,'(a)')'  -electrode|-elec'
-    write(stderr,'(a)')'      Force Save.HS and TS.DE.Save to true.'
+    write(stderr,'(a)')'      Force TS.HS.Save and TS.DE.Save to true.'
     write(stderr,'(a)')'  <fdf-file>'
     write(stderr,'(a)')'      Use file as fdf-input, you do not need to pipe it in.'
     write(stderr,'(a)')'      If not provided must be piped in: siesta < RUN.fdf'

@@ -83,7 +83,7 @@ subroutine diagonalizeHk( ispin )
 ! Coefficients of the wavefunctions at the Wannier90 mesh. 
 ! ------------------------------------------------------------------------------
 ! Used module variables
-  use precision,          only: dp           ! Real double precision type 
+  use precision,          only: dp           ! Real douple precision type 
   use densematrix,        only: allocDenseMatrix, resetDenseMatrix
   use densematrix,        only: Haux         ! Hamiltonian matrix in dense form
   use densematrix,        only: Saux         ! Overlap matrix in dense form
@@ -118,51 +118,51 @@ subroutine diagonalizeHk( ispin )
   use sparse_matrices,    only: S            ! Overlap matrix in sparse form
   use sparse_matrices,    only: xijo         ! Vectors between orbital centers
   use units,              only: eV           ! Conversion factor from Ry to eV
-  use m_switch_local_projection, only: numkpoints   ! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints   ! Total number of k-points
                                              !   for which the overlap of the
                                              !   periodic part of the wavefunct
                                              !   with a neighbour k-point will
                                              !   be computed
-  use m_switch_local_projection, only: kpointsfrac  ! List of k points relative to the 
+  use m_siesta2wannier90, only: kpointsfrac  ! List of k points relative to the 
                                              !   reciprocal lattice vectors.
                                              !   First  index: component
                                              !   Second index: k-point index 
                                              !      in the list
-  use m_switch_local_projection, only: numbands     
-                                             ! Number of bands for wannierizatio
+  use m_siesta2wannier90, only: numbands     ! Number of bands for wannierizatio
                                              !   before excluding bands 
-  use m_switch_local_projection, only: numincbands  
-                                             ! Number of bands for wannierizatio
+  use m_siesta2wannier90, only: numincbands  ! Number of bands for wannierizatio
                                              !   after excluding bands 
-  use m_switch_local_projection, only: nincbands_loc
-                                             ! Number of bands for wannierizatio
+  use m_siesta2wannier90, only: nincbands_loc! Number of bands for wannierizatio
                                              !   after excluding bands 
                                              !   in the local node
-  use m_switch_local_projection, only: isexcluded   
-                                             ! Masks excluded bands
-  use m_switch_local_projection, only: coeffs! Coefficients of the wavefunctions
+  use m_siesta2wannier90, only: blocksizeincbands ! Maximum number of bands
+                                             !   considered for wannierization
+                                             !   per node
+  use m_siesta2wannier90, only: isexcluded   ! Masks excluded bands
+  use m_siesta2wannier90, only: coeffs       ! Coefficients of the wavefunctions
                                              !   First  index: orbital
                                              !   Second index: band
                                              !   Third  index: k-point
-  use m_switch_local_projection, only: eo    ! Eigenvalues of the Hamiltonian 
+  use m_siesta2wannier90, only: eo           ! Eigenvalues of the Hamiltonian 
                                              !   at the numkpoints introduced in
                                              !   kpointsfrac 
                                              !   First  index: band index
                                              !   Second index: k-point index
-#ifdef MPI
-!
-! Subroutine to order the indices of the different bands after
-! excluding some of them for wannierization
-!
-  use m_orderbands,       only: order_index
-#endif
-
-
 !
 ! Allocation/Deallocation routines
 !
   use alloc,              only: re_alloc     ! Reallocation routines
   use alloc,              only: de_alloc     ! Deallocation routines
+
+#ifdef MPI
+  use parallelsubs,       only : set_blocksizedefault
+! 
+! Subroutine to order the indices of the different bands after 
+! excluding some of them for wannierization 
+! 
+  use m_orderbands,       only: order_index
+
+#endif
 
 ! For debugging
   use parallel,           only: Node, Nodes, IOnode
@@ -177,11 +177,6 @@ subroutine diagonalizeHk( ispin )
   integer  :: ik            ! Counter for loops on k-points
   integer  :: iband         ! Counter for loops on bands
   integer  :: iuo           ! Counter for loops on atomic orbitals
-  integer  :: iorb          ! Counter for loops on atomic orbitals
-  integer  :: juo           ! Counter for loops on atomic orbitals
-  integer  :: j             ! Counter for loops on atomic orbitals
-  integer  :: jo            ! Counter for loops on atomic orbitals
-  integer  :: ind           ! Counter for loops on atomic orbitals
   integer  :: io            ! Counter for loops on atomic orbitals
   integer  :: n             ! Counter for loops on Nodes
   integer  :: nincbands     ! Total number of included bands for wannierization 
@@ -189,21 +184,17 @@ subroutine diagonalizeHk( ispin )
                             !    will be diagonalized
   integer  :: nhs           ! Variable to dimension the Hamiltonian and Overlap
   integer  :: npsi          ! Variable to dimension the coefficient vector
+  integer  :: nsave         ! Variable to dimension the coefficient vector
 
   real(dp), dimension(:), pointer :: epsilon ! Eigenvalues of the Hamiltonian
 
+#ifdef MPI
+  integer, external :: numroc
+#endif
   call timer('diagonalizeHk',1)
 
 ! Initialize the number of occupied bands
   nincbands = numincbands( ispin )
-
-#ifdef MPI
-! Set up the arrays that control the indices of the bands to be
-! considered after excluding some of them for wannierization
-! This is done once and for all the k-points
-  call order_index( no_l, no_u, nincbands )
-#endif
-
 
 ! Allocate memory related with the dense matrices that will be used in
 ! the diagonalization routines.
@@ -219,6 +210,20 @@ subroutine diagonalizeHk( ispin )
   nullify( epsilon )
   call re_alloc( epsilon, 1, no_u, name='epsilon', routine='diagonalizeHk' )
 
+! Allocate memory related with the coefficients of the wavefunctions
+#ifdef MPI
+! Find the number of included bands for Wannierization that will be stored 
+! per node. Use a block-cyclic distribution of nincbands over Nodes.
+!
+     call set_blocksizedefault(Nodes,nincbands,blocksizeincbands)
+
+!     write(6,'(a,3i5)')' diagonalizeHk: Node, Blocksize = ', &
+! &                                      Node, BlockSizeincbands
+
+     nincbands_loc = numroc(nincbands,blocksizeincbands,node,0,nodes)
+#else
+     nincbands_loc = nincbands
+#endif
   nullify( coeffs )
   call re_alloc( coeffs,             &
  &               1, no_u,            &
@@ -226,6 +231,7 @@ subroutine diagonalizeHk( ispin )
  &               1, numkpoints,      &
  &               'coeffs',           &
  &               'diagonalizeHk' )
+
 
 ! Allocate memory related with the eigenvalues of the Hamiltonian
   nullify( eo )
@@ -239,6 +245,14 @@ subroutine diagonalizeHk( ispin )
   do io = 1, npsi
     psi(io)     = 0.0_dp
   enddo
+
+
+#ifdef MPI
+! Set up the arrays that control the indices of the bands to be 
+! considered after excluding some of them for wannierization
+! This is done once and for all the k-points
+  call order_index( no_l, no_u, nincbands )
+#endif
 
 !
 ! Solve for eigenvectors of H(k) for the k's given in the .nnkp
@@ -259,13 +273,8 @@ kpoints:                                                             &
  &                maxnh, numh, listhptr, listh, H, S, xijo, indxuo, kvector,  &
  &                epsilon, psi, 2, Haux, Saux )
 
-!!   For debugging
-!    write(6,'(a, 2i5,3f12.5)')' diagonalizeHk: ispin, ik    = ',             & 
-! &                               ispin, ik, kvector
-!!   End debugging
-
 !!   NOTE OF CAUTION: beware when comparing the coefficients of the
-!!   wave function obtained in different machines, specially for 
+!!   wave function obtained in differente machines, specially for 
 !!   degenerate states. 
 !!   There is a phase that is arbitrary and might change from one machine
 !!   to the other. Also, any linear combination of eigenvectors with 
@@ -275,7 +284,7 @@ kpoints:                                                             &
 
 !   Store the eigenvalues, while skipping the excluded bands
     eo(1:numincbands(ispin),ik) = pack(epsilon/eV,.not.isexcluded)
-!
+
 !   Keep only the coefficients of the included bands for wannierization,
 !   while skipping the excluded eigenvectors.
 !   The coefficients of the included eigenvectors will be stored in coeffs,
@@ -285,21 +294,10 @@ kpoints:                                                             &
     call reordpsi( coeffs(1:no_u,1:nincbands_loc,ik), psi, no_l, &
                    no_u, numbands(ispin), nincbands_loc )
 
-!!   For debugging
-!    write(6,*)' nincbands_loc = ', nincbands_loc
-!    do iband = 1, nincbands_loc
-!      do io = 1, no_u
-!        write(6,*)' iband, io, eo, coeffs   = ',              &
-! &                  iband, io, eo(iband,ik),                  &
-! &                  coeffs(io,iband,ik)
-!      enddo
-!    enddo
-!!   End debugging
-    
   enddo kpoints
 
   call resetDenseMatrix()
-  call de_alloc( epsilon, name='epsilon',      routine='diagonalizeHk' )
+  call de_alloc( epsilon, name='epsilon', routine='diagonalizeHk' )
 
   call timer('diagonalizeHk',2)
 

@@ -20,16 +20,13 @@
       use m_wallclock,   only : wallclock
       use zmatrix,       only : lUseZmatrix, iofaZmat,
      &                          CartesianForce_to_ZmatForce
-      use atomlist,      only : iaorb, iphorb, amass, no_l, no_u
-      use atomlist,      only : lasto, indxuo, Qtot
+      use atomlist,      only : iaorb, iphorb, amass, no_u, lasto
+      use atomlist,      only : indxuo, Qtot
       use m_spin,        only : spin
       use m_fixed,       only : fixed
       use sparse_matrices
       use siesta_geom
 
-      use dm_charge_m, only: dm_charge
-
-      use option_charges_m, only: OPT_CHARGE_GEOMETRY
       USE siesta_options
       use units, only: amu, eV
       use m_stress
@@ -39,11 +36,10 @@
       use m_forces
       use m_energies, only: update_FreeE, update_FreeEHarris
       use m_intramol_pressure, only: remove_intramol_pressure
-      use matel_m, only: init_matel_orb_XYZ_orb
       use m_ts_global_vars, only: TSrun
       use m_ts_options, only: N_elec, Elecs
       use ts_charge_m, only: ts_charge_print, TS_Q_INFO_FULL
-      
+
 #ifdef SIESTA__FLOOK
       use flook_siesta, only : slua_call, LUA_FORCES
 #endif
@@ -109,11 +105,7 @@
 
       call update_FreeE( Temp )
       call update_FreeEHarris( Temp )
-      if ( option_charges%spin%run(OPT_CHARGE_GEOMETRY) ) then
-         call dm_charge(spin, no_l, numh, listhptr,
-     &               S, Dscf, qspin)
-         call print_spin(qspin)
-      end if
+      call print_spin(qspin)
       
       if (cml_p) call cmlEndPropertyList( mainXML )
 
@@ -186,13 +178,10 @@
      .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
      .           indxuo )
       endif
-
-      if ( option_charges%mulliken%run(OPT_CHARGE_GEOMETRY) ) then
-         call mulliken( option_charges%mulliken%format, 
-     &                  na_u, no_u, maxnh,
-     &                  numh, listhptr, listh, S, Dscf, isa,
-     &                  lasto, iaorb, iphorb )
-      end if
+      ! Call this unconditionally
+      call mulliken( mullipop, na_u, no_u, maxnh,
+     &               numh, listhptr, listh, S, Dscf, isa,
+     &               lasto, iaorb, iphorb )
 
       ! Also write TS charges
       if ( TSrun ) then
@@ -205,7 +194,6 @@
 !     Call the born effective charge routine only in those steps (even) 
 !     in which the dx  is positive.
       if (bornz .and. (mod(istep,2) .eq. 0)) then
-         call init_matel_orb_XYZ_orb()  ! Will be done only once
          call born_charge()
       endif
 

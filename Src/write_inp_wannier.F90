@@ -21,38 +21,33 @@ subroutine writemmn( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
   use precision, only: dp
-  use m_switch_local_projection, only: seedname 
-                                         ! Seed for the name of the file 
+  use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
-  use m_switch_local_projection, only: numincbands
-                                         ! Number of included bands 
+  use m_siesta2wannier90, only: numincbands! Number of included bands 
                                          !   for wannierization
-  use m_switch_local_projection, only: numkpoints ! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints ! Total number of k-points
                                          !   for which the overlap of the
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
                                          !   be computed
-  use m_switch_local_projection, only: nncount  
-                                         ! Number of neighbour k-points
-  use m_switch_local_projection, only: nnlist_neig  
-                                         ! nnlist_neig(ikp,inn) is the index of
-                                         !   the inn-neighbour of ikp-point
+  use m_siesta2wannier90, only: nncount  ! Number of neighbour k-points
+  use m_siesta2wannier90, only: nnlist   ! nnlist(ikp,inn) is the index of the 
+                                         !   inn-neighbour of ikp-point
                                          !   in the Monkhorst-Pack grid 
                                          !   folded to the 
                                          !   first Brillouin zone
-  use m_switch_local_projection, only: nnfolding ! nnfolding(i,ikp,inn) is the 
+  use m_siesta2wannier90, only: nnfolding ! nnfolding(i,ikp,inn) is the 
                                          !   i-component 
                                          !   of the reciprocal lattice vector 
                                          !   (in reduced units) that brings
                                          !   the inn-neighbour specified in 
-                                         !   nnlist_neig 
-                                         !   (which is in the first BZ)  
+                                         !   nnlist (which is in the first BZ)  
                                          !   to the actual \vec{k} + \vec{b} 
                                          !   that we need.
                                          !   In reciprocal lattice units.
-  use m_switch_local_projection, only: Mmnkb    ! Matrix of the overlaps of 
+  use m_siesta2wannier90, only: Mmnkb    ! Matrix of the overlaps of 
                                          !   periodic parts of Bloch waves.
                                          !   <u_{m k}|u_{n k+b}>
                                          !   The first two indices refer to 
@@ -97,11 +92,11 @@ subroutine writemmn( ispin )
   mmnfilename = trim( seedname )// ".mmn"
 
 ! Open the output file where the Mmn matrices will be written
-  open( unit=mmnunit, file=mmnfilename, status="replace", &
+  open( unit=mmnunit, err=1984, file=mmnfilename, status="replace", &
  &      iostat=eof)
 
 ! The first line of the mmn file is a user comment
-  write( unit=mmnunit, fmt="(a38)")                      &
+  write( unit=mmnunit, fmt="(a38)", err=1984 )                      &
  &  "siesta2wannier90: Siesta for Wannier90"
 
 ! The second line includes three integers:
@@ -110,7 +105,7 @@ subroutine writemmn( ispin )
 !      periodic part of the wavefunction with a neighbour k-point will be 
 !      computed
 !   nncount:     the number of neighbour k-points 
-  write( unit=mmnunit, fmt="(i5,1x,i5,1x,i2)")             &
+  write( unit=mmnunit, fmt="(i5,1x,i5,1x,i2)", err=1984 )             &
  &  numincbands(ispin),numkpoints,nncount
 
 ! Then, there are numkpoints x nncount blocks of data.
@@ -131,8 +126,8 @@ subroutine writemmn( ispin )
 !        the second integer, and that this lives inside the first BZ zone,
 !        to the actual \vec{k} + \vec{b} that we need.
 
-      write( unit=mmnunit, fmt="(i5,i5,3x,3i4)")         &
- &      ik, nnlist_neig(ik,inn), g
+      write( unit=mmnunit, fmt="(i5,i5,3x,3i4)", err=1984 )         &
+ &      ik, nnlist(ik,inn), g
 
 !     Subsequent numincbands x numincbands lines of each block: 
 !     two real numbers per line. 
@@ -141,9 +136,9 @@ subroutine writemmn( ispin )
 !     $m, n \in [1, numincbands].
 !     The order of these elements is such that the first index $m$ is fastest
 
-      do nband = 1,numincbands(ispin)  
+      do nband = 1,numincbands(ispin)
         do mband = 1,numincbands(ispin)
-        write( unit=mmnunit, fmt="(f24.16,2x,f24.16)")   &
+        write( unit=mmnunit, fmt="(f12.5,2x,f12.5)", err=1984 )     &
  &         real(  Mmnkb(mband,nband,ik,inn),dp ),                   &
  &         aimag( Mmnkb(mband,nband,ik,inn) )
         enddo  ! End loop on bands      (mband)
@@ -156,10 +151,12 @@ subroutine writemmn( ispin )
 
   write(6,'(/,a)')  &
  &  'mmn: Overlap matrices between periodic part of wavefunctions'
-  write(6,'(a)')  &
+  write(6,'(a,/)')  &
  &  'mmn: written in ' // trim(seedname) // '.mmn file'
 
   return
+
+1984 call die("writemmn: Error writing to .mmn file")
 
 end subroutine writemmn
 
@@ -185,23 +182,20 @@ subroutine writeamn( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
   use precision, only: dp
-  use m_switch_local_projection, only: seedname ! Seed for the name of the file 
+  use m_siesta2wannier90, only: seedname ! Seed for the name of the file 
                                          !   where the Wannier90
                                          !   code, when used as a postprocessing
                                          !   tool, dumps the information.
-  use m_switch_local_projection, only: numincbands
-                                         ! Number of included bands 
+  use m_siesta2wannier90, only: numincbands! Number of included bands 
                                          !   for wannierization
-  use m_switch_local_projection, only: numkpoints 
-                                         ! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints ! Total number of k-points
                                          !   for which the overlap of the
                                          !   periodic part of the wavefunct
                                          !   with a neighbour k-point will
                                          !   be computed
-  use m_switch_local_projection, only: numproj  ! Total number of projection centers,
+  use m_siesta2wannier90, only: numproj  ! Total number of projection centers,
                                          !   equal to the number of MLWF
-  use m_switch_local_projection, only: Amnmat   
-                                         ! Projections of a trial function
+  use m_siesta2wannier90, only: Amnmat   ! Projections of a trial function
                                          !   with a Bloch orbital
                                          !   <\psi_{m k}|g_n>
 
@@ -226,18 +220,18 @@ subroutine writeamn( ispin )
   external     :: io_close  ! Close a logical unit
 
 
-! Assign a logical unit to the file where the Amn matrices will be written
+! Asign a logical unit to the file where the Amn matrices will be written
   call io_assign( amnunit )
 
-! Assign a name to the file where the Amn matrices will be written
+! Asign a name to the file where the Amn matrices will be written
   amnfilename = trim( seedname )// ".amn"
 
 ! Open the output file where the Amn matrices will be written
-  open( unit=amnunit, file=amnfilename, status="replace", &
+  open( unit=amnunit, err=1992, file=amnfilename, status="replace", &
  &      iostat=eof)
 
 ! The first line of the amn file is a user comment
-  write( unit=amnunit, fmt="(a38)" )                      &
+  write( unit=amnunit, fmt="(a38)", err=1992 )                      &
  &  "siesta2wannier90: Siesta for Wannier90"
 
 ! The second line includes three integers:
@@ -246,7 +240,7 @@ subroutine writeamn( ispin )
 !      periodic part of the wavefunction with a neighbour k-point will be 
 !      computed
 !   numproj:     the number of projections
-  write( unit=amnunit, fmt="(i5,1x,i5,1x,i5)")             &
+  write( unit=amnunit, fmt="(i5,1x,i5,1x,i2)", err=1992 )             &
  &  numincbands(ispin), numkpoints, numproj
 
 ! Subsequent numincbands x numproj x numkpoint lines:  
@@ -260,7 +254,7 @@ subroutine writeamn( ispin )
   do ik = 1, numkpoints
     do iproj = 1, numproj
       do mband = 1, numincbands(ispin)
-        write(unit=amnunit,fmt="(3i5,1x,f24.16,2x,f24.16)")   &
+        write(unit=amnunit,fmt="(3i5,1x,f12.5,2x,f12.5)",err=1992)      &
  &         mband, iproj, ik,                                           &
  &         real(Amnmat(mband,iproj,ik),dp),aimag(Amnmat(mband,iproj,ik))
       enddo
@@ -276,6 +270,8 @@ subroutine writeamn( ispin )
  &  'amn: written in ' // trim(seedname) // '.amn file'
 
   return
+
+1992 call die("writeamn: Error writing to .amn file")
 
 end subroutine writeamn
 
@@ -302,19 +298,18 @@ subroutine writeeig( ispin )
 ! based on a previous subroutine by R. Korytar
 ! 
 
-  use m_switch_local_projection, only: seedname  ! Seed for the name of the file 
+  use m_siesta2wannier90, only: seedname  ! Seed for the name of the file 
                                           !   where the Wannier90
                                           !   code, when used as postprocessing
                                           !   tool, dumps the information.
-  use m_switch_local_projection, only: numkpoints! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints! Total number of k-points
                                           !   for which the overlap of the
                                           !   periodic part of the wavefunct
                                           !   with a neighbour k-point will
                                           !   be computed
-  use m_switch_local_projection, only: numincbands
-                                          ! Number of included bands 
+  use m_siesta2wannier90, only: numincbands! Number of included bands 
                                           !   for wannierization
-  use m_switch_local_projection, only: eo ! Eigenvalues of the Hamiltonian 
+  use m_siesta2wannier90, only: eo        ! Eigenvalues of the Hamiltonian 
                                           !   at the numkpoints introduced in
                                           !   kpointsfrac 
                                           !   First  index: band index
@@ -348,7 +343,7 @@ subroutine writeeig( ispin )
   eigfilename = trim(seedname)// ".eigW"
 
 ! Open the output file where the eigenvalues will be written
-  open( unit=eigunit, file=eigfilename, status="replace", &
+  open( unit=eigunit, err=1983, file=eigfilename, status="replace", &
  &      iostat=eof )
 
 ! Each line consists of two integers and a real number.
@@ -358,7 +353,7 @@ subroutine writeeig( ispin )
 ! The real number is the eigenvalue (in eV).
   do ik = 1, numkpoints
     do iband = 1,numincbands(ispin)
-      write( unit=eigunit, fmt="(i5,i5,3x,f12.5)")       &
+      write( unit=eigunit, fmt="(i5,i5,3x,f12.5)", err=1983 )       &
  &      iband, ik, eo(iband,ik)
     enddo
   enddo
@@ -368,11 +363,13 @@ subroutine writeeig( ispin )
    write(6,'(a)')  &
  &  'eig: written in ' // trim(seedname) // '.eigW file'
 
+
 ! Close the output file where the eigenvalues will be written
   call io_close(eigunit)
 
   return
 
+  1983 call die("writeeig: Error writing to .eigW file")
 end subroutine writeeig
 
 !
@@ -454,33 +451,31 @@ subroutine writeunk( ispin )
   use siesta_geom,        only: na_u          ! Number of atoms in the unit cell
   use atomlist,           only: rmaxo         ! Maximum cutoff for atomic orb.
   use atomlist,           only: no_u          ! Number of orbitals in unit cell
-  use m_switch_local_projection, only: latvec ! Lattice vectors in real 
+  use m_siesta2wannier90, only: latvec        ! Lattice vectors in real 
                                               !   space
 
   use neighbour,          only: mneighb       ! Subroutine to compute the
                                               !   number of neighbours
-  use m_switch_local_projection, only: numincbands   
-                                              ! Number of bands for 
+  use m_siesta2wannier90, only: numincbands   ! Number of bands for 
                                               !   wannierization
                                               !   after excluding bands  
-  use m_switch_local_projection, only: nincbands_loc 
-                                              ! Number of bands for 
+  use m_siesta2wannier90, only: nincbands_loc ! Number of bands for 
                                               !   wannierization
                                               !   after excluding bands  
                                               !   in the local node
-  use m_switch_local_projection, only: numkpoints    ! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints    ! Total number of k-points
                                               !   for which the overlap of
                                               !   the periodic part of the
                                               !   wavefunct with a 
                                               !   neighbour k-point will
                                               !   be computed
-  use m_switch_local_projection, only: kpointsfrac   ! List of k points relative
+  use m_siesta2wannier90, only: kpointsfrac   ! List of k points relative
                                               !   to the reciprocal 
                                               !   lattice vectors.
                                               !   First  index: component
                                               !   Second index: k-point  
                                               !      index in the list
-  use m_switch_local_projection, only: coeffs ! Coefficients of the
+  use m_siesta2wannier90, only: coeffs        ! Coefficients of the
                                               !   wavefunctions.
                                               !   First  index: orbital
                                               !   Second index: band
@@ -628,10 +623,10 @@ kpoints:                 &
       write(unkfilename,"('UNK',i5.5,'.',i1)") ik, ispin
       call io_assign(unkfileunit)
       if( .not. unk_format ) then
-        open( unit=unkfileunit, file=unkfilename,          &
+        open( unit=unkfileunit, err=1992, file=unkfilename,          &
  &            status='replace', form='formatted', iostat=eof )
       else
-        open( unit=unkfileunit, file=unkfilename,          &
+        open( unit=unkfileunit, err=1992, file=unkfilename,          &
  &            status='replace', form='unformatted', iostat=eof )
       endif
     endif
@@ -778,6 +773,8 @@ enddo  BAND_LOOP
   call timer('writeunk',2)
   return
 
+  1992 call die('swan: Error creating UNK files')
+
 CONTAINS
 
   ! This subroutine will see the relevant variables by
@@ -798,7 +795,6 @@ CONTAINS
   use atmfuncs,           only: phiatm        ! Subroutine to compute the
                                               !   atomic orbital at a point
 
-  use units,              only: Ang
 !-----------------------------------------------------------------
     integer, intent(in) :: ix, iy, iz
     integer, intent(in) :: nbands          ! Number of bands to process
@@ -830,7 +826,6 @@ CONTAINS
   real(dp)     :: distance
   complex(dp)  :: exponential  ! Value of the previous exponential
 
-  external     :: die
 
             rvector(:) = ( latvec(:,1) * (ix-1) ) / unk_nx             &
  &                     + ( latvec(:,2) * (iy-1) ) / unk_ny             &
@@ -894,11 +889,8 @@ CONTAINS
 !
 !           Transform Bohr^(-3/2) to Ang^(-3/2)
 !
-#ifdef SIESTA__UNITS_ORIGINAL
             values(1:nbands) =  2.59775721_dp * values(1:nbands)
-#else
-            values(1:nbands) =  Ang**(1.5_dp) * values(1:nbands)
-#endif
+
           end subroutine periodicpart
 
 end subroutine writeunk

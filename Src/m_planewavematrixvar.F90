@@ -20,9 +20,9 @@ module m_planewavematrixvar
 
   implicit none
 
-  complex(dp), pointer, save ::   delkmatgen(:,:) => null()
+  complex(dp), pointer, save ::   delkmatgen(:,:)
 
-  complex(dp), pointer, save ::   delkmat(:) => null()
+  complex(dp), pointer, save ::   delkmat(:)
 
   real(dp)                   ::   wavevector(3)
 
@@ -38,11 +38,11 @@ module m_planewavematrixvar
 !                              self-consistent. They can be computed
 !                              once for a given k-point and stored in
 !                              delkmatgen.
-!                              The first index is the index of the
-!                              sparse matrix.
-!                              The second index refers to the number of
+!                              The first index refers to the number of 
 !                              different k-points for which the planewave
 !                              will be computed.
+!                              The second index is the index of the
+!                              sparse matrix.
 !                              This pointer has to be allocated in 
 !                              the calling routine.
 ! real(dp)    wavevector(3)  : Wave vector of the plane wave.

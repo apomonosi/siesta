@@ -18,7 +18,6 @@
       use sparse_matrices, only: Dscf, Escf, maxnh
       use sparse_matrices, only: H, S
       use sparse_matrices, only: xijo, listh, listhptr, numh
-      use sparse_matrices, only: nnz_g
       use siesta_geom
 
       use sparse_matrices, only: DM_2D, DM_history
@@ -28,25 +27,20 @@
       use class_Fstack_Pair_Geometry_dSpData2D, only: new, max_size
       use class_Fstack_Pair_Geometry_dSpData2D, only: push
 
-      use parallel,     only : IOnode, SIESTA_worker
-
+      use parallel, only: ionode
       use atomlist, only: lasto, rmaxo, datm, indxuo, no_s, no_u,
      &                    iphorb, no_l, qtot, qtots
       use m_energies
       use neighbour,   only : maxna=>maxnna   ! For plcharge...
-      use m_spin,         only : nspin, h_spin_dim, spin
+      use m_spin,         only : nspin, h_spin_dim
       use m_spin,         only : spinor_dim 
       use m_diagon,       only : diagon 
       use m_dminim,       only : dminim
       use m_zminim,       only : zminim
       use m_steps,        only : istp, inicoor
       use m_compute_dm,   only : PreviousCallDiagon
-      use m_eo,           only : eo, qo, scf_eigenvalues_available
-      use units,          only : eV
+      use m_eo
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
-#ifdef SIESTA__ELSI
-      use m_elsi_interface,  only: elsi_getdm
-#endif
       implicit none
 
       ! MD-step, SCF-step
@@ -57,42 +51,9 @@
       type(Pair_Geometry_dSpData2D)  :: pair
       type(Geometry)                :: geom
 
-      real(dp)              :: ef_dummy
-      real(dp)              :: Entropy_dummy
-      
       call timer( 'PostSCF', 1 )
 
 !     If converged, make one last iteration to find forces and stress
-
-!     If we use the ELSI interface, the energy-density
-!     matrix is not calculated inside the SCF step, and
-!     so this must be done now
-      
-#ifdef SIESTA__ELSI
-      if (isolve .eq. SOLVE_ELSI) then
-         ! Note that we do not care about the content of H and S
-         ! Only that the appropriate elsi_h handle is still active
-         ! and allows us to get the appropriate EDM
-
-         ! If the scf cycle only takes one iteration, iscf here will
-         ! be still 1, and the initialization logic in the ELSI module
-         ! will re-create all the data structures, spoiling the context
-         ! for the retrieval of the EDM. Hence the kludge: we set
-         ! iscf to a safe value (large to catch any cosmetic use in the future)
-         ! To really fix this, the code should be updated to avoid re-initializations
-         ! (including communicators, etc) when 'Get_EDM_Only' is set.
-         
-         call elsi_getdm(iscf+20000, no_s, spin%spinor, 
-     &              no_l, no_u, maxnh, nnz_g,
-     &              numh, listhptr, listh,
-     &              H, S, qtot, temp, 
-     &              xijo,
-     &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
-     &              Escf, ef_dummy, Entropy_dummy,
-     &              occtol, neigwanted, Get_EDM_Only=.true.)
-      endif
-      if (.not. SIESTA_worker) RETURN
-#endif
 
 !     If we use the minimization routine, the energy-density
 !     matrix is not calculated inside the SCF step, and
@@ -120,7 +81,6 @@
      &                eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &                occtol, iscf, neigwanted)
           Ecorrec = 0.0_dp
-          scf_eigenvalues_available = .true.
         else
             if ( no_u == no_s ) then ! Not using an auxiliary supercell
             call dminim(.true., .false., iscf, istp, no_l, nspin, no_u,

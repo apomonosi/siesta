@@ -22,9 +22,12 @@ module m_ts_full_scat
 
   public :: calc_GF
   public :: calc_GF_Bias
+  public :: calc_GF_Bias_nc
   public :: calc_GF_Part
+  public :: calc_GF_Part_nc
   public :: GF_Gamma_GF
   public :: insert_Self_Energies
+  public :: insert_Self_Energies_NC
 
 #ifdef USE_GEMM3M
 # define GEMM zgemm3m
@@ -55,7 +58,7 @@ contains
     integer, intent(in) :: no      ! no. states for this electrode
     ! The Green function (it has to be the column that corresponds to the electrode)
     complex(dp), intent(inout) :: GF(no_u_TS,no)
-    ! A work array for doing the calculation... (nwork has to be larger than no_u_TS)
+    ! A work array for doing the calculation... (nwork has to be larger than 4*no_u_TS**2)
     integer,     intent(in)    :: nwork
     complex(dp), intent(inout) :: work(nwork)
 
@@ -292,6 +295,71 @@ contains
 
   end subroutine calc_GF_Bias
 
+  subroutine calc_GF_Bias_nc(cE,no_u_TS,no_Els,N_Elec,Elecs,GFinv,GF)
+    
+    use precision, only: dp
+
+    use m_ts_method, only : orb_offset
+
+    implicit none 
+
+! *********************
+! * INPUT variables   *
+! *********************
+    type(ts_c_idx), intent(in) :: cE
+    ! Sizes of the different regions...
+    integer, intent(in) :: no_u_TS, no_Els
+    ! Electrodes
+    integer, intent(in) :: N_Elec
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
+    ! Work should already contain Z*S - H
+    ! This may seem strange, however, it will clean up this routine extensively
+    ! as we dont need to make two different routines for real and complex
+    ! Hamiltonian values.
+    complex(dp), intent(inout) :: GFinv(2,no_u_TS,2,no_u_TS) ! the inverted GF
+    ! We only need Gf in the left and right blocks...
+    complex(dp), intent(out) :: GF(2,no_u_TS,2,no_Els)
+
+! Local variables
+    integer :: ipvt(no_u_TS*2)
+    integer :: i, o, iEl, off_row
+
+    if ( cE%fake ) return
+
+#ifdef TRANSIESTA_DEBUG
+    call write_debug( 'PRE getGF' )
+#endif
+
+    call timer('GFTB',1) 
+
+    ! Create the RHS for inversion...
+    GF(:,:,:,:) = cmplx(0._dp,0._dp, dp)
+
+    o = 0
+    do iEl = 1 , N_Elec
+      i = Elecs(iEl)%idx_o
+      off_row = i - orb_offset(i) - 1
+      do i = 1 , Elecs(iEl)%device_orbitals()
+        o = o + 1
+        GF(1,off_row+i,1,o) = cmplx(1._dp,0._dp, dp)
+        GF(2,off_row+i,2,o) = cmplx(1._dp,0._dp, dp)
+      end do
+    end do
+
+    if ( o /= no_Els ) call die('GFB: Error in sizes of electrodes')
+
+    ! Invert directly
+    call zgesv(2*no_u_TS,2*no_Els,GFinv,2*no_u_TS,ipvt,GF,2*no_u_TS,i)
+    if ( i /= 0 ) call die('GFB: Could not invert the Green function')
+       
+    call timer('GFTB',2)  
+
+#ifdef TRANSIESTA_DEBUG
+    call write_debug( 'POS getGF' )
+#endif
+
+  end subroutine calc_GF_Bias_nc
+
 
   ! Calculate a sub-part of the full Green function.
   ! This routine calculates the dense part that does not overlap with
@@ -370,6 +438,84 @@ contains
 
   end subroutine calc_GF_Part
 
+  ! Calculate a sub-part of the full Green function (for NC/SOC)
+  ! This routine calculates the dense part that does not overlap with
+  ! electrodes.
+  ! I.e. this can *only* be used for equilibrium contour points
+  ! since it removes the columns for electrodes where DM_update == 0.
+  subroutine calc_GF_Part_nc(cE,no_u, no_u_TS, no_col, N_Elec, Elecs, & ! Size of the problem
+       GFinv,GF)
+    
+    use intrinsic_missing, only: EYE
+    use precision, only: dp
+    use m_ts_method, only : orb_offset, orb_type, TYP_BUFFER
+
+    implicit none 
+
+! *********************
+! * INPUT variables   *
+! *********************
+    type(ts_c_idx), intent(in) :: cE
+    ! Sizes of the different regions...
+    integer, intent(in) :: no_u, no_u_TS, no_col
+    integer, intent(in) :: N_Elec
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
+    ! Work should already contain Z*S - H
+    ! This may seem strange, however, it will clean up this routine extensively
+    ! as we dont need to make two different routines for real and complex
+    ! Hamiltonian values.
+    complex(dp), intent(in out) :: GFinv(2,no_u_TS,2,no_u_TS) ! the inverted GF
+    complex(dp), intent(out) :: GF(2,no_u_TS,2,no_col)
+
+! Local variables
+    integer :: ipvt(no_u_TS*2)
+    integer :: jo, i, j
+    logical :: dm_update_0(N_elec)
+
+    if ( cE%fake ) return
+
+#ifdef TRANSIESTA_DEBUG
+    call write_debug( 'PRE getGF' )
+#endif
+
+    call timer('GFT_P',1)
+
+    dm_update_0(:) = Elecs(:)%DM_update == 0
+
+    ! initialize
+    GF(:,:,:,:) = cmplx(0._dp,0._dp,dp)
+
+    j = 0
+    i = 0
+    do jo = 1, no_u
+
+      ! if buffer, skip!
+      if ( orb_type(jo) == TYP_BUFFER ) cycle
+      if ( any(Elecs%has_orbital(jo) .and. dm_update_0(:)) ) then
+        i = i + 1
+        cycle
+      end if
+      i = i + 1
+      j = j + 1
+
+      GF(1,i,1,j) = cmplx(1._dp,0._dp,dp)
+      GF(2,i,2,j) = cmplx(1._dp,0._dp,dp)
+    end do
+
+    if ( i /= no_u_TS .or. j /= no_col ) call die('GFP: error in constructing part GF')
+
+    ! Invert directly
+    call zgesv(2*no_u_TS,2*no_col,GFinv,2*no_u_TS,ipvt,GF,2*no_u_TS,i)
+    if ( i /= 0 ) call die('GFP: Could not invert the Green function')
+
+    call timer('GFT_P',2)
+
+#ifdef TRANSIESTA_DEBUG
+    call write_debug( 'POS getGF' )
+#endif
+
+  end subroutine calc_GF_Part_nc
+
   subroutine insert_Self_Energies(no_u, Gfinv, El)
     use m_ts_method, only : orb_offset
     integer, intent(in) :: no_u
@@ -405,6 +551,41 @@ contains
     end if
 
   end subroutine insert_Self_Energies
+
+  subroutine insert_Self_Energies_NC(no_u, Gfinv, El)
+    use m_ts_method, only : orb_offset
+    integer, intent(in) :: no_u
+    complex(dp), intent(in out) :: GFinv(2*no_u,2*no_u)
+    type(electrode_t), intent(in) :: El
+    
+    integer :: i, j, ii, jj, iii, off, no
+
+    no = 2 * El%device_orbitals()
+    off = 2 * (El%idx_o - orb_offset(El%idx_o) - 1)
+    
+    if ( El%Bulk ) then
+!$OMP do private(j,jj,i,ii)
+       do j = 0 , no - 1
+          jj = off + j + 1
+          ii = j * no
+          do i = 1 , no
+             Gfinv(off+i,jj) = El%Sigma(ii+i)
+          end do
+       end do
+!$OMP end do nowait
+    else
+!$OMP do private(j,jj,i,ii)
+       do j = 0 , no - 1
+          jj = off + j + 1
+          ii = j * no
+          do i = 1 , no
+             Gfinv(off+i,jj) = Gfinv(off+i,jj) - El%Sigma(ii+i)
+          end do
+       end do
+!$OMP end do nowait
+    end if
+
+  end subroutine insert_Self_Energies_NC
 
 #undef GEMM
 

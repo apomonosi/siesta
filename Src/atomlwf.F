@@ -279,7 +279,7 @@ C Check that there is an integer number of electrons
         if (Node.eq.0) then
           write(6,*) 'cspa: Wrong total charge; non integer:',qtot
         endif
-        call die("stopping program")
+        call die()
       endif
 C ..................
 
@@ -482,7 +482,7 @@ C loop over the neighbors of ia within rcoor
           write(6,*) 'cspa: Number of LWFs larger than  basis set size'
           write(6,*) '      Increase basis set, or use less LWFs'
         endif
-        call die("stopping program")
+        call die()
       endif
 
       if ((ioptlwf .eq. 2) .and. (nbands .ne. nqtot/2)) then
@@ -491,7 +491,7 @@ C loop over the neighbors of ia within rcoor
           write(6,*) '      Something went wrong in generating the'
           write(6,*) '      LWFs for the Ordejon-Mauri functional'
         endif
-        call die("stopping program")
+        call die()
       endif
 
 
@@ -573,7 +573,7 @@ C Deallocate local memory
             write(6,*) 'cspa: Wrong atomic charge for atom ',ia
             write(6,*) '      qa = ',qa(ia),' must be an integer'
           endif
-          call die("stopping program")
+          call die()
         endif
         if (ioptlwf .eq. 1) then
           indexi = ( ( nelectr + 2 ) / 2 )
@@ -592,7 +592,7 @@ c             write(6,*) '      You can only use the functional of'
 c             write(6,*) '      Ordejon-Mauri for atoms with an even'
 c             write(6,*) '      number of electrons.'
 c           endif
-c OLD------ call die("stopping program")
+c OLD------ call die()
 c give one-extra/one-less LWF to odd species in turn with flag secondodd
             if (secondodd) then
                indexi = ( ( nelectr - 1 ) / 2 )
@@ -700,7 +700,7 @@ C If 32 or less electrons, populate lowest s, p, d and f orbitals
           write(6,*) 'cspa: Cannot build initial guess in initguess.'
           write(6,*) '      Reason: Too many electrons for this routine'
         endif
-        call die("stopping program")
+        call die()
       endif 
 
       if (lmaxp .gt. lomaxfis(is)) then
@@ -709,7 +709,7 @@ C If 32 or less electrons, populate lowest s, p, d and f orbitals
           write(6,*) '      Reason: Max. angular moment for atom ',ia,
      .               '      is not large enough'
         endif
-        call die("stopping program")
+        call die()
       endif 
 
       if (ne .gt. 32) then
@@ -717,7 +717,7 @@ C If 32 or less electrons, populate lowest s, p, d and f orbitals
           write(6,*) 'cspa: Cannot build initial guess in initguess.'
           write(6,*) '      Too many valence electrons in atom ',ia
         endif
-        call die("stopping program")
+        call die()
       endif 
 
       if (l .le. lmaxp) then

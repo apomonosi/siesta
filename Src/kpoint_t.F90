@@ -11,8 +11,6 @@ module kpoint_t_m
 
   implicit none
 
-  private
-
   public :: kpoint_t
 
   !< Method specification for non-specified k-list
@@ -25,7 +23,7 @@ module kpoint_t_m
   integer, parameter, public :: K_METHOD_LIST = 3
 
   type :: kpoint_t
-
+    
     !< Total number of k-points
     integer :: N = 0
     !< K-points
@@ -34,7 +32,7 @@ module kpoint_t_m
     real(dp), pointer :: w(:) => null()
     !< whether these k-points are under time-reversal symmetry
     logical :: trs = .true.
-
+    
     !< The method by which these k-points are generated
     integer :: method = K_METHOD_MONKHORST_PACK
 
@@ -45,11 +43,6 @@ module kpoint_t_m
     ! The cutoff requested
     real(dp) :: cutoff = 0._dp
 
-  contains
-
-    procedure, pass :: is_gamma => kpoint_is_gamma
-    procedure, pass :: delete => kpoint_delete
-
   end type kpoint_t
 
   public :: kpoint_associated
@@ -57,8 +50,7 @@ module kpoint_t_m
   public :: kpoint_nullify
   public :: kpoint_delete
   public :: kpoint_read
-
-  public :: kpoint_is_gamma
+  
   public :: kpoint_read_file
   public :: kpoint_write_xml
   public :: kpoint_write_stdout
@@ -100,22 +92,10 @@ contains
 
   end subroutine kpoint_nullify
 
-  function kpoint_is_gamma(this) result(gamma)
-     class(kpoint_t), intent(inout) :: this
-     logical :: gamma
-
-     if ( this%N == 1 ) then
-        gamma = dot_product(this%k(:,1),this%k(:,1)) < 1.0e-20_dp
-     else
-        gamma = .false.
-     end if
-
-  end function
-
   !< Delete the k-point list
   subroutine kpoint_delete(this)
     use alloc, only: de_alloc
-    class(kpoint_t), intent(inout) :: this
+    type(kpoint_t), intent(inout) :: this
 
     call de_alloc(this%k, name='kpoint_t%k')
     call de_alloc(this%w, name='kpoint_t%w')
@@ -124,7 +104,7 @@ contains
     this%method = K_METHOD_NONE
     this%k_cell = 0
     this%k_displ = 0
-
+    
   end subroutine kpoint_delete
 
   !< Read settings for this k-point grid
@@ -148,17 +128,17 @@ contains
   !! 2. kgrid.Cutoff
   !!    The k_cell is specified using a cutoff parameter and automatically
   !!    calculated.
-  !! 3. kgrid.File
+  !! 3. kgrid.file
   !!    The k-points are user-supplied. In this case the k-points *must*
   !!    be provided in units of the reciprocal lattice vectors (i.e. in ]-0.5 ; 0.5])
   subroutine kpoint_read(this, prefix, cell, trs, process_k_cell)
     use fdf
-
+    
     type(kpoint_t), intent(inout) :: this
     character(len=*), intent(in) :: prefix
     real(dp), intent(in) :: cell(3,3)
     logical, intent(in) :: trs
-    interface
+    abstract interface
       subroutine my_sub(k_cell, k_displ)
         use precision, only: dp
         integer, intent(inout) :: k_cell(3,3)
@@ -189,6 +169,7 @@ contains
     ! and/or non-collinear calculations
     this%trs = fdf_get("TimeReversalSymmetryForKpoints", (.not. spiral) .and. trs)
 
+
     call kpoint_fdf_name(prefix, 'kgrid.MonkhorstPack', name_fdf)
     if ( fdf_block(name_fdf, bfdf) ) then
 
@@ -211,18 +192,18 @@ contains
 
         if ( nvals == 1 ) then
           this%k_cell(i,i) = fdf_bintegers(pline,1)
-
+          
         else if ( nvals == 2 ) then
           this%k_cell(i,i) = fdf_bintegers(pline,1)
           this%k_displ(i) = mod(fdf_bvalues(pline,2), 1._dp)
-
+          
         else
           this%k_cell(1,i) = fdf_bintegers(pline,1)
           this%k_cell(2,i) = fdf_bintegers(pline,2)
           this%k_cell(3,i) = fdf_bintegers(pline,3)
-
+          
         end if
-
+        
       end do
 
       call fdf_bclose(bfdf)
@@ -240,14 +221,12 @@ contains
       if ( i /= 3 ) then
         call die('kpoint_read: ERROR in ' // trim(name_fdf) // ' list (have to have 3 numbers)')
       end if
-
+      
       ! Initialize MP
       this%k_cell = 0
       this%k_displ = 0._dp
-
-      ! Read in content from the list
       call fdf_list(name_fdf, i, this%k_cell(:, 1))
-
+      
       ! Re-arange the elements
       this%k_cell(2,2) = this%k_cell(2,1)
       this%k_cell(2,1) = 0
@@ -298,7 +277,7 @@ contains
 
     subroutine setup_mp()
       use m_find_kgrid, only: find_kgrid
-
+      
       if ( present(process_k_cell) ) then
         call process_k_cell(this%k_cell, this%k_displ)
       end if
@@ -307,9 +286,9 @@ contains
       call find_kgrid(cell, this%k_cell, this%k_displ, .true., &
           this%trs, &
           this%N, this%k, this%w, this%cutoff)
-
+      
     end subroutine setup_mp
-
+    
     subroutine setup_cutoff()
       use m_minvec, only : minvec
       use m_find_kgrid, only: find_kgrid
@@ -320,27 +299,27 @@ contains
 
       ! Find equivalent rounded unit-cell
       call minvec( cell, scmin, ctransf )
-
+      
       expansion_factor = 1
       do i = 1 , 3
-
+        
         vmod = sqrt( dot_product(scmin(:,i),scmin(:,i)) )
         factor = int(2.0_dp * cutoff / vmod) + 1
         expansion_factor = expansion_factor * factor
-
+        
         ! Generate actual supercell skeleton
         this%k_cell(:,i) = ctransf(:,i) * factor
-
+        
       end do
 
       ! Avoid confusing permutations, revert to identity
       if ( expansion_factor == 1 ) then
-
+        
         this%k_cell(:,:) = 0
         do i = 1, 3
           this%k_cell(i,i) = 1
         end do
-
+        
       end if
 
       if ( present(process_k_cell) ) then
@@ -351,7 +330,7 @@ contains
       call find_kgrid(cell,this%k_cell, this%k_displ, .false., &
           this%trs, &
           this%N, this%k, this%w, this%cutoff)
-
+      
     end subroutine setup_cutoff
 
     subroutine setup_file()
@@ -374,7 +353,7 @@ contains
       do i = 1, 3
         this%k_cell(i,i) = 1
       end do
-
+      
     end subroutine setup_gamma
 
   end subroutine kpoint_read
@@ -432,9 +411,9 @@ contains
       ! Read in the k-points
       wsum = 0._dp
       do ik = 1 , this%N
-
+        
         ! read current k-point
-        read(iu,*,iostat=stat) ix, k(:), this%w(ik) ! see kpoint_write_file
+        read(iu,*,iostat=stat) ix, k(:), this%w(ik) ! (i6,3f12.6,3x,f12.6)
         call kpoint_convert(rcell, k, this%k(:,ik), -2)
         call kill_iokp(stat,ik)
         wsum = wsum + this%w(ik)
@@ -496,7 +475,7 @@ contains
     use siesta_cml
     use m_char, only: lcase
     use units, only: Ang
-
+    
     type(kpoint_t), intent(inout) :: this
     character(len=*), intent(in), optional :: prefix
     character(len=64) :: lcase_prefix
@@ -507,7 +486,7 @@ contains
 
     if ( present(prefix) ) then
       lcase_prefix = lcase(prefix)
-
+      
       call cmlStartPropertyList(xf=mainXML, title=trim(prefix)//".k-points", &
           dictRef="siesta:"//trim(lcase_prefix)//".kpoints")
       call cmlAddProperty(xf=mainXML, value=this%N, &
@@ -527,7 +506,7 @@ contains
         call cmlAddProperty(xf=mainXML, value=this%k_displ, &
             dictref='siesta:'//trim(lcase_prefix)//'.kdispl')
       end select
-
+           
     else
       call cmlStartPropertyList(xf=mainXML, title="k-points", &
           dictRef="siesta:kpoints")
@@ -553,7 +532,7 @@ contains
     call cmlEndPropertyList(mainXML)
 
   end subroutine kpoint_write_xml
-
+  
   !< Write to std-out the k-points and some information regarding the generation of the k-list
   !!
   !! The k-points are only written if `all` is `.true.`.
@@ -575,10 +554,10 @@ contains
     if ( all ) then
       write(*,'(/,3a)') 'siesta: ',trim(name), 'point coordinates (Bohr**-1) and weights:'
       do ik = 1, this%N
-        write(*,'(a,i12,3(tr1,e13.6),tr3,e12.6)') 'siesta: ', ik, this%k(:,ik), this%w(ik)
+        write(*,'(a,i10,3(tr1,e13.6),tr3,e12.6)') 'siesta: ', ik, this%k(:,ik), this%w(ik)
       end do
     end if
-    write(*,'(/3a,i0)')  'siesta: ', trim(name), 'grid: Number of k-points = ', this%N
+    write(*,'(/3a,i10)')  'siesta: ', trim(name), 'grid: Number of k-points =', this%N
 
     select case ( this%method )
     case ( K_METHOD_NONE )
@@ -588,19 +567,19 @@ contains
       write(*,'(3a,f10.3,a)')  'siesta: ', trim(name), 'cutoff (effective) =', this%cutoff/Ang, ' Ang'
       write(*,'(3a)') 'siesta: ', trim(name), 'point supercell and displacements'
       do ik = 1, 3
-        write(*,'(a,3(tr1,i5),3x,f8.3)') 'siesta: k-grid:', this%k_cell(:,ik), this%k_displ(ik)
+        write(*,'(a,3i4,3x,f8.3)') 'siesta: k-grid: ', this%k_cell(:,ik), this%k_displ(ik)
       end do
     case ( K_METHOD_CUTOFF )
       write(*,'(3a)')  'siesta: ', trim(name), 'points from cutoff'
       write(*,'(3a,f10.3,a)')  'siesta: ', trim(name), 'cutoff (effective) =', this%cutoff/Ang, ' Ang'
       write(*,'(3a)') 'siesta: ', trim(name), 'point supercell and displacements'
       do ik = 1, 3
-        write(*,'(a,3(tr1,i5),3x,f8.3)') 'siesta: k-grid:', this%k_cell(:,ik), this%k_displ(ik)
+        write(*,'(a,3i4,3x,f8.3)') 'siesta: k-grid: ', this%k_cell(:,ik), this%k_displ(ik)
       end do
     case ( K_METHOD_LIST )
       write(*,'(3a)')  'siesta: ', trim(name), 'points from user-defined list'
     end select
-
+    
   end subroutine kpoint_write_stdout
 
   !< Write to a file the k-point information
@@ -616,16 +595,16 @@ contains
 
     call io_assign( iu )
     open( iu, file=fname, form='formatted', status='unknown' )      
-
-    write(iu,'(i12)') this%N
+    
+    write(iu,'(i10)') this%N
     do ik = 1, this%N
-      write(iu,'(i12,3(tr1,e13.6),tr3,e12.6)') ik, this%k(:,ik), this%w(ik)
+      write(iu,'(i10,3(tr1,e13.6),tr3,e12.6)') ik, this%k(:,ik), this%w(ik)
     end do
-
+      
     call io_close( iu )
-
+    
   end subroutine kpoint_write_file
-
+  
   subroutine kpoint_fdf_name(prefix, suffix, name)
     character(len=*), intent(in) :: prefix, suffix
     character(len=256), intent(out) :: name

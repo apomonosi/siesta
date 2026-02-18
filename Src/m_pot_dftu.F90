@@ -310,7 +310,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
                                          !   interacting
                                          !   NOTE: In parallel runs,
                                          !   maxnh changes from node to node
-  use matel_m,         only : matel      ! Returns the overlap matrix elements
+  use m_new_matel,     only : new_matel  ! Returns the overlap matrix elements
                                          !   between an atomic orbital and a
                                          !   LDA+U projector 
   use m_energies,      only : E_dftu_so  ! Contribution to the energy coming
@@ -726,7 +726,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !            write(6,'(a,6i5,f12.5)')                                          &
 ! &  'dftu_so_hamil_2: Node, Nodes, m, mprime, m2prime, m3prime, vee_integral_real = ',   &
 ! &            Node, Nodes, m, mprime, m2prime, m3prime,                       &
-! &            dftuintegrals%vee_4center_integrals(m, mprime, m2prime, m3prime)/eV
+! &            dftuintegrals%vee_4center_integrals(m, mprime, m2prime, m3prime)*13.6058
 !            enddo
 !          enddo
 !        enddo
@@ -761,7 +761,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !!   For debugging
 !    write(6,'(a,2i5,f12.5)')                              &
 ! &    'dftu_so_hamil_2: Node, Nodes, E_correc_dc = ',     &
-! &                      Node, Nodes, E_correc_dc/eV
+! &                      Node, Nodes, E_correc_dc* 13.6058_dp
 !    call die()
 !!   End debugging
 
@@ -851,7 +851,7 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !           and a neighbour atomic orbital
             do mproj = 1, ndftuproj
               kg  = dftu_gindex(ks,mproj)
-              call matel( 'S', kg, ig, xki(1:3,ina),        &
+              call new_matel( 'S', kg, ig, xki(1:3,ina),        &
  &                            Ski(mproj,number_neig_orb),       &
  &                            grSki(1:3,mproj,number_neig_orb) )
             enddo
@@ -1263,11 +1263,11 @@ subroutine dftu_so_hamil_2( H_dftu_so, fal, stressl )
 !
 !   write(6,'(a,2i5,f12.5)')                           &
 ! &   'dftu_so_hamil_2: Node, Nodes, E_dftu_so    = ', &
-! &                     Node, Nodes, E_dftu_so / eV
+! &                     Node, Nodes, E_dftu_so * 13.6058_dp
 !
 !   write(6,'(a,2i5,f12.5)')                           &
 ! &   'dftu_so_hamil_2: Node, Nodes, E_correc_dc  = ', &
-! &                     Node, Nodes, E_correc_dc / eV
+! &                     Node, Nodes, E_correc_dc * 13.6058_dp
 !   
 !   do ia = 1, na_u
 !     write(6,'(a,3i5,3f12.5)')                          &

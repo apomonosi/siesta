@@ -44,6 +44,7 @@
 ! use mpi_siesta, only: MPI_Prod
 ! use mpi_siesta, only: MPI_Sum
 ! use mpi_siesta, only: MPI_COMM_WORLD
+! use mpi_siesta, only: MPI_STATUS_SIZE
 !
 !   EXTERNAL procedures used:
 ! none
@@ -150,7 +151,6 @@
 ! The strings are left-justified, with right-hand blanks, i.e. '00    '
 !
 !******************************************************************************
-#include "mpi_macros.f"
 
 MODULE moreParallelSubs
 
@@ -191,6 +191,10 @@ PRIVATE ! Nothing is declared public beyond this point
       miscAllReduceDouble  ! Double precision real version
   end interface miscAllReduce
 
+#ifdef MPI
+  integer:: MPIerror, MPIstatus(MPI_STATUS_SIZE), MPItag
+#endif
+
 CONTAINS
 
 !******************************************************************************
@@ -222,11 +226,6 @@ SUBROUTINE copyFile( srcNode, srcFile, dstNode, dstFile, writeOption )
   character(len=bufferSize):: line               ! One input line
   integer:: ib, iBuffer(2), il, iu, lineBegin, lineLength, &
             mBuffers, mLines, nBuffers, nLines, two
-#ifdef MPI
-  MPI_STATUS_TYPE :: MPIstatus
-  integer :: MPIerror
-  integer :: MPItag = 0
-#endif
 
 ! Check whether source and destination are the same
   if (srcNode==dstNode .and. srcFile==dstFile) then

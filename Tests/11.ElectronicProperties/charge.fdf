@@ -1,8 +1,0 @@
-%include ../base_fen.fdf
-SystemLabel     charge
-
-WriteHirshfeldPop T
-WriteVoronoiPop   T
-WriteMullikenPop  1
-Save-Bader-Charge T
-

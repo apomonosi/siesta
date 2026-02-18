@@ -1,19 +1,19 @@
 program intdos2eig
 !
 ! This program processes the PEXSI_INTDOS file produced by
-! the cumulative-DOS interface to PEXSI and produces a
+! the cumulative-DOS interface to PEXSI and produces a 
 ! "fake eigenvalues" file suitable to be processed by Util/Eig2DOS.
 !
 ! The eigenvalues are placed at the jumps in the cumulative DOS, with
 ! as many copies as necessary to account for the jump (note that there
 ! is an implicit factor of two for the spin).
-!
+! 
 !
 implicit none
 integer, parameter :: dp = selected_real_kind(10,100)
 
 real(dp), allocatable :: e(:)
-real(dp), allocatable :: incounts(:)
+integer, allocatable :: incounts(:)
 real(dp) :: delta, energy, ef, qtot
 integer :: i, n, iostat, ic, njump, neigs, j
 
@@ -34,7 +34,7 @@ print *, "Read ", n, " values"
 ! Find number of fake eigenvalues
 neigs = 0
 do i = 2, n
-   njump = nint( incounts(i) - incounts(i-1) )
+   njump = (incounts(i)-incounts(i-1))
    if (mod(njump,2) /= 0) then
       write(0,*) " ** warning ** : odd jump in PEXSI_INTDOS"
    endif
@@ -53,12 +53,12 @@ write(2,"(i5)") 1
 !
 delta = e(2) - e(1)
 do i = 2, n
-   njump = nint( incounts(i) - incounts(i-1) )
+   njump = (incounts(i)-incounts(i-1))
    do j = 1, njump/2
       write(2,"(2f15.6)") e(i) - 0.5_dp*delta
    enddo
 enddo
-
+ 
 close(2)
 deallocate(e, incounts)
 

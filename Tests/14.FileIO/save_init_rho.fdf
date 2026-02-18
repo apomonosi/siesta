@@ -1,5 +1,0 @@
-%include ../base_wat.fdf
-SystemLabel     save_init_rho
-
-SaveInitialChargeDensity T
-DM.UseSaveDM F

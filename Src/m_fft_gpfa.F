@@ -56,7 +56,7 @@
 
       public :: gpfa
       private
-
+      
       CONTAINS
 
 !--------------------------------------------------------------
@@ -126,15 +126,15 @@
 *
       ! NOTE: The original declaration of these arguments (here and below)
       ! was: A(*), B(*)
-      REAL(wp) ::     A(:), B(:)
+      REAL(wp) ::     A(:), B(:) 
       REAL(dp)  TRIGS(*)
       INTEGER INC, JUMP, N, LOT, ISIGN
 C
-      INTEGER
+      INTEGER 
      .  NJ(3), NN, IFAC, LL, KK, IP, IQ, IR, I
 
       character(len=20) :: msg
-*
+*     
 *     DECOMPOSE N INTO FACTORS 2,3,5
 *     ------------------------------
       NN = N
@@ -2494,7 +2494,7 @@ cdir$ ivdep, shortloop
 
       end module gpfa_core_sp
 
-
+      
       module gpfa_core_dp
 !
 !     1d fft routine based on Clive Temperton's GPFA package
@@ -2516,7 +2516,7 @@ cdir$ ivdep, shortloop
 
       public :: gpfa
       private
-
+      
       CONTAINS
 
 !--------------------------------------------------------------
@@ -2584,11 +2584,11 @@ cdir$ ivdep, shortloop
 
       IMPLICIT NONE
 *
-      REAL(wp) ::     A(:), B(:)
+      REAL(wp) ::     A(:), B(:) 
       REAL(dp)  TRIGS(*)
       INTEGER INC, JUMP, N, LOT, ISIGN
 C
-      INTEGER
+      INTEGER 
      .  NJ(3), NN, IFAC, LL, KK, IP, IQ, IR, I
 
       character(len=20) :: msg
@@ -4951,9 +4951,9 @@ cdir$ ivdep, shortloop
       end subroutine gpfa5f
 
       end module gpfa_core_dp
+      
 
-
-
+      
 
       module gpfa_fft
 !
@@ -4961,7 +4961,7 @@ cdir$ ivdep, shortloop
 !
       use gpfa_core_sp, only: gpfa
       use gpfa_core_dp, only: gpfa
-
+      
       implicit none
 
       integer, parameter :: dp = selected_real_kind(10,100)
@@ -5000,9 +5000,9 @@ cdir$ ivdep, shortloop
       public :: setgpfa_check
 
       ! Access to the standard legacy routines, if needed
-      public :: gpfa, setgpfa, fft_gpfa_trigs_reset
+      public :: gpfa, setgpfa
 
-      private
+      private 
 
       CONTAINS
 
@@ -5016,7 +5016,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 
       integer :: np, nmax, nmin, nrem, ip
       ! no limits with huge, but subtract 2 to avoid 'overflow' warning
-      parameter (NP = 3, NMAX = huge(N)-2)
+      parameter (NP = 3, NMAX = huge(N)-2)  
       integer :: IPRIME(NP)
       data IPRIME / 2, 3, 5 /
 
@@ -5024,7 +5024,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
       DO N = NMIN, NMAX
         NREM = N
         DO IP = 1,NP
-   10     CONTINUE
+   10     CONTINUE 
           IF ( MODULO( NREM, IPRIME(IP) ) .EQ. 0 ) THEN
             NREM = NREM / IPRIME(IP)
             GOTO 10
@@ -5057,11 +5057,11 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 
       if (n /= nold) then
          call setgpfa_alloc( trigs, n )
-      end if
+      end if 
 
-  ! FFT. Arguments of gpfa are:
-  ! gpfa( realData(*), imagData(*), trigs(*),
-  !       dataSpan, vectorSpan, vectorSize, numVectors, fftDir )
+  ! FFT. Arguments of gpfa are:                                
+  ! gpfa( realData(*), imagData(*), trigs(*),                    
+  !       dataSpan, vectorSpan, vectorSize, numVectors, fftDir )              
   !
   ! Note dataSpan=2 since we are packing the real and imaginary
   ! parts in the same vector.
@@ -5094,11 +5094,11 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 
       if (n /= nold) then
          call setgpfa_alloc( trigs, n )
-      end if
+      end if 
 
-  ! FFT. Arguments of gpfa are:
-  ! gpfa( realData(*), imagData(*), trigs(*),
-  !       dataSpan, vectorSpan, vectorSize, numVectors, fftDir )
+  ! FFT. Arguments of gpfa are:                                
+  ! gpfa( realData(*), imagData(*), trigs(*),                    
+  !       dataSpan, vectorSpan, vectorSize, numVectors, fftDir )              
   !
   ! Note dataSpan=2 since we are packing the real and imaginary
   ! parts in the same vector.
@@ -5113,7 +5113,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 !----------------------------------------------------------------------
       subroutine fft_gpfa_sp(realData, imagData,
      $                    dataSpan, vectorSpan, N, numVectors,
-     $                    isign )
+     $                    isign ) 
 
       ! A wrapper for the GPFA routine which handles the
       ! work array automatically
@@ -5133,7 +5133,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 
       if (n /= nold) then
          call setgpfa_alloc( trigs, n )
-      end if
+      end if 
 
       call gpfa(realData, imagData, trigs,
      $          dataSpan, vectorSpan, N, numVectors, isign)
@@ -5144,7 +5144,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 !----------------------------------------------------------------------
       subroutine fft_gpfa_dp(realData, imagData,
      $                    dataSpan, vectorSpan, N, numVectors,
-     $                    isign )
+     $                    isign ) 
 
       ! A wrapper for the GPFA routine which handles the
       ! work array automatically
@@ -5164,7 +5164,7 @@ C WRITTEN BY J.M.SOLER. MAY/95.
 
       if (n /= nold) then
          call setgpfa_alloc( trigs, n )
-      end if
+      end if 
 
       call gpfa(realData, imagData, trigs,
      $          dataSpan, vectorSpan, N, numVectors, isign)
@@ -5358,11 +5358,6 @@ C WRITTEN BY J.M.SOLER. MAY/95.
       RETURN
       END SUBROUTINE SETGPFA
 
-      subroutine fft_gpfa_trigs_reset()
-            implicit none
-
-            if ( allocated(trigs) ) deallocate(trigs)
-      end subroutine fft_gpfa_trigs_reset
       end module gpfa_fft
 
-
+ 

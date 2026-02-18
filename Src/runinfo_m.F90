@@ -19,20 +19,18 @@ contains
      ! This subroutine prints runtime information.
      ! This includes information about the cwd, MPI, and OpenMP.
 
-#if defined(_OPENMP)
 !$   use omp_lib, only : omp_get_num_threads
 !$   use omp_lib, only : omp_get_nested, omp_set_nested
 !$   use omp_lib, only : omp_get_max_active_levels
 !$   use omp_lib, only : omp_get_schedule, omp_set_schedule
 !$   use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
 !$   use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-#if ( _OPENMP >= 201307 )
+#if defined(_OPENMP) && ( _OPENMP >= 201307 )
 !$   ! The above value should correspond to OpenMP 4.0.
 !$   use omp_lib, only : omp_get_proc_bind
 !$   use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
 !$   use omp_lib, only : OMP_PROC_BIND_MASTER
 !$   use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
-#endif
 #endif
      use parallel, only: Nodes
      use posix_calls, only: getcwd
@@ -65,7 +63,6 @@ contains
      write(6,'(a)') '* Running in serial mode.'
 #endif
 
-#if defined(_OPENMP)
 !$OMP parallel default(shared)
 !$OMP master
 
@@ -75,7 +72,7 @@ contains
 !$   write(*,'(a,i0,a)') '* Running ',Nodes*i,' processes.'
 
      ! Thread affinity information.
-#if (_OPENMP >= 201307)
+#if _OPENMP >= 201307
 !$   i = omp_get_proc_bind()
 !$   select case ( i )
 !$     case ( OMP_PROC_BIND_FALSE )
@@ -128,7 +125,7 @@ contains
 !$OMP end master
 !$OMP end parallel
 !$   call omp_set_schedule(i,is)
-#endif
+
   end subroutine runinfo
 
 end module runinfo_m

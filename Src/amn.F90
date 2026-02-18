@@ -5,7 +5,7 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-subroutine amn( ispin, index_manifold )
+subroutine amn( ispin )
 !
 !     In this subroutine we compute the overlaps between Bloch states
 !     onto trial localized orbitals
@@ -15,10 +15,10 @@ subroutine amn( ispin, index_manifold )
 !     N. Marzari et al., Review of Modern Physics 84, 1419 (2012),
 !     or Eq. (1.8) of the Wannier Users Guide, Version 1.2
 !     $A_{m n}^{(\vec{k})} = 
-!    \langle \psi_{m \vec{k}} \vert g_{n} \rangle =
+!    \langle \psi_{m \vec{k}} \vbar g_{n} \rangle =
 !    \sum_{\mu} \sum_{lcell} c_{\mu m}^{\ast} (\vec{k}) \times
-!    \exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
-!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vert g_{n}\rangle
+!    exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
+!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vbar g_{n}\rangle
 !     where $m$ runs between 1 and the number of bands for wannierization,
 !     $n$ runs between 1 and the number of projection functions, 
 !     $\vec{k}$ runs over all the k-points in the first BZ where these matrices 
@@ -43,53 +43,41 @@ subroutine amn( ispin, index_manifold )
   use parallel,           only: Nodes               ! Total number of Nodes
   use parallel,           only: Node                ! Local Node
   use parallel,           only: IONode              ! Input/output node
-  use parallelsubs,       only: WhichNodeOrb        ! Which node handles the
-                                                    !   the information of a 
-                                                    !   given orbital in the
-                                                    !   unit cell
-  use parallelsubs,       only: GlobalToLocalOrb    ! Transformation from a 
-                                                    !   global index of a given
-                                                    !   orbital in the unit cell
-                                                    !   to the local index 
-                                                    !   within a node
   use atomlist,           only: rmaxo               ! Max. cutoff atomic orbital
   use siesta_geom,        only: scell               ! Lattice vector of the
                                                     !   supercell in real space
-  use siesta_geom,        only: ucell               ! Unit cell lattice vectors
-  use siesta_geom,        only: nsc                 ! Diagonal element of 
-                                                    !   the supercell
   use siesta_geom,        only: na_s                ! Number of atoms in the
                                                     !   supercell
   use siesta_geom,        only: xa                  ! Atomic positions
-  use cellsubs,           only: reclat              ! Finds reciprocal unit cell
-                                                    !   vector
-  use m_switch_local_projection, only: numproj      ! Total number of projectors
-  use m_switch_local_projection, only: numkpoints   ! Total number of k-points
+  use m_siesta2wannier90, only: latvec              ! Lattice vectors in real 
+                                                    !   space
+  use m_siesta2wannier90, only: numproj             ! Total number of projectors
+  use m_siesta2wannier90, only: numkpoints          ! Total number of k-points
                                                     !   for which the overlap of
                                                     !   the periodic part of the
                                                     !   wavefunct with a 
                                                     !   neighbour k-point will
                                                     !   be computed
-  use m_switch_local_projection, only: kpointsfrac  ! List of k points relative
+  use m_siesta2wannier90, only: kpointsfrac         ! List of k points relative
                                                     !   to the reciprocal 
                                                     !   lattice vectors.
                                                     !   First  index: component
                                                     !   Second index: k-point  
                                                     !      index in the list
-  use m_switch_local_projection, only: projections  ! Trial projection functions
-  use m_switch_local_projection, only: numincbands  ! Number of bands for 
+  use m_siesta2wannier90, only: projections         ! Trial projection functions
+  use m_siesta2wannier90, only: numincbands         ! Number of bands for 
                                                     !   wannierization
                                                     !   after excluding bands  
-  use m_switch_local_projection, only: nincbands_loc! Number of bands for 
+  use m_siesta2wannier90, only: nincbands_loc       ! Number of bands for 
                                                     !   wannierization
                                                     !   after excluding bands  
                                                     !   in the local Node
-  use m_switch_local_projection, only: coeffs       ! Coefficients of the
+  use m_siesta2wannier90, only: coeffs              ! Coefficients of the
                                                     !   wavefunctions.
                                                     !   First  index: orbital
                                                     !   Second index: band
                                                     !   Third  index: k-point
-  use m_switch_local_projection, only: Amnmat       ! Matrix of the overlaps of 
+  use m_siesta2wannier90, only: Amnmat              ! Matrix of the overlaps of 
                                                     !   trial projector funtions
                                                     !   with Eigenstates of the
                                                     !   Hamiltonian
@@ -100,79 +88,13 @@ subroutine amn( ispin, index_manifold )
                                                     !    global index to the 
                                                     !    trial projection
                                                     !    functions
-  use m_matel_registry,   only: show_pool
-  use matel_m,            only: matel               ! MATEL implementation 
+  use m_new_matel,        only: new_matel           ! New MATEL implementation 
                                                     !   with the global indices 
                                                     !   of the radial functions 
                                                     !   as inputs
-  use matel_m,            only: init_matel_wannier  ! Table initializer
   use atmfuncs,           only: orb_gindex          ! Subroutine that gives
                                                     !   the global index of an
                                                     !   atomic orbital
-  use w90_wrapper_types,only: compute_chempotwann_after_scf 
-                                                    ! Are we going to use the 
-                                                    !   unperturbed Wannier functions
-                                                    !   as trial guess to compute 
-                                                    !   the matrix elements of the 
-                                                    !   Wanniers with chemical potentials?
-  use w90_wrapper_types,only: first_chempotwann   ! First time the calculation 
-                                                    !   of the matrix elements of the 
-                                                    !   Hamiltonian with the chemical
-                                                    !   chemical potential of the 
-                                                    !   Wanniers is called?
-  use atomlist,           only: no_s                ! Number of atomic orbital
-                                                    !   in the supercell
-  use atomlist,           only: iaorb               ! Atomic index of each orbital
-  use atmfuncs,           only: rcut                ! Returns orbital 
-                                                    !   cutoff radius
-  use sparse_matrices,    only: S                   ! Overlap matrix in 
-                                                    !   sparse format
-  use sparse_matrices,    only: xijo                ! Relative position between
-                                                    !   neighbour atoms
-  use sparse_matrices,    only: numh                ! Number of non-zero element
-                                                    !   per row in the matrices
-                                                    !   (local to MPI Node)
-  use sparse_matrices,    only: listhptr            ! Pointer to the start of
-                                                    !   ach row (-1) of the
-                                                    !   hamiltonian matrix
-  use sparse_matrices,    only: listh               ! Nonzero hamiltonian-matrix
-                                                    !   element column indices 
-                                                    !   for each matrix row
-
-  use w90_wrapper_types, only: w90_manifold_t
-  use w90_wrapper_types, only: manifold_bands
-  use w90_wrapper_types,   only: numh_man_proj
-                                               ! Number of projections that will
-                                               !  be  handled in the local node
-  use w90_wrapper_types,   only: listhptr_man_proj
-                                       ! Index pointer to listh_man_proj such
-                                       ! listh_man_proj(listhptr_man_proj(1)+1)
-                                       !   is the first projector of the first
-                                       !   manifold handled by the local node
-                                       ! listh_man_proj(listhptr_man_proj(io)+1)                                       !   is thus the first projector of
-                                       !   of manifold 'io' while
-                                       ! listh_man_proj(listhptr_man_proj(io) +                                        !                numh_man_proj(io))
-                                       !   is the last projectors of manifold
-                                       !   'io'.
-                                       ! Dimension: number of manifolds
-  use w90_wrapper_types,   only: listh_man_proj
-                                               ! The column indices for 
-                                               !   the projectors
-                                               !   of all the manifolds handled
-                                               !   by the local node
-  use w90_wrapper_types, only: coeffs_wan_nao
-                                               ! Coefficients of the
-                                               !   Wannier functions in a basis
-                                               !   of NAO
-                                               !   First  index: Index of the
-                                               !       manifold and Wannier func
-                                               !       handled by numh_man_proj,
-                                               !       listhptr_man_proj, and
-                                               !       listh_man_proj, and
-                                               !   Second index: NAO in the
-                                               !       supercell
-                                               !   Third index: Spin component
-
 !
 ! Variables for the diagonalization
 !
@@ -190,6 +112,9 @@ subroutine amn( ispin, index_manifold )
   use sys,                only: die          ! Termination routine
 
 #ifdef MPI
+  use parallelsubs,         only: GetNodeOrbs    ! Calculates the number of
+                                                 !   orbitals stored on the 
+                                                 !   local Node.
   use m_orderbands,       only: which_band_in_node  ! Given a node and a 
                                                     !   local index,
                                                     !   this array gives the
@@ -209,8 +134,6 @@ subroutine amn( ispin, index_manifold )
   implicit none
 
   integer, intent(in)     :: ispin               ! Spin component
-  integer, intent(in)     :: index_manifold      ! Index of the manifold
-                                                 !   that is wannierized
 
   type orbitallinkedlist
     real(dp),dimension(3)           :: center
@@ -222,25 +145,12 @@ subroutine amn( ispin, index_manifold )
 
 
 ! Local variables
-
-  type(w90_manifold_t), pointer :: w90man    ! For ease of reference
-
   integer  :: ik              ! Counter for loop on k-points
   integer  :: iproj           ! Counter for loop on projections
   integer  :: io              ! Counter for loop on orbital 
-  integer  :: iorb            ! Counter for loop on orbital 
-  integer  :: iat             ! Atomic index of each orbital
-  integer  :: ind_proj        ! Counter for sequential indices
-                              !    of projections
   integer  :: iband           ! Counter for loop on bands
   integer  :: nincbands       ! Number of bands for wannierization
-  integer  :: iua             ! Equivalent atom in the
-                              !    first unit cell
-  integer  :: iuo             ! Equivalent orbital in the
-                              !    first unit cell
-  integer  :: ix              ! Counter for cartesian directions
-  integer  :: icell           ! Counter for unit cell lattice
-                              !    vectors
+  logical, save :: firsttime = .true. ! First time this subroutine is called?
   integer  :: gindex          ! Global index of the trial projector function
                               !   in the list of functions that will be
                               !   evaluated in Matel
@@ -253,10 +163,6 @@ subroutine amn( ispin, index_manifold )
   integer  :: indexproj       ! Index of the projector 
                               !   This index runs from 1 to the total number
                               !   of projections
-  integer  :: isc(3)
-  integer  :: iproj_local     ! Local index within one node of the 
-                              !   Wannier function
-  integer  :: iproj_global    ! Global index of the Wannier function
   real(dp) :: trialcenter(3)  ! Position where the trial function is centered
                               !   (in Bohr)
   real(dp) :: trialrcut       ! Cutoff radius of the trial function
@@ -269,15 +175,6 @@ subroutine amn( ispin, index_manifold )
   real(dp) :: phase           ! Product of the k-vector with the position
                               !   where the neighbour orbital is centered
   real(dp) :: kvector(3)      ! k-point vector in the Wannier90 grid
-  real(dp) :: dxa(3)          ! Cell vector that translates a
-                              !   given atom in the unit cell
-                              !   to the equivalent in the supercell
-  real(dp) :: rcell(3,3)      ! Reciprocal unit cell vectors
-                              !   (without 2*pi factor)
-  real(dp) :: xatorb(3)       ! Position of the atomic orbital
- 
-  integer  :: jneig, juo, ind, jo
-  real(dp) :: xneig(3)        ! Position of the atomic orbital
 
 
   complex(dp), dimension(:,:), pointer :: psiloc => null() ! Coefficients of the wave
@@ -293,56 +190,23 @@ subroutine amn( ispin, index_manifold )
                                              !   information of the atomic
                                              !   orbitals neighbours of a given
                                              !   trial projection function
-!
-! Variable required to globalize the neighbour list
-!
-  integer  :: io_local        ! Counter for the local atomic orbitals in a
-                              !    given node
-  integer  :: io_global       ! Global index of an atomic orbital
-  integer  :: BNode           ! Node that contains the information of a given
-                              !    orbital in the unit cell
-  integer  :: maxnhg          ! Compute the maximum number of
-                              !    interacting atomic orbitals neighbours
-  integer,  pointer :: numhg(:) => null()
-                       ! Temporal array used to broadcast the array numh,
-                       ! with number of non-zero elements
-                       ! each orbital connects to
-  integer,  pointer :: listhptrg(:) => null()
-                       ! Temporal array used to broadcast the array listhptr
-                       ! index pointer to listh such that listh(listhptr(1) + 1)
-                       ! is the first non-zero element of orbital 1.
-                       ! listh(listhptr(io) + 1) is thus the
-                       ! first non-zero element
-                       ! of orbital 'io' while listh(listhptr(io) + numh(io))
-                       ! is the last non-zero element of orbital 'io'.
-  integer,  pointer :: listhg(:) => null()
-                       ! Temporal array used to broadcast the array listh
-                       !      the column indices for the non-zero elements
-  real(dp), pointer :: xijloc(:,:) => null()
-                       ! Temporal array used to broadcast the relative
-                       !    position between neighbours
-  real(dp), pointer :: Sloc(:) => null()
-                       ! Temporal array used to broadcast the overlap matrix
+  integer, dimension(:), save, allocatable :: projector_gindex 
+                                             ! Array that gives the global index
+                                             !   of a projector in the list of
+                                             !   functions that will be
+                                             !   evaluated by MATEL
 #ifdef MPI
   integer     :: iband_global                ! Global index for a band
   integer     :: iband_sequential            ! Sequential index of the band
   integer     :: MPIerror
   complex(dp), dimension(:,:), pointer :: auxloc => null()! Temporal array for the
                                              !   the global reduction of Amnmat
-  integer, external :: numroc
 #endif 
 
   external :: timer
 
 ! Start time counter
   call timer( 'Amn', 1 )
-
-  w90man => manifold_bands(index_manifold)  !------------ Shortcut
-  
-!! For debugging
-!  write(6,'(a,l5,2i5)') 'amn: compute_chempotwann = ', compute_chempotwann_after_scf, Node, Nodes
-!  write(6,'(a,l5,2i5)') 'amn: first_chempotwann = ',   first_chempotwann, Node, Nodes
-!! End debugging
 
 ! Allocate memory related with the overlap matrix between the trial projection
 ! function and the Hamiltonian eigenstate.
@@ -351,10 +215,10 @@ subroutine amn( ispin, index_manifold )
 ! N. Marzari et al., Review of Modern Physics 84, 1419 (2012),
 ! or Eq. (1.8) of the Wannier Users Guide, Version 1.2
 ! $A_{m n}^{(\vec{k})} = 
-!    \langle \psi_{m \vec{k}} \vert g_{n} \rangle =
+!    \langle \psi_{m \vec{k}} \vbar g_{n} \rangle =
 !    \sum_{\mu} \sum_{lcell} c_{\mu m}^{\ast} (\vec{k}) \times
-!    \exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
-!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vert g_{n}\rangle
+!    exp^{i \vec{k} \cdot \left( \tau_{\mu} + \vec{R}_{lcell} \right)} \times
+!    \langle \phi_{\mu} (\vec{r}-\tau_{\mu} - \vec{r}_{lcell} \vbar g_{n}\rangle
 ! where $m$ runs between 1 and the number of bands considered for wannierization
 ! $n$ runs between 1 and the number of projection functions, 
 ! $\vec{k}$ runs over all the k-points in the first BZ where these matrices 
@@ -369,8 +233,6 @@ subroutine amn( ispin, index_manifold )
  &               'Amnmat',       &
  &               'Amn'           )
 
-! Initialize Amnmat
-  Amnmat = cmplx( 0.0_dp, 0.0_dp, kind =dp )
 
 ! Allocate memory related with a local variable where the coefficients 
 ! of the eigenvector at the k-point will be stored
@@ -380,142 +242,14 @@ subroutine amn( ispin, index_manifold )
 
 ! Assign a global index to the trial functions
 ! The same global index is assigned to a given trial function in all the nodes
-
-  ! The projectors are registered manifold by manifold,
-  ! and it is not clear whether, once the wannierization has been
-  ! carried out, the previous manifolds's matel-related data are still needed.
-  ! Just in case, now the wannier projectors are added to the registry cumulatively,
-  ! and the wannier-related matel tables are re-generated afresh with progressively
-  ! larger sizes. If later on it is decided that the previous manifold(s)' data can
-  ! be removed, calls to the 'reset_wannier_tables' and
-  ! 'remove_wannier_projectors_from_registry' routines can be added.
-  
-  if (.not. w90man%projectors_are_registered ) then 
-    if (allocated(w90man%projector_gindex)) deallocate(w90man%projector_gindex)
-    allocate ( w90man%projector_gindex(numproj) )
+  if( firsttime ) then
+    allocate ( projector_gindex(numproj) )
     do iproj = 1, numproj
-       tf = projections( iproj )
-       ! Check whether it is a "Siesta orbital", In that case, generate a
-       ! new trial orbital with the right orientation, and register it properly:
-       if (tf%from_basis_orbital) then
-          block
-            use radial, only: radial_rescale_radfunc, rad_func
-            use m_matel_registry, only: peek_at_registered_radfunc
-            use m_matel_registry, only: register_in_rf_pool
-            
-            integer :: orb_gindex, l, m
-            type(rad_func), pointer :: rfunc, func_new => null()
-            
-            orb_gindex = tf%iorb_gindex
-            call peek_at_registered_radfunc(orb_gindex,rfunc,l,m)
-            if ( modulo(m,2) == 1 ) then
-               allocate(func_new)
-               call radial_rescale_radfunc(rfunc,func_new,scale=-1.0_dp)
-               call register_in_rf_pool(func_new, l, m, "wann_twin_orb", [iproj], gindex)
-            else
-               call register_in_rf_pool(rfunc, l, m, "wann_orb", [iproj], gindex)
-            endif
-         end block
-      else
-         call register_in_tf_pool( tf, gindex )
-      endif
-      w90man%projector_gindex( iproj ) = gindex
+      tf = projections( iproj )
+      call register_in_tf_pool( tf, gindex )
+      projector_gindex( iproj ) = gindex
     enddo
-    if (ionode) then
-       write(*, "(a,i0,a)") "Registered Wannier projectors for manifold ", &
-                        index_manifold,":"
-       call show_pool(first = w90man%projector_gindex(1), &
-            last = w90man%projector_gindex(numproj))
-    endif
-
-    w90man%projectors_are_registered = .true.
-    ! (re)initialize the matel tables for orbital-wannier matrix elements
-    call init_matel_wannier( numproj )
-  endif
-  
-! Find reciprocal unit cell vectors (without 2*pi factor)
-  call reclat( ucell, rcell, 0 )
-
-  if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
-!   Copy of the procedure implemented in subroutine diagkp
-    nullify(numhg, listhptrg)
-
-!   Allocate local memory for global list arrays
-    call re_alloc( numhg, 1, no_u, name='numhg',                               &
- &                 routine= 'amn' )
-    call re_alloc( listhptrg, 1, no_u, name='listhptrg',                       &
- &                 routine= 'amn' )
-
-!
-!   Globalise numh
-!   Loop over all the orbitals in the unit cell
-    do io_global = 1, no_u
-!     Localize which node handles the information related with the orbital io
-      call WhichNodeOrb(io_global,Nodes,BNode)
-      if ( Node .eq. BNode ) then
-!       Identify the local index for the orbital in the unit cell in the
-!       node that handles its information
-        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
-!       Assign the value of the number of neighbours of that particular orbital
-        numhg(io_global) = numh(io_local)
-      endif
-!     Transfer the information from the node that contains the information
-!     on the orbital io_global to all the other nodes
-#ifdef MPI
-      call MPI_Bcast( numhg(io_global),1,MPI_integer,BNode,                    &
- &                    MPI_Comm_World,MPIerror )
-#endif
-    enddo
-
-!   Build global listhptr
-    listhptrg(1) = 0
-    do io_global = 2, no_u
-     listhptrg(io_global) = listhptrg(io_global-1) + numhg(io_global-1)
-    enddo
-
-!   Globalise listh
-!   Compute the maximum number of interacting atomic orbitals neighbours
-!   considering all the orbitals in the unit cell
-    maxnhg = listhptrg(no_u) + numhg(no_u)
-    nullify(listhg)
-    call re_alloc( listhg, 1, maxnhg, name='listhg',                           &
- &                 routine= 'amn' )
-    do io_global = 1, no_u
-      call WhichNodeOrb(io_global,Nodes,BNode)
-      if (Node.eq.BNode) then
-        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
-        do jo = 1, numhg(io_global)
-          listhg(listhptrg(io_global)+1:listhptrg(io_global)+numhg(io_global))=&
- &          listh(listhptr(io_local)+1:listhptr(io_local)+numh(io_local))
-        enddo
-      endif
-#ifdef MPI
-      call MPI_Bcast( listhg(listhptrg(io_global)+1),numhg(io_global),         &
- &                    MPI_integer,BNode,MPI_Comm_World,MPIerror )
-#endif
-    enddo
-
-! Globalize the relative position of neighbours
-    call re_alloc( xijloc, 1, 3, 1, maxnhg, name='xijloc', routine= 'amn' ) 
-    call re_alloc( Sloc, 1, maxnhg, name='Sloc', routine= 'amn' ) 
-    do io_global = 1, no_u
-      call WhichNodeOrb(io_global,Nodes,BNode)
-      if (Node.eq.BNode) then
-        call GlobalToLocalOrb(io_global,Node,Nodes,io_local)
-        do jo = 1, numh(io_local)
-          Sloc(listhptrg(io_global)+jo) = S(listhptr(io_local)+jo)
-        enddo 
-        do jo = 1, numh(io_local)
-          xijloc(1:3,listhptrg(io_global)+jo) = xijo(1:3,listhptr(io_local)+jo)
-        enddo 
-      endif 
-#ifdef MPI
-      call MPI_Bcast(Sloc(listhptrg(io_global)+1),numhg(io_global),        &
- &       MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
-      call MPI_Bcast(xijloc(1,listhptrg(io_global)+1),3*numhg(io_global),  &
- &       MPI_double_precision,BNode,MPI_Comm_World,MPIerror)
-#endif
-    enddo 
+    firsttime = .false.
   endif
 
 kpoints:                 &
@@ -560,64 +294,6 @@ kpoints:                 &
     enddo
 #endif
 
-!   If the calculation has arrived to self-consistency after including the
-!   chemical potential for the Wanniers, and we want to compute the 
-!   Hamiltonian tight-binding matrix elements,
-!   we are going to take as the localized guess functions 
-!   the Wannier functions obtained before including the chemical potential
-    if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
-      do iproj_local = 1, numh_man_proj(index_manifold)
-!       Identify the global index of the Wannier
-        ind_proj     = listhptr_man_proj(index_manifold) + iproj_local
-        iproj_global = listh_man_proj(ind_proj)
-        do iorb = 1, no_s
-          if( abs(real(coeffs_wan_nao(ind_proj,iorb,ispin))) .gt. &
- &            w90man%threshold ) then 
-            iuo = indxuo (iorb)                ! Equivalent orbital in 
-                                               !   first unit cell
-            iua = iaorb(iuo)                   ! Equivalent atom in 
-                                               !   first unit cell
-            iat = iaorb(iorb)                  ! Atom to which orbital belongs
-            dxa(:) = xa(:,iat) - xa(:,iua)     ! Cell vector of atom iat
-            isc(:) = nint( matmul(dxa,rcell) ) ! Cell index of atom iat
-!           Find the index of the unit cell within the supercell where this
-!           atom is located, centered on isc = 0
-            do ix = 1,3
-               ! Same centered in isc=0
-               if (isc(ix)>nsc(ix)/2) isc(ix) = isc(ix) - nsc(ix) 
-            enddo
-!           Find the translated position of the atom in the supercell that
-!           really takes a non-zero value in the unit cell
-            xatorb(:) = xa(:,iua)
-            do icell = 1, 3
-              do ix = 1, 3
-                xatorb(ix) = xatorb(ix) + isc(icell) * ucell(ix,icell)
-              enddo
-            enddo
-
-            do jneig = 1, numhg(iuo)
-              ind  = listhptrg(iuo) + jneig
-              jo   = listhg(ind)
-              juo  = indxuo(jo)
-              xneig(:) = xijloc(:,ind) + xatorb(:)
-              phase = -1.0_dp * dot_product( kvector, xneig )
-              exponential = exp( iu * phase )
-Band_loop2:                                                             &
-              do iband = 1, nincbands
-                cstar = conjg( psiloc(juo,iband) )
-                  Amnmat(iband,iproj_global,ik) =         & 
- &                  Amnmat(iband,iproj_global,ik)   +     &
- &                  exponential * cstar * Sloc(ind) *     &
- &                  coeffs_wan_nao(ind_proj,iorb,ispin)
-              enddo Band_loop2  ! End loop on the bands
-            enddo 
-          endif  ! End if the coefficients are larger than a threshold
-        enddo    ! End loop on orbitals in the supercell
-      enddo      ! End loop on projectors
-      goto 999
-    endif
-
-
 !   Loop on the projections that will be computed in the local node
 !   It would be better if each node computes all projections for
 !   all its locally stored bands, instead of some projections for
@@ -631,10 +307,9 @@ Band_loop2:                                                             &
 #endif
       indexproj = iproj
 
-
 !     Find the global index of the projector in the list of radial functions
 !     that will be evaluated by MATEL
-      globalindexproj = w90man%projector_gindex(indexproj) 
+      globalindexproj = projector_gindex(indexproj) 
 
 !     Find where the trial function is centered
       trialcenter = projections(indexproj)%center
@@ -642,11 +317,11 @@ Band_loop2:                                                             &
 !     Find the cutoff radius of the trial function
       trialrcut   = projections(indexproj)%rcut
 
-!     For debugging
-!      write(6,'(a,6i5,4f12.5,2i5,f12.5)')' ik, Node, nincbands, nincbands_loc, iproj, indexproj = ',  &
+!!     For debugging
+!      write(6,'(a,6i5,4f12.5)')' ik, Node, nincbands, nincbands_loc, iproj, indexproj = ',  &
 ! &                ik, Node, nincbands, nincbands_loc, iproj,      &
-! &                indexproj, trialcenter, trialrcut, globalindexproj, na_s, rmaxo
-!     End debugging
+! &                indexproj, trialcenter, trialrcut 
+!!     End debugging
 
 !     Find the atomic orbitals that ovelap with our radial orbital
 !     centered at trialcenter and with range trialrcut
@@ -657,15 +332,13 @@ OrbitalQueue:                                                        &
       do while (associated(item))
         r12 = trialcenter - item%center
         globalindexorbital = orb_gindex( item%specie, item%specieindex )
-        ! Compute the overlap between orbital with globalindexorbital
-        ! And projector with globalindexproj
-        call matel( 'S', globalindexorbital, globalindexproj, r12, &
-     &                    overlap, gradient )
-!!     For debugging
-!      write(6,'(a,4i5,4f12.5)')' ik, Node, globalindices, r12, overlap = ',  &
-! &                ik, Node, globalindexorbital, globalindexproj,      &
-! &                r12, overlap
-!!     End debugging
+        call new_matel('S',                & ! Compute the overlap
+ &                     globalindexorbital, & ! Between orbital with globalinde
+ &                     globalindexproj,    & ! And projector with globalindex
+ &                     r12,                & 
+ &                     overlap,            & 
+ &                     gradient )
+
         phase = -1.0_dp * dot_product( kvector, item%center )
         exponential = exp( iu * phase )
 
@@ -683,8 +356,6 @@ Band_loop:                                                           &
 
     enddo   ! Loop on projections on the local node
 
-999 continue
-
 !   We need all the matrix Amnmat in IOnode
 !   (to dump it into a file),but the results for some of the bands might
 !   be computed in other nodes.
@@ -697,7 +368,7 @@ Band_loop:                                                           &
     endif
 
     call MPI_Reduce( Amnmat(1,1,ik), auxloc(1,1),                       &
- &                      nincbands*numproj,                              &
+ &                      nincbands*numproj,                                 &
  &                      MPI_double_complex,MPI_sum,0,MPI_Comm_World,MPIerror )
     if (IONode) then
        Amnmat(:,:,ik) = auxloc(:,:)
@@ -707,27 +378,13 @@ Band_loop:                                                           &
 
 ! Write the Amn overlap matrices in a file, in the format required
 ! by Wannier90
-  if( IONode ) call writeamn( ispin )
+  if( IOnode ) call writeamn( ispin )
 
 ! Deallocate some of the arrays
   call de_alloc( psiloc,  'psiloc',  'Amn' )
 #ifdef MPI
-   call de_alloc( auxloc,  'auxloc',  'Amn' )
+  if (IOnode) call de_alloc( auxloc,  'auxloc',  'Amn' )
 #endif
-  if( compute_chempotwann_after_scf .and. (.not. first_chempotwann) ) then
-    call de_alloc( listhg,    name='listhg',    routine= 'amn' )
-    call de_alloc( listhptrg, name='listhptrg', routine= 'amn' )
-    call de_alloc( numhg,     name='numhg',     routine= 'amn' )
-    call de_alloc( xijloc,    name='xijloc',    routine= 'amn' )
-    call de_alloc( Sloc,      name='Sloc',      routine= 'amn' )
-  endif
-
-!! For debugging
-!#ifdef MPI
-!    call MPI_barrier(MPI_Comm_world,MPIError)
-!#endif
-!    call die()
-!! End debugging
 
 
 ! End time counter

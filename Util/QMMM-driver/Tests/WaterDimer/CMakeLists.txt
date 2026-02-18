@@ -1,1 +1,0 @@
-siestaqmmm_subtest(WaterDimer LABELS qmmm FILES_SETUP amber.parm)

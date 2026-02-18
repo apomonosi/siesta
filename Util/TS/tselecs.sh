@@ -62,6 +62,9 @@ while [ $# -gt 0 ]; do
 	    # We need to print help
 	    help=1 ; shift
 	    ;;
+	-*)
+	    error "Unknown option: $opt"
+	    ;;
 	*)
 	    break
     esac
@@ -158,8 +161,8 @@ function add_opt {
 
 # Removes an option from the option array, enables customization of the options in-code
 function rem_opt {
-    local opt
-    local i
+    local opt=
+    local i=
     while [ $# -gt 0 ]; do
 	opt=$1 ; shift
 	i=0
@@ -226,9 +229,9 @@ function get_opt {
 function expand_key {
     local nm="$1" ; shift
     local i=1
-    local reg_opt
-    local opt
-    local val
+    local reg_opt=
+    local opt=
+    local val=
     while : ; do
 	reg_opt=$(get_opt -$nm$i 1)
 	# If the option does not exist, we simply return

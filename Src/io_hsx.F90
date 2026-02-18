@@ -5,90 +5,93 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
 module io_hsx_m
 
   use class_Sparsity
   use class_OrbitalDistribution
   use class_dSpData1D
   use class_dSpData2D
-  use kpoint_t_m
 
   implicit none
 
   public :: write_hsx
   public :: write_hs_formatted
-  public :: HSX_version
-
-  interface write_hsx
-     module procedure write_hsx_1
-     module procedure write_hsx_2
-  end interface
 
   private
-
+  
 contains
 
-  subroutine write_hsx_header_internal(iu, dit, sp, nspin, Ef, qtot, temp, kpoint, is_dp, gncol)
-
-    !! Writes a common header for the HSX file
-    !!
-    !! This is shared usage of the write_hsx_1|2 methods for reduced code duplication.
-    !! The header is generic for either version == 1 or 2.
-    !! The header also contain basis set information which internally is a bit of a mess,
-    !! because it infers a lot of module dependencies.
-    !! Ideally some of these details should be stored in a type, so it can be passed
-    !! succinctly.
-    !! Note that not all details in the header is *that* important.
-    !!
-    !! This subroutine only writes binary code.
+  subroutine write_hsx(H, S, Ef, qtot, temp, prec)
+! *********************************************************************
+! Saves the hamiltonian and overlap matrices, and other data required
+! to obtain the bands and density of states
+! Writen by J.Soler July 1997.
+! Note because of the new more compact method of storing H and S
+! this routine is NOT backwards compatible
+! ******************** INPUT or OUTPUT (depending on task) ***********
+! integer no_u                : Number of basis orbitals per unit cell
+! real*8  H(maxnh,nspin)      : Hamiltonian in sparse form
+! real*8  S(maxnh)            : Overlap in sparse form
+! real*8  Ef                  : Fermi level
+! real*8  qtot                : Total number of electrons
+! real*8  temp                : Electronic temperature for Fermi smearing
+! integer prec                : The precision that stores the data (sp|dp)
 
     use precision, only: dp
-    use io_sparse_m, only: io_write
-    use parallel, only : Node
+    use io_sparse_m, only: io_write, io_write_r
+    use parallel, only : Node, Nodes
     use atm_types, only : nspecies
     use atomlist, only : iphorb, iaorb, lasto
     use siesta_geom, only: na_u, ucell, xa, isa, nsc, isc_off
     use atmfuncs, only : nofis, labelfis, zvalfis
     use atmfuncs, only : cnfigfio, lofio, zetafio
+    use fdf
+    use files, only : slabel
+    use sys, only : die
+#ifdef MPI
+    use mpi_siesta
+#endif
 
-    integer, intent(in) :: iu
-    !! The file-unit to write to.
-    type(OrbitalDistribution), intent(inout) :: dit
-    !! The distribution of the sparsity pattern.
-    !! Required for the internal writing of the sparsity pattern.
-    !! I.e. for a distributed matrix, it requires communication to share
-    !! the column information.
-    type(Sparsity), intent(inout) :: sp
-    !! The (possibly distributed) sparsity pattern.
-    !! This content is also part of the header of the file.
-    integer, intent(in) :: nspin
-    !! Number of spin-components of the Hamiltonian.
-    real(dp), intent(in) :: Ef, qtot, temp
-    !! Quantities describing the Hamiltonian, fermi-level, the number of electrons
-    !! used to determine the fermi-level, and the electronic smearing temperature used.
-    type(kpoint_t), intent(in) :: kpoint
-    !! K-point sampling of the Hamiltonian
-    logical, intent(in) :: is_dp
-    !! Whether to store the matrix data is double- or single-precision.
-    integer, intent(inout) :: gncol(:)
-    !! Global variable used to speed up the subsequent matrix writing.
-    !! This prohibits the communication of the `ncol` variable in the sparsity pattern,
-    !! to speed up the process of writing.
+    type(dSpData2D), intent(inout) :: H
+    type(dSpData1D), intent(inout) :: S
+    real(dp) :: Ef, qtot, temp
+    integer, intent(in), optional :: prec
 
-    integer :: is, io
-    !! Internal variables.
+    external :: io_assign, io_close
+
+    ! Internal variables and arrays
+    integer :: no_u
+    type(Sparsity), pointer :: sp
+    type(OrbitalDistribution), pointer :: dit
+    integer :: iu, is, io, nspin
+    logical :: is_dp
+    integer, allocatable, target :: gncol(:)
+
+    call timer("writeHSX",1)
+
+    dit => dist(H)
+    sp => spar(H)
+    ! total number of rows
+    no_u = nrows_g(sp)
+    nspin = size(H, 2)
+
+    ! Check which precision
+    is_dp = .true.
+    if ( present(prec) ) is_dp = prec == dp
 
     if ( Node == 0 ) then
 
+      ! Open file
+      call io_assign( iu )
+      open( iu, file=trim(slabel)//'.HSX', form='unformatted', status='unknown' )
+
       ! Write version specification (to easily distinguish between different versions)
-      write(iu) 2
+      write(iu) 1
       ! And what precision
       write(iu) is_dp
 
       ! Write overall data
-      write(iu) na_u, nrows_g(sp), nspin, nspecies, nsc
+      write(iu) na_u, no_u, nspin, nspecies, nsc
       write(iu) ucell, Ef, qtot, temp
 
       write(iu) isc_off, xa(:,1:na_u), isa(1:na_u), lasto(1:na_u)
@@ -99,100 +102,16 @@ contains
         write(iu) (cnfigfio(is,io), lofio(is,io), zetafio(is,io),io=1,nofis(is))
       end do
 
-      ! Write k-point information
-      write(iu) kpoint%k_cell, kpoint%k_displ
-
     end if
 
+    allocate(gncol(no_u))
     ! Here we signal that the gncol should be globalized
     ! to the 1st node
     gncol(1) = -1
-
+    
     ! Write sparsity pattern...
     call io_write(iu, sp, dit=dit, gncol=gncol)
-
-  end subroutine write_hsx_header_internal
-
-
-  subroutine write_hsx_1(H, S, Ef, qtot, temp, kpoint, prec, extension)
-
-    !! Writing a HSX file with a single Hamiltonian.
-    !!
-    !! Saves the Hamiltonian and overlap matrices together with
-    !! additional data describing the electronic structure + geometry for
-    !! the simulation.
-    !! The file contains:
-    !!
-    !!  - Fermi-level, to be able to correct determine DoS etc.
-    !!  - SCF k-point sampling, to know how fine the details where for the
-    !!    SCF cycles.
-    !!  - SCF temperature to know about the smearing of the states, although
-    !!    not complete, it at least gives some details to the stored data.
-    !!
-    !! The data can be stored in either double- or single-precision.
-    !! This is determined by the flag `prec` which should be the `kind`
-    !! of the stored data-type.
-    !! Optionally the user may opt for a specific extension of the file.
-
-    use precision, only: dp
-    use io_sparse_m, only: io_write, io_write_r
-    use parallel, only : Node, Nodes
-    use files, only : slabel
-
-    type(dSpData2D), intent(inout) :: H
-    !! The Hamiltonian, which also contains the sparsity pattern.
-    type(dSpData1D), intent(inout) :: S
-    !! The overlap matrix, which also contains the sparsity pattern.
-    real(dp), intent(in) :: Ef, qtot, temp
-    !! Quantities describing the Hamiltonian, fermi-level, the number of electrons
-    !! used to determine the fermi-level, and the electronic smearing temperature used.
-    type(kpoint_t), intent(in) :: kpoint
-    !! K-point sampling of the Hamiltonian
-    integer, intent(in), optional :: prec
-    !! The `kind` value of the precision to store the data in.
-    character(len=*), intent(in), optional :: extension
-    !! The extension for the file.
-
-    external :: io_assign, io_close
-
-    ! Internal variables and arrays
-    integer :: no_u
-    type(Sparsity), pointer :: sp
-    type(OrbitalDistribution), pointer :: dit
-    integer :: iu, nspin
-    logical :: is_dp
-    integer, allocatable, target :: gncol(:)
-    character(len=32) :: lext
-
-    call timer("writeHSX",1)
-
-    dit => dist(H)
-    sp => spar(H)
-    ! total number of rows
-    no_u = nrows_g(sp)
-    ! total number of spin-components
-    nspin = size(H, 2)
-
-    ! Check which precision
-    is_dp = .true.
-    if ( present(prec) ) is_dp = prec == dp
-
-    lext = "HSX"
-    if ( present(extension) ) then
-       lext = trim(extension)
-    end if
-
-    if ( Node == 0 ) then
-
-      call io_assign( iu )
-      open( iu, file=trim(slabel)//'.'//trim(lext), form='unformatted', status='unknown' )
-
-    end if
-
-    ! Allocate array to reduce communication
-    allocate(gncol(no_u))
-    call write_hsx_header_internal(iu, dit, sp, nspin, Ef, qtot, temp, kpoint, is_dp, gncol)
-
+    
     ! Write H and overlap
     if ( is_dp ) then
       call io_write(iu, H, gncol=gncol)
@@ -210,135 +129,13 @@ contains
 
     call timer("writeHSX",2)
 
-  end subroutine write_hsx_1
-
-  subroutine write_hsx_2(H1, H2, S, Ef, qtot, temp, kpoint, prec, extension)
-
-    !! See `write_hsx_1` for details.
-    !!
-    !! The only difference for this subroutine is that it combines two Hamiltonian
-    !! objects into a single one. Hence, the reading utility does not know whether
-    !! the data originates from 1 or 2 Hamiltonians.
-
-    use precision, only: dp
-    use io_sparse_m, only: io_write, io_write_r
-    use parallel, only : Node, Nodes
-    use files, only : slabel
-
-    type(dSpData2D), intent(inout) :: H1, H2
-    type(dSpData1D), intent(inout) :: S
-    real(dp) :: Ef, qtot, temp
-    type(kpoint_t), intent(in) :: kpoint
-    integer, intent(in), optional :: prec
-    character(len=*), intent(in), optional :: extension
-
-    external :: io_assign, io_close
-
-    ! Internal variables and arrays
-    integer :: no_u
-    type(Sparsity), pointer :: sp
-    type(OrbitalDistribution), pointer :: dit
-    integer :: iu, nspin1, nspin2
-    logical :: is_dp
-    integer, allocatable, target :: gncol(:)
-    character(len=32) :: lext
-
-    call timer("writeHSX",1)
-
-    dit => dist(H1)
-    sp => spar(H1)
-    ! total number of rows
-    no_u = nrows_g(sp)
-    ! total number of spin-components for each Hamiltonian
-    nspin1 = size(H1, 2)
-    nspin2 = size(H2, 2)
-
-    ! Check which precision
-    is_dp = .true.
-    if ( present(prec) ) is_dp = prec == dp
-
-    lext = "HSX"
-    if ( present(extension) ) then
-       lext = trim(extension)
-    end if
-
-    if ( Node == 0 ) then
-
-      call io_assign( iu )
-      open( iu, file=trim(slabel)//'.'//trim(lext), form='unformatted', status='unknown' )
-
-    end if
-
-    ! Allocate array to reduce communication
-    allocate(gncol(no_u))
-    call write_hsx_header_internal(iu, dit, sp, nspin1+nspin2, Ef, qtot, temp, kpoint, is_dp, gncol)
-
-    ! Write H and overlap
-    if ( is_dp ) then
-      call io_write(iu, H1, gncol=gncol)
-      call io_write(iu, H2, gncol=gncol)
-      call io_write(iu, S, gncol=gncol)
-    else
-      call io_write_r(iu, H1, gncol=gncol)
-      call io_write_r(iu, H2, gncol=gncol)
-      call io_write_r(iu, S, gncol=gncol)
-    end if
-
-    deallocate(gncol)
-
-    if ( Node == 0 ) then
-      call io_close( iu )
-    end if
-
-    call timer("writeHSX",2)
-
-  end subroutine write_hsx_2
-
-  function HSX_version(fname) result(version)
-    !! Determine the version number of a `HSX` file.
-    !!
-    !! The return value is an integer that specifies the version.
-    !! It can be 0, 1, ... so long as the specification for the file.
-    !! is implemented in Siesta.
-
-    use parallel,     only : Node
-
-    character(len=*), intent(in) :: fname
-    !! The filename to check the version number of.
-
-    integer :: version
-    integer :: iu
-    integer :: no_u, no_s, nspin, n_nzs, err
-
-    external :: io_assign, io_close
-
-    ! Initialize
-    version = -1
-    if ( Node /= 0 ) return
-
-    ! Open file
-    call io_assign( iu )
-    open( iu, file=fname, form='unformatted', status='unknown' )
-
-    ! old version = 0 files only had these 4 numbers in the first line
-    read(iu, iostat=err) no_u, no_s, nspin, n_nzs
-    if ( err == 0 ) then
-       ! we can successfully read 4 integers
-       version = 0
-    else
-       rewind(iu)
-       read(iu,iostat=err) version
-    end if
-
-    call io_close(iu)
-
-  end function HSX_version
+    end subroutine write_hsx
 
 !-----------------------------------------------------------------
-  subroutine write_hs_formatted(no_u, nspin, &
+    subroutine write_hs_formatted(no_u, nspin, &
         maxnh, numh, listhptr, listh, H, S)
 ! *********************************************************************
-! Saves the Hamiltonian and overlap matrices in formatted form
+! Saves the hamiltonian and overlap matrices in formatted form
 ! ONLY for gamma case
 ! ******************** INPUT
 ! integer no_u                : Number of basis orbitals per unit cell
@@ -373,11 +170,9 @@ contains
       integer    ih,hl,nuo,maxnhtot,maxhg
       integer, dimension(:), allocatable :: numhg, hg_ptr
 #ifdef MPI
-      integer    MPIerror, BNode
+      integer    MPIerror, Request, Status(MPI_Status_Size), BNode
       integer,  dimension(:),   allocatable :: ibuffer
       real(dp), dimension(:),   allocatable :: buffer
-      MPI_REQUEST_TYPE :: Request
-      MPI_STATUS_TYPE :: Status
 #endif
 
 

@@ -8,23 +8,17 @@
 
 ! Module to calculate the total charge.
 
-module dm_charge_m
+module m_dm_charge
 
   implicit none
 
   private
   public :: dm_charge
 
-  interface dm_charge
-     module procedure dm_charge_class
-     module procedure dm_charge_direct
-     module procedure dm_charge_direct_nspin
-  end interface
-
 contains
 
-  subroutine dm_charge_class(spin, DM_2D, S_1D, Q)
-    use precision, only: dp
+  subroutine dm_charge(spin, DM_2D, S_1D, Q)
+    use precision,       only: dp
 
     use t_spin, only: tSpin
     use class_Sparsity
@@ -32,95 +26,53 @@ contains
     use class_dSpData2D
     use class_OrbitalDistribution
 
-    ! Containers for data
-    type(tSpin), intent(in) :: spin
-    type(dSpData2D), intent(inout) :: DM_2D
-    type(dSpData1D), intent(inout) :: S_1D
-    real(dp), intent(out) :: Q(spin%Grid)
-
-    !  New interface data
-    type(Sparsity), pointer :: sp
-
-    integer :: lnr
-    integer, pointer :: lptr(:), ncol(:)
-    real(dp), pointer :: DM(:,:), S(:)
-
-    ! get the distribution
-    sp => spar(DM_2D)
-    call attach(sp, n_col=ncol, list_ptr=lptr, nrows=lnr)
-
-    S => val(S_1D)
-    DM => val(DM_2D)
-
-    call dm_charge(spin%Grid, lnr, ncol, lptr, S, DM, Q)
-
-  end subroutine dm_charge_class
-
-
-  subroutine dm_charge_direct(spin, no_l, ncol, list_ptr, S, DM, Q)
-
-    use precision, only: dp
-    use t_spin, only: tSpin
-
-    ! Containers for data
-    type(tSpin), intent(in) :: spin
-    integer, intent(in) :: no_l, ncol(no_l), list_ptr(no_l)
-    real(dp), intent(in) :: S(:), DM(:,:)
-    real(dp), intent(out) :: Q(spin%Grid)
-
-    call dm_charge(spin%Grid, no_l, ncol, list_ptr, S, DM, Q)
-
-  end subroutine
-
-  subroutine dm_charge_direct_nspin(nspin, no_l, ncol, list_ptr, S, DM, Q)
-
-    use precision, only: dp
-
 #ifdef MPI
     use m_mpi_utils,     only: globalize_sum
 #endif
 
     ! Containers for data
-    integer, intent(in) :: nspin
-    integer, intent(in) :: no_l, ncol(no_l), list_ptr(no_l)
-    real(dp), intent(in) :: S(:), DM(:,:)
-    real(dp), intent(out) :: Q(nspin)
+    type(tSpin), intent(in) :: spin
+    type(dSpData2D), intent(inout) :: DM_2D
+    type(dSpData1D), intent(inout) :: S_1D
+    real(dp), intent(out) :: Q
 
-    integer :: ir, ind
+    !  New interface data
+    type(Sparsity), pointer :: sp
+
+    integer :: is, ir, ind
+    integer :: lnr, nr
+    integer, pointer :: lptr(:), ncol(:), lcol(:)
+    real(dp), pointer :: DM(:,:), S(:)
 #ifdef MPI
-    real(dp) :: Qr(nspin)
+    real(dp) :: Qr
 #endif
 
-    ! Initialize
-    Q(:) = 0._dp
+    ! get the distribution
+    sp => spar(DM_2D)
+    call attach(sp ,n_col=ncol,list_ptr=lptr,nrows=lnr,nrows_g=nr)
+    
+    S => val(S_1D)
+    DM => val(DM_2D)
 
-    if ( size(DM, 2) == 8 ) then
+    ! Initialize the total charge
+    Q = 0._dp
 
-       do ir = 1, no_l
-         do ind = list_ptr(ir) + 1, list_ptr(ir) + ncol(ir)
-           ! In the SOC case, hermitify Dscf
-           Q(1:2) = Q(1:2) + DM(ind,1:2) * S(ind)
-           Q(3) = Q(3) + 0.5_dp*(DM(ind,3)+DM(ind,7)) * S(ind)
-           Q(4) = Q(4) + 0.5_dp*(DM(ind,4)+DM(ind,8)) * S(ind)
-         end do
+!$OMP parallel do default(shared), &
+!$OMP& private(is,ir,ind), reduction(+:Q)
+    do is = 1, spin%spinor
+       do ir = 1, lnr
+          do ind = lptr(ir) + 1, lptr(ir) + ncol(ir)
+             Q = Q + DM(ind,is) * S(ind)
+          end do
        end do
-
-    else
-
-       ! NOTE: this also works for non-colinear
-       do ir = 1, no_l
-         do ind = list_ptr(ir) + 1, list_ptr(ir) + ncol(ir)
-           Q(:) = Q(:) + DM(ind,:) * S(ind)
-         end do
-       end do
-
-    endif
+    end do
+!$OMP end parallel do
 
 #ifdef MPI
     call globalize_sum(Q, Qr)
     Q = Qr
 #endif
-
-  end subroutine
-
-end module dm_charge_m
+    
+  end subroutine dm_charge
+  
+end module m_dm_charge

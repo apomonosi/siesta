@@ -3,7 +3,6 @@
 
 ! We rely on the NetCDF4 library and can
 ! utilise parallel IO or standard IO
-#include "mpi_macros.f"
 
 module ncdf_io_m
 
@@ -51,7 +50,6 @@ module ncdf_io_m
   end type tMeshDist
   type(tMeshDist), save :: distr
 
-  public :: ncdfio_reset
 contains
 
 #ifdef NCDF_4
@@ -124,7 +122,7 @@ contains
       if (Node == 0) then
         write(6,*) "Nominal npt: ", nmesh, " /= assigned npt:", ntot
       end if
-      call die("stopping program")
+      call die()
     end if
 
   end subroutine cdf_init_mesh
@@ -135,7 +133,7 @@ contains
   ! as populated.
   ! If dist is supplied it will distribute
   ! the sparsity pattern as supplied (this implies Bcast = .true.)
-  ! Else if Bcast is true it will b-cast the sparsity
+  ! Else if Bcast is true it will b-cast the sparsity 
   ! pattern fully.
   subroutine cdf_r_Sp(ncdf, no, sp, tag, dit, Bcast, gncol)
 
@@ -164,7 +162,6 @@ contains
     integer, pointer :: lgncol(:) => null()
 #ifdef MPI
     integer, allocatable :: ibuf(:)
-    MPI_REQUEST_TYPE, allocatable :: req(:)
     integer :: gio, max_n
     integer :: MPIerror, BNode
 #endif
@@ -187,7 +184,7 @@ contains
         allocate(lgncol(no))
       end if
 
-      ! First read in number of non-zero
+      ! First read in number of non-zero 
       ! entries per orbital
       call ncdf_get_var(ncdf,'n_col',lgncol)
 
@@ -205,12 +202,12 @@ contains
 
       ! allocate all requests
       nb = count_blocks(dit,no)
-      allocate(req(nb))
+      allocate(ibuf(nb))
 
       ! Distribute it
       gio = 1
       nb = 0
-      do while ( gio <= no )
+      do while ( gio <= no ) 
 
         BNode = node_handling_element(dit,gio)
 
@@ -226,13 +223,13 @@ contains
           else
             nb = nb + 1
             call MPI_IRecv(ncol(io), n, MPI_Integer, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
 
         else if ( Node == 0 ) then
           nb = nb + 1
           call MPI_ISend(lgncol(gio), n, MPI_Integer, &
-              BNode, gio, MPI_Comm_World, req(nb), MPIerror)
+              BNode, gio, MPI_Comm_World, ibuf(nb), MPIerror)
 
         end if
 
@@ -241,9 +238,9 @@ contains
       end do
 
       if ( nb > 0 ) then
-        call MPI_WaitAll(nb,req,MPI_STATUSES_IGNORE,MPIerror)
+        call MPI_WaitAll(nb,ibuf,MPI_STATUSES_IGNORE,MPIerror)
       end if
-      deallocate(req)
+      deallocate(ibuf)
 
     else if ( lBcast ) then
 
@@ -291,7 +288,7 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(ibuf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Read in columns
@@ -299,7 +296,7 @@ contains
       gind = 1
       ind = 0
       nb = 0
-      do while ( gio <= no )
+      do while ( gio <= no ) 
 
         BNode = node_handling_element(dit,gio)
 
@@ -325,7 +322,7 @@ contains
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
             call MPI_IRecv(l_col(ind+1), i, MPI_Integer, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
             ind = ind + i
 
           end if
@@ -349,13 +346,12 @@ contains
 
       if ( Node == 0 ) then
         if ( .not. present(gncol) ) deallocate(lgncol)
-        deallocate(ibuf)
       else
         if ( nb > 0 ) then
-          call MPI_Waitall(nb, req, MPI_STATUSES_IGNORE, MPIerror)
-          deallocate(req)
+          call MPI_Waitall(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
       end if
+      deallocate(ibuf)
 
     else if ( lBcast ) then
 
@@ -381,7 +377,7 @@ contains
       call ncdf_get_var(ncdf, 'list_col', l_col(1:ind), &
           count=(/ind/) )
 
-#ifdef MPI
+#ifdef MPI       
     end if
 #endif
 
@@ -531,14 +527,12 @@ contains
       end do
 
     end subroutine write_parallel
-
+    
     subroutine write_parallel_single()
 
-      integer :: BNode, MPIerror
-      MPI_STATUS_TYPE :: MPIstatus
+      integer :: BNode, MPIerror, MPIstatus(MPI_STATUS_SIZE)
       integer :: gio, io, max_n, ind, gind, n, i, nb
       integer, allocatable :: ibuf(:)
-      MPI_REQUEST_TYPE, allocatable  :: req(:)
 
       if ( lgncol(1) < 0 ) then
         ! this means gather lgncol on IO-node
@@ -554,7 +548,7 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(ibuf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Loop size
@@ -570,7 +564,7 @@ contains
         n = count_consecutive(dit,no,gio)
 
         if ( Node == BNode ) then
-
+          
           io = index_global_to_local(dit,gio,Node)
           i = sum(ncol(io:io-1+n))
 
@@ -581,16 +575,16 @@ contains
           else
             nb = nb + 1
             call MPI_ISend(l_col(ind+1), i, MPI_Integer, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
-
+          
         else if ( Node == 0 ) then
           call MPI_Recv(ibuf(1), max_n, MPI_Integer, &
               BNode, gio, MPI_Comm_World, MPIstatus, MPIerror)
           if ( MPIerror /= MPI_Success ) &
               call die('Error in code: cdf_w_Sp')
-
+          
           call MPI_Get_Count(MPIstatus, MPI_Integer, i, MPIerror)
           call ncdf_put_var(ncdf,'list_col',ibuf(1:i), &
               count=(/i/),start=(/gind/))
@@ -601,10 +595,10 @@ contains
       end do
 
       if ( Node /= 0 .and. nb > 0 ) then
-        call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
-        deallocate(req)
+        call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
       end if
-      if ( Node == 0 ) deallocate(ibuf)
+
+      deallocate(ibuf)
 
     end subroutine write_parallel_single
 #endif
@@ -613,7 +607,7 @@ contains
       call ncdf_put_var(ncdf,'n_col',ncol)
       call ncdf_put_var(ncdf,'list_col',l_col)
     end subroutine write_sequential
-
+    
   end subroutine cdf_w_Sp
 
 
@@ -644,7 +638,7 @@ contains
     logical :: ldit, lBcast, lIO
 #ifdef MPI
     real(dp), allocatable :: buf(:)
-    MPI_REQUEST_TYPE, allocatable :: req(:)
+    integer, allocatable :: ibuf(:)
     integer :: MPIerror, BNode
     integer :: max_n
 #endif
@@ -701,11 +695,11 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Loop size
-      gio = 1
+      gio = 1 
       gind = 1
       ind = 0
       nb = 0
@@ -736,7 +730,7 @@ contains
             i = sum(ncol(io:io-1+n))
             nb = nb + 1
             call MPI_IRecv(a(ind+1), i, MPI_Double_Precision, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
             ind = ind + i
 
           end if
@@ -763,9 +757,9 @@ contains
         deallocate(buf)
       else
         if ( nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
-        deallocate(req)
+        deallocate(ibuf)
       end if
 #else
       call die('Error in distribution for, cdf_r_d1D')
@@ -788,7 +782,7 @@ contains
 #endif
 
   end subroutine cdf_r_d1D
-
+  
   subroutine cdf_w_d1D(ncdf, vname, dSp1D, gncol)
 
     use class_dSpData1D
@@ -812,7 +806,7 @@ contains
     ! Write the sparsity to the file...
     call attach(sp,nrows=lno, nrows_g=no, n_col=ncol,list_col=l_col,nnzs=n_nzs)
 
-    ! If they are different we should
+    ! If they are different we should 
     ! use the distribution setting
     ldit = lno /= no
 
@@ -829,7 +823,7 @@ contains
       ! serial (no distribution)
       lgncol => ncol
     end if
-
+    
     a => val(dSp1D)
 
 #ifdef MPI
@@ -840,7 +834,7 @@ contains
       else
         call write_parallel_single()
       end if
-
+      
       if ( .not. present(gncol) ) deallocate(lgncol)
     else
       call write_sequential()
@@ -899,14 +893,13 @@ contains
       end do
 
     end subroutine write_parallel
-
+    
     subroutine write_parallel_single()
 
-      integer :: BNode, MPIerror
-      MPI_STATUS_TYPE :: MPIstatus
+      integer :: BNode, MPIerror, MPIstatus(MPI_STATUS_SIZE)
       integer :: gio, io, max_n, ind, gind, n, i, nb
       real(dp), allocatable :: buf(:)
-      MPI_REQUEST_TYPE, allocatable :: req(:)
+      integer, allocatable :: ibuf(:)
 
       if ( lgncol(1) < 0 ) then
         ! this means gather lgncol on IO-node
@@ -919,7 +912,7 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Loop size
@@ -935,7 +928,7 @@ contains
         n = count_consecutive(dit,no,gio)
 
         if ( Node == BNode ) then
-
+          
           io = index_global_to_local(dit,gio,Node)
           i = sum(ncol(io:io-1+n))
 
@@ -946,16 +939,16 @@ contains
           else
             nb = nb + 1
             call MPI_ISend(a(ind+1), i, MPI_Double_Precision, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
-
+          
         else if ( Node == 0 ) then
           call MPI_Recv(buf(1), max_n, MPI_Double_Precision, &
               BNode, gio, MPI_Comm_World, MPIstatus, MPIerror)
           if ( MPIerror /= MPI_Success ) &
               call die('Error in code: cdf_w_d1D')
-
+          
           call MPI_Get_Count(MPIstatus, MPI_Double_Precision, i, MPIerror)
           call ncdf_put_var(ncdf, vname, buf(1:i), &
               count=(/i/), start=(/gind/))
@@ -969,9 +962,9 @@ contains
         deallocate(buf)
       else
         if ( nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
-        deallocate(req)
+        deallocate(ibuf)
       end if
 
     end subroutine write_parallel_single
@@ -980,7 +973,7 @@ contains
     subroutine write_sequential()
       call ncdf_put_var(ncdf, vname, a)
     end subroutine write_sequential
-
+    
   end subroutine cdf_w_d1D
 
 
@@ -1085,7 +1078,7 @@ contains
     ! If a distribution is present, then do something
 #ifdef MPI
     if ( lBcast ) then
-
+      
       call MPI_Bcast(a(1,1), dim2*n_nzs, MPI_Double_Precision, &
           0, MPI_Comm_World, MPIError)
 
@@ -1099,7 +1092,7 @@ contains
 
       integer :: io, ind, n, i, nb, s, gio, gind, max_n
       real(dp), allocatable :: buf(:)
-      MPI_REQUEST_TYPE, allocatable :: req(:)
+      integer, allocatable :: ibuf(:)
       integer :: MPIerror, BNode
 
       nb = count_blocks(dit,no)
@@ -1109,12 +1102,12 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       do s = 1 , dim2
 
-        gio = 1
+        gio = 1 
         gind = 1
         ind = 0
         nb = 0
@@ -1142,7 +1135,7 @@ contains
               ! count the number of received entities
               nb = nb + 1
               call MPI_IRecv(a(ind+1,s), i, MPI_Double_Precision, &
-                  0, gio, MPI_Comm_World, req(nb), MPIerror)
+                  0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
 
             end if
             ind = ind + i
@@ -1156,12 +1149,12 @@ contains
                 BNode, gio, MPI_Comm_World, MPIerror)
             gind = gind + i
           end if
-
+          
           gio = gio + n
         end do
 
         if ( Node /= 0 .and. nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
 
       end do
@@ -1169,16 +1162,16 @@ contains
       if ( Node == 0 ) then
         deallocate(buf)
       else
-        deallocate(req)
+        deallocate(ibuf)
       end if
 
     end subroutine read_sp_dim1
 
     subroutine read_sp_dim2()
-
+      
       integer :: io, ind, n, i, nb, gio, gind, max_n
       real(dp), allocatable :: buf(:)
-      MPI_REQUEST_TYPE, allocatable :: req(:)
+      integer, allocatable :: ibuf(:)
       integer :: MPIerror, BNode
 
       nb = count_blocks(dit,no)
@@ -1188,13 +1181,13 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol) * dim2
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Read sparse blocks and distribute
       gind = 1
       ind = 0
-      gio = 1
+      gio = 1 
       nb = 0
       do while ( gio <= no )
 
@@ -1218,7 +1211,7 @@ contains
             ! count the number of received entities
             nb = nb + 1
             call MPI_IRecv(a(1,ind+1), dim2*i, MPI_Double_Precision, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
 
@@ -1240,15 +1233,15 @@ contains
         deallocate(buf)
       else
         if ( nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
-        deallocate(req)
+        deallocate(ibuf)
       end if
 
     end subroutine read_sp_dim2
 
 #endif
-
+    
   end subroutine cdf_r_d2D
 
   subroutine cdf_w_d2D(ncdf, vname, dSp2D, gncol)
@@ -1275,7 +1268,7 @@ contains
     ! Write the sparsity to the file...
     call attach(sp,nrows=lno, nrows_g=no, n_col=ncol,list_col=l_col,nnzs=n_nzs)
 
-    ! If they are different we should
+    ! If they are different we should 
     ! use the distribution setting
     ldit = lno /= no
 
@@ -1388,11 +1381,10 @@ contains
     end subroutine write_parallel_single
 
     subroutine write_parallel_single_sp_dim1()
-      integer :: BNode, MPIerror
-      MPI_STATUS_TYPE :: MPIstatus
+      integer :: BNode, MPIstatus(MPI_STATUS_SIZE), MPIerror
       integer :: gio, io, max_n, ind, gind, n, i, nb, is
       real(dp), allocatable :: buf(:)
-      MPI_REQUEST_TYPE, allocatable :: req(:)
+      integer, allocatable :: ibuf(:)
 
       nb = count_blocks(dit,no)
 
@@ -1400,12 +1392,12 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol)
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       ! Loop size
       do is = 1, dim2
-
+        
         gio = 1
         gind = 1
         ind = 0
@@ -1429,27 +1421,27 @@ contains
             else
               nb = nb + 1
               call MPI_ISend(a(ind+1,is), i, MPI_Double_Precision, &
-                  0, gio, MPI_Comm_World, req(nb), MPIerror)
+                  0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
             end if
             ind = ind + i
-
+            
           else if ( Node == 0 ) then
             call MPI_Recv(buf(1), max_n, MPI_Double_Precision, &
                 BNode, gio, MPI_Comm_World, MPIstatus, MPIerror)
             if ( MPIerror /= MPI_Success ) &
                 call die('Error in code: cdf_w_d2D')
-
+          
             call MPI_Get_Count(MPIstatus, MPI_Double_Precision, i, MPIerror)
             call ncdf_put_var(ncdf, vname, buf(1:i), &
                 count=(/i,1/), start=(/gind,is/))
             gind = gind + i
           end if
-
+          
           gio = gio + n
         end do
 
         if ( Node /= 0 .and. nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
 
       end do
@@ -1457,17 +1449,16 @@ contains
       if ( Node == 0 ) then
         deallocate(buf)
       else
-        deallocate(req)
+        deallocate(ibuf)
       end if
 
     end subroutine write_parallel_single_sp_dim1
 
     subroutine write_parallel_single_sp_dim2()
-      integer :: BNode, MPIerror
-      MPI_STATUS_TYPE :: MPIstatus
+      integer :: BNode, MPIstatus(MPI_STATUS_SIZE), MPIerror
       integer :: gio, io, max_n, ind, gind, n, i, nb
       real(dp), allocatable :: buf(:)
-      MPI_REQUEST_TYPE, allocatable :: req(:)
+      integer, allocatable :: ibuf(:)
 
       nb = count_blocks(dit,no)
 
@@ -1475,7 +1466,7 @@ contains
         max_n = max_consecutive_sum(dit,no,lgncol) * dim2
         allocate(buf(max_n))
       else
-        allocate(req(nb))
+        allocate(ibuf(nb))
       end if
 
       gio = 1
@@ -1488,7 +1479,7 @@ contains
 
         ! Get number of consecutive orbitals
         n = count_consecutive(dit,no,gio)
-
+        
         if ( Node == BNode ) then
 
           io = index_global_to_local(dit,gio,Node)
@@ -1501,7 +1492,7 @@ contains
           else
             nb = nb + 1
             call MPI_ISend(a(1,ind+1), i*dim2, MPI_Double_Precision, &
-                0, gio, MPI_Comm_World, req(nb), MPIerror)
+                0, gio, MPI_Comm_World, ibuf(nb), MPIerror)
           end if
           ind = ind + i
 
@@ -1512,12 +1503,11 @@ contains
               call die('Error in code: cdf_w_d2D')
 
           call MPI_Get_Count(MPIstatus, MPI_Double_Precision, i, MPIerror)
-          i = i / dim2
-          call ncdf_put_var(ncdf, vname, buf(1:i*dim2), &
+          call ncdf_put_var(ncdf, vname, buf(1:i), &
               count=(/dim2,i/), start=(/1,gind/))
           gind = gind + i
         end if
-
+        
         gio = gio + n
       end do
 
@@ -1525,20 +1515,20 @@ contains
         deallocate(buf)
       else
         if ( nb > 0 ) then
-          call MPI_WaitAll(nb, req, MPI_STATUSES_IGNORE, MPIerror)
+          call MPI_WaitAll(nb, ibuf, MPI_STATUSES_IGNORE, MPIerror)
         end if
-        deallocate(req)
+        deallocate(ibuf)
       end if
 
     end subroutine write_parallel_single_sp_dim2
 #endif
-
+    
     subroutine write_sequential()
       call ncdf_put_var(ncdf, vname, a)
     end subroutine write_sequential
 
   end subroutine cdf_w_d2D
-
+  
   subroutine cdf_w_grid(ncdf,name,nmeshl,grid,idx)
 
     type(hNCDF), intent(inout) :: ncdf
@@ -1548,7 +1538,7 @@ contains
     integer, intent(in), optional :: idx
 
 #ifdef MPI
-    MPI_STATUS_TYPE :: MPIstat
+    integer :: MPIstat(MPI_STATUS_SIZE)
     integer :: MPIerror, mnpt
     integer :: lb(3), nel(3), iN, inpt
     real(grid_p), allocatable :: gb(:)
@@ -1571,7 +1561,7 @@ contains
       if ( present(idx) ) then
         call ncdf_put_var(ncdf,name,grid, &
             start=(/lb(1),lb(2),lb(3),idx/), &
-            count=(/nel(1),nel(2),nel(3),1/) )
+            count=(/nel(1),nel(2),nel(3),1/) )          
       else
         call ncdf_put_var(ncdf,name,grid, start=lb, count=nel )
       end if
@@ -1590,7 +1580,7 @@ contains
         allocate(gb(mnpt))
 
         ! First save it's own data
-        lb(:) = distr%box(1,:,0)
+        lb(:) = distr%box(1,:,0) 
         nel(:) = distr%box(2,:,0) - lb(:) + 1
 
         if ( present(idx) ) then
@@ -1612,7 +1602,7 @@ contains
           ! Just make sure we only pass the correct size
           call MPI_Get_Count(MPIstat, MPI_Grid_Real, inpt, MPIerror)
 
-          lb(:) = distr%box(1,:,iN)
+          lb(:) = distr%box(1,:,iN) 
           nel(:) = distr%box(2,:,iN) - lb(:) + 1
           if ( inpt /= product(nel) ) then
             call die('Error when receiving the distributed &
@@ -1660,7 +1650,7 @@ contains
     integer, intent(in), optional :: idx
 
 #ifdef MPI
-    MPI_STATUS_TYPE :: MPIstat
+    integer :: MPIstat(MPI_STATUS_SIZE)
     integer :: MPIerror, mnpt
     integer :: lb(3), nel(3), iN, inpt
     real(grid_p), pointer :: gb(:) => null()
@@ -1683,7 +1673,7 @@ contains
       if ( present(idx) ) then
         call ncdf_get_var(ncdf,name,grid, &
             start=(/lb(1),lb(2),lb(3),idx/), &
-            count=(/nel(1),nel(2),nel(3),1/) )
+            count=(/nel(1),nel(2),nel(3),1/) )          
       else
         call ncdf_get_var(ncdf,name,grid, start=lb, count=nel )
       end if
@@ -1712,7 +1702,7 @@ contains
         ! we first read the other nodes...)
         do iN = 1 , Nodes - 1
 
-          lb(:) = distr%box(1,:,iN)
+          lb(:) = distr%box(1,:,iN) 
           nel(:) = distr%box(2,:,iN) - lb(:) + 1
 
           ! get total number of points
@@ -1738,7 +1728,7 @@ contains
         end if
 
         ! Retrieve it's own data
-        lb(:) = distr%box(1,:,0)
+        lb(:) = distr%box(1,:,0) 
         nel(:) = distr%box(2,:,0) - lb(:) + 1
 
         if ( present(idx) ) then
@@ -1776,10 +1766,4 @@ contains
   end subroutine dummy
 #endif
 
-  subroutine ncdfio_reset()
-    use alloc, only: de_alloc
-    implicit none
-
-    if ( allocated(distr%box) ) deallocate( distr%box )
-  end subroutine ncdfio_reset
 end module ncdf_io_m

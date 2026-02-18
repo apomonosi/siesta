@@ -150,7 +150,7 @@ C  Internal variables .............................................
 C     ....................
 
 #ifdef DEBUG
-      call write_debug( '    PRE diagk' )
+      call write_debug( '    POS diagk' )
 #endif
 
       if (h_spin_dim /= spinor_dim) then
@@ -191,14 +191,8 @@ C Note : sign of complex part changed to match change in order of iuo/juo
           enddo
 !$OMP end parallel do
           call timer( 'c-buildHS', 2 )
-#ifdef DEBUG
-         call write_debug( '    PRE cdiag' )
-#endif
           call cdiag( Haux, Saux, nuotot, nuo, nuotot, eo(1,ispin,ik),
      &                psi, -neigwanted, iscf, ierror, BlockSize )
-#ifdef DEBUG
-         call write_debug( '    POS cdiag' )
-#endif
           if (ierror.ne.0) then
             call die('Terminating due to failed diagonalisation')
           endif
@@ -209,7 +203,7 @@ C Note : sign of complex part changed to match change in order of iuo/juo
 C Check if we are done ................................................
       if (.not.getD .and. .not. getPSI) then
 #ifdef DEBUG
-         call write_debug( '    POS diagk' )
+         call write_debug( '    PRE diagk' )
 #endif
          return
       end if
@@ -451,8 +445,5 @@ C Global operation to form new density matrix
         enddo
       enddo
       deallocate(done_juo)
-#ifdef DEBUG
-         call write_debug( '    POS diagk' )
-#endif
 
       end subroutine diagk

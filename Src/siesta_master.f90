@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -144,7 +144,7 @@ PRIVATE ! Nothing is declared public beyond this point
   real(dp),pointer, save:: coords(:,:)         ! Atomic coordinates
   real(dp),pointer, save:: forces(:,:)         ! Atomic forces
   type(propType),   save:: prop(maxProps)      ! Stored physical properties
-  character(len=32),save:: master_xunit = 'Ang'       ! Master's unit of length
+  character(len=32),save:: master_xunit = 'Ang'       ! Master's unit of length 
   character(len=32),save:: master_eunit = 'eV'        ! Master's unit of energy
   character(len=32),save:: master_funit = 'eV/Ang'    ! Master's unit of force
   character(len=32),save:: master_sunit = 'eV/Ang**3' ! Master's unit of stress
@@ -171,12 +171,12 @@ subroutine coordsFromMaster( na, xa, cell )
     else
       call die('coordsFromMaster: ERROR: number-of-atoms mismatch')
     endif
-  else
-    iface = fdf_get( "Master.interface",  "pipe")
+  else  
+    iface = fdf_get( "Master.interface",  "pipe")   
     if ( iface == "pipe") call coordsFromPipe( na, xa, cell )
     if ( iface == "socket") call coordsFromSocket (na, xa, cell )
   end if ! (siesta_subroutine)
-
+  
 end subroutine coordsFromMaster
 
 !-----------------------------------------------------------------------------
@@ -198,8 +198,8 @@ subroutine forcesToMaster( na, Etot, fa, stress )
     else ! (na/=nAtoms)
       call die('coordsFromMaster: ERROR: number-of-atoms mismatch')
     endif ! (na==nAtoms)
-  else
-    iface = fdf_get( "Master.interface",  "pipe")
+  else  
+    iface = fdf_get( "Master.interface",  "pipe")     
     if ( iface == "pipe") call forcesToPipe( na, Etot, fa, stress )
     if ( iface == "socket") call forcesToSocket( na, Etot, fa, stress )
   end if ! (siesta_subroutine)
@@ -257,14 +257,11 @@ end subroutine setCoordsFromMaster
 !-----------------------------------------------------------------------------
 
 subroutine setMasterUnits( xunit, eunit )
-  use fdf  , only: fdf_set_unit_handler
-  use units, only: inquire_unit
 
   implicit none
   character(len=*),intent(in):: xunit  ! Physical unit of length
   character(len=*),intent(in):: eunit  ! Physical unit of energy
 
-  call fdf_set_unit_handler( inquire_unit )
   master_xunit = xunit
   master_eunit = eunit
   master_funit = trim(eunit)//'/'//trim(xunit)         ! Unit of force

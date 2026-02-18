@@ -46,7 +46,7 @@ contains
   subroutine exp_coord_init(slabel,na_u,inicoor,fincoor)
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
-    use mpi_siesta, only : MPI_Bcast, MPI_Integer, MPI_Comm_World
+    use mpi_siesta
 #endif
     character(len=*), intent(in) :: slabel
     integer, intent(in)          :: na_u
@@ -114,7 +114,6 @@ contains
     use units, only : Ang
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_World, MPI_Double_Precision
-    use mpi_siesta, only : MPI_Bcast
 #endif
 ! **************************
 ! * INPUT variables        *
@@ -166,8 +165,7 @@ contains
   real(dp) function exp_coord_weight(istep)
     use netcdf_ncdf
 #ifdef MPI
-    use mpi_siesta, only : MPI_Bcast, MPI_Comm_World, &
-                           MPI_Double_Precision
+    use mpi_siesta, only : MPI_Comm_World, MPI_Double_Precision
 #endif
 ! **************************
 ! * INPUT variables        *

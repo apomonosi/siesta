@@ -10,21 +10,17 @@
 ! Nick Papior, 2014
 
 ! Module for saving data
-#include "mpi_macros.f"
-
 module m_tbt_save
 
   use precision, only : dp
-#ifdef MPI
-  USE_MPI_ONLY_STATUS
-#endif
+
   implicit none
 
   private
 
   integer, save :: cmp_lvl  = 0
   logical, save :: save_parallel = .false.
-
+  
   ! Optional directory
   character(len=128), save :: save_dir = ' '
   public :: save_dir
@@ -48,6 +44,10 @@ module m_tbt_save
   public :: state_cdf_save
   public :: state_cdf_save_Elec
   public :: state_cdf_save_sp_dev
+  interface state_cdf_save_sp_dev
+     module procedure state_cdf_save_sp1D_dev
+     module procedure state_cdf_save_sp2D_dev
+  end interface state_cdf_save_sp_dev
   public :: state_cdf2ascii
   public :: local_save_DOS
 #else
@@ -78,7 +78,7 @@ module m_tbt_save
   ! for saving DOS
   real(dp), pointer :: rbuff1d(:)
 #endif
-
+  
 contains
 
   subroutine MPI_BcastNode(iE, cE, nE)
@@ -115,7 +115,7 @@ contains
 
     use netcdf_ncdf, ncdf_parallel => parallel
     use ts_electrode_m, only: electrode_t
-
+    
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
 #endif
@@ -135,7 +135,7 @@ contains
     ! Open the netcdf file
     if ( save_parallel ) then
       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
-          comm = MPI_COMM_ID(MPI_COMM_WORLD) )
+          comm = MPI_COMM_WORLD )
 
       ! Prepare collective operations...
       ! Assign all writes to be collective
@@ -156,7 +156,7 @@ contains
   end subroutine open_cdf_save
 
 #endif
-
+  
   subroutine init_save_options()
     use m_verbosity, only: verbosity
     use parallel, only : IONode
@@ -226,7 +226,7 @@ contains
     else if ( .not. dir_exist(save_dir, Bcast = .true. ) ) then
        call die('Directory: '//trim(save_dir)//' does not exist.')
     end if
-
+    
   end subroutine init_save_options
 
   subroutine print_save_options()
@@ -270,7 +270,7 @@ contains
     write(*,f11)'Parallel MPI-IO not possible'
 #endif
 #endif
-
+    
   end subroutine print_save_options
 
 #ifdef NCDF_4
@@ -300,7 +300,7 @@ contains
     end if
 
     if ( leqi(name, 'none') ) return
-
+    
     tmp = fdf_get('TBT.CDF.'//trim(name)//'.Precision',tmp)
     if ( leqi(tmp,'double') ) then
        prec = NF90_DOUBLE
@@ -308,7 +308,7 @@ contains
          .or. leqi(tmp,'float') ) then
        prec = NF90_FLOAT
     end if
-
+    
   end subroutine cdf_precision_real
 
   subroutine cdf_precision_cmplx(name,default,prec)
@@ -351,7 +351,7 @@ contains
     use m_timestamp, only : datestring
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Integer, MPI_Logical
-    use mpi_siesta, only : MPI_Comm_Self, MPI_Barrier, MPI_Bcast
+    use mpi_siesta, only : MPI_Comm_Self, MPI_Barrier
 #endif
     use m_tbt_hs, only : tTSHS
     use ts_electrode_m
@@ -431,6 +431,9 @@ contains
 
       dic = ('no_u'.kv. TSHS%no_u) // ('na_u'.kv. TSHS%na_u ) &
           // ('no_d'.kv. r%n ) // ('nkpt'.kv. nkpt )
+      if ( TSHS%nspin > 2) then
+        dic = dic // ('nspin'.kv. TSHS%nspin) 
+      end if
       dic = dic // ('na_d'.kv. a_Dev%n) // ('n_btd'.kv.btd%n)
       if ( a_Buf%n > 0 ) then
         dic = dic // ('na_b'.kv. a_Buf%n)
@@ -508,7 +511,7 @@ contains
       call die('The file content in '//trim(fname)//' &
           &is not consistent with this setup. Please delete the &
           &file.')
-
+       
     else if ( IONode ) then
       write(*,'(2a)')'tbt: Initializing data file: ',trim(fname)
     end if
@@ -528,6 +531,10 @@ contains
     ! Create eigenvalue dimension, if needed
     if ( N_eigen > 0 ) then
       call ncdf_def_dim(ncdf,'neig',N_eigen)
+    end if
+
+    if ( 'T-Spin' .in. save_DATA ) then
+      call ncdf_def_dim(ncdf,'nspn',4)
     end if
 
     if ( 'DOS-Gf' .in. save_DATA ) then
@@ -556,9 +563,15 @@ contains
     if ( 'DM-Gf' .in. save_DATA ) then
       call delete(dic, key='info')
       dic = dic // ('info'.kv.'Green function density matrix')
-      call ncdf_def_var(ncdf,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
+      if ( TSHS%nspin > 2) then
+        call ncdf_def_var(ncdf,'DM',prec_DM,(/'nnzs ','nspin','ne   ','nkpt '/), &
           atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
-      call mem%add_cdf(prec_DM, nnzs_dev, NE, nkpt)
+        call mem%add_cdf(prec_DM, nnzs_dev, TSHS%nspin, NE, nkpt)
+      else
+        call ncdf_def_var(ncdf,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
+          atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
+        call mem%add_cdf(prec_DM, nnzs_dev, NE, nkpt)
+      end if
     end if
     if ( 'COOP-Gf' .in. save_DATA ) then
       call delete(dic, key='info')
@@ -611,9 +624,15 @@ contains
 
       if ( 'DM-A' .in. save_DATA ) then
         dic = dic//('info'.kv.'Spectral function density matrix')
-        call ncdf_def_var(grp,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
-            atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
-        call mem%add_cdf(prec_DM, nnzs_dev, NE, nkpt)
+        if ( TSHS%nspin > 2) then
+            call ncdf_def_var(grp,'DM',prec_DM,(/'nnzs ','nspin','ne   ','nkpt '/), &
+                 atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
+          call mem%add_cdf(prec_DM, nnzs_dev, TSHS%nspin, NE, nkpt)
+        else
+           call ncdf_def_var(grp,'DM',prec_DM,(/'nnzs','ne  ','nkpt'/), &
+                atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
+          call mem%add_cdf(prec_DM, nnzs_dev, NE, nkpt)
+        end if
       end if
 
       if ( 'DOS-A' .in. save_DATA ) then
@@ -644,9 +663,15 @@ contains
 
       if ( 'orb-current' .in. save_DATA ) then
         dic = dic//('info'.kv.'Orbital transmission')
-        call ncdf_def_var(grp,'J',prec_J,(/'nnzs','ne  ','nkpt'/), &
-            atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
-        call mem%add_cdf(prec_J, nnzs_dev, NE, nkpt)
+        if ( TSHS%nspin > 2) then
+          call ncdf_def_var(grp,'J',prec_J,(/'nnzs ','nspin','ne   ','nkpt '/), &
+              atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
+          call mem%add_cdf(prec_J, nnzs_dev, TSHS%nspin, NE, nkpt)
+        else 
+          call ncdf_def_var(grp,'J',prec_J,(/'nnzs','ne  ','nkpt'/), &
+              atts = dic , chunks = (/nnzs_dev/) , compress_lvl=cmp_lvl)
+          call mem%add_cdf(prec_J, nnzs_dev, NE, nkpt)
+        end if
       end if
 
       c_tmp = trim(Elecs(iEl)%name)
@@ -671,6 +696,15 @@ contains
                 (/'neig','ne  ','nkpt'/), &
                 atts = dic )
             call mem%add_cdf(prec_Teig, N_eigen, NE, nkpt)
+          end if
+
+          if ( 'T-Spin' .in. save_DATA ) then
+            call delete(dic, key='info')
+            dic = dic//('info'.kv.'Spin channel projected transmission')
+            call ncdf_def_var(grp,trim(Elecs(jEl)%name)//'.T.Spin',prec_T, &
+                (/'nspn', 'ne  ','nkpt'/), &
+                atts = dic )
+            call mem%add_cdf(prec_T, 4, NE, nkpt)
           end if
 
         else
@@ -699,7 +733,7 @@ contains
           call mem%add_cdf(prec_T, NE, nkpt)
 
         end if
-
+          
       end do
 
     end do
@@ -771,6 +805,9 @@ contains
     ! Save the current system size
     call ncdf_def_dim(ncdf,'no_u',TSHS%no_u)
     call ncdf_def_dim(ncdf,'na_u',TSHS%na_u)
+    if ( TSHS%nspin .gt. 2) then
+      call ncdf_def_dim(ncdf,'nspin',TSHS%nspin)
+    end if
     ! Even for Gamma, it makes files unified
     !call ncdf_def_dim(ncdf,'nkpt',NF90_UNLIMITED) ! Parallel does not work
     call ncdf_def_dim(ncdf,'nkpt',nkpt)
@@ -917,7 +954,7 @@ contains
     ! Save all k-points
     ! Even though they are in an unlimited dimension,
     ! we save them instantly.
-    ! This ensures that a continuation can check for
+    ! This ensures that a continuation can check for 
     ! the same k-points in the same go.
     allocate(r2(3,nkpt))
     do i = 1 , nkpt
@@ -1024,7 +1061,7 @@ contains
       call ncdf_def_var(grp,'lasto',NF90_INT,(/'na_u'/), &
           atts = dic)
       call mem%add_cdf(NF90_INT, Elecs(iEl)%na_u)
-
+          
       call delete(dic)
       dic = ('info'.kv.'Unit cell')//('unit'.kv.'Bohr')
       call ncdf_def_var(grp,'cell',NF90_DOUBLE,(/'xyz','xyz'/), &
@@ -1123,9 +1160,9 @@ contains
 
     ! Open the netcdf file
     call ncdf_open(ncdf,trim(fname), mode=NF90_NOWRITE)
-
+    
     call ncdf_inq_dim(ncdf,'ne',len=cur_NE)
-
+    
 #ifdef MPI
     call MPI_BCast(cur_NE,1,MPI_Integer,0,MPI_Comm_World,MPIerror)
 #endif
@@ -1141,7 +1178,7 @@ contains
 #endif
 
     call ncdf_close(ncdf)
-
+    
   end subroutine init_cdf_E_check
 
   subroutine cdf_get_E_idx(E,NE,zE,iE,have)
@@ -1199,37 +1236,37 @@ contains
     real(dp), allocatable :: rkpt(:,:)
     ! This is limiting us at 1000000 k-points, in each direction
     ! Sigh...
-    real(dp), parameter :: Eta = 1.e-6_dp
+    real(dp), parameter :: Eta = 1.e-6_dp 
     integer :: nk, ik
 #ifdef MPI
     integer :: MPIerror
 #endif
 
     ! First we check that the kpoint exists
-    ! If it does not, then definetely we do not have the
+    ! If it does not, then definetely we do not have the 
     ! energy point.
 
     if ( Node == 0 ) then
-
+       
        call ncdf_open(ncdf,trim(fname), mode=NF90_WRITE)
 
-       ! Retrieve the attributes
+       ! Retrieve the attributes 
        call ncdf_inq_dim(ncdf,'nkpt',len=nk)
 
        ! Initialize to signal that we are going to extend
        ! the position
        ikpt = nk + 1
-
+       
        allocate(rkpt(3,nk))
        call ncdf_get_var(ncdf,'kpt',rkpt)
-
+       
        ! We check the k-point
        ! When they are equal we have processed all energy points
        ! currently in it.
        ! This puts a restriction on the continuation
        ! process, we only allow increasing the energy density
        ! at will, increasing the k-points at will is
-       ! only allowed by using the
+       ! only allowed by using the 
        ! user input k-point file and have the SAME k-points
        ! in the beginning (the USER HAS TO DO THIS!!!!!)
 
@@ -1239,7 +1276,7 @@ contains
              exit
           end if
        end do
-
+       
        if ( ikpt == nk + 1 ) then
 
           ! We need to add the k-point to the list
@@ -1247,7 +1284,7 @@ contains
 
        else
 
-          ! we signal that the k-point
+          ! we signal that the k-point 
           ! is already present in the save-file.
           ikpt = - ikpt
 
@@ -1275,7 +1312,7 @@ contains
     idx(1) = nE%iE(Node)
     if ( save_parallel ) then
       cnt(1) = 1
-
+       
        ! Create count
       if ( idx(1) <= 0 ) then
         idx(1) = 1
@@ -1284,7 +1321,7 @@ contains
 
       call ncdf_put_var(ncdf,'E',nE%E(Node), &
           start = idx, count = cnt )
-
+       
     else
 
       ! We save the energy
@@ -1297,22 +1334,24 @@ contains
 #else
       call ncdf_put_var(ncdf,'E',nE%E(Node),start = idx)
 #endif
-
+       
     end if
 
   end subroutine cdf_save_E
 
   subroutine state_cdf_save(ncdf, ikpt, nE, N_Elec, Elecs, DOS, T, &
-       N_eigen, Teig, save_DATA)
-
+       N_eigen, Teig, TSpin4D, save_DATA)
+    
     use parallel, only : Node, Nodes
+
+    use iso_c_binding
 
     use dictionary
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
     use ts_electrode_m
@@ -1326,6 +1365,7 @@ contains
     real(dp), intent(in) :: T(:,:)
     integer, intent(in) :: N_eigen
     real(dp), intent(in) :: Teig(:,:,:)
+    real(dp), intent(in), target, optional :: TSpin4D(:,:,:,:)
     type(dictionary_t), intent(in) :: save_DATA
 
     type(hNCDF) :: grp
@@ -1335,16 +1375,24 @@ contains
     integer :: NT
     real(dp), allocatable :: thisDOS(:)
     real(dp), allocatable :: rT(:,:,:)
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    real(dp), pointer :: TSpin(:,:,:)
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
 #ifdef TBTRANS_TIMING
     call timer('cdf-w-DOS-T',1)
 #endif
 
-    NDOS = size(DOS,dim=1)
+    if ( 'T-Spin' .in. save_DATA ) then
+      if ( present(TSpin4D) ) then
+        call c_f_pointer(c_loc(TSpin4D), TSpin, [4, N_Elec+1, N_Elec])
+      else
+        call die('Programming error: Did not receive TSpin4D...')
+      end if
+    end if
 
+    NDOS = size(DOS,dim=1)
+           
 #ifdef MPI
     if ( .not. save_parallel ) then
       if ( N_eigen > NDOS ) then
@@ -1357,9 +1405,32 @@ contains
     NT = ( N_Elec + 1 ) * N_Elec
 #endif
 
-    if ( ikpt == 1 ) then
-      call cdf_save_E(ncdf, nE)
+    ikpt_if: if ( ikpt == 1 ) then
+    if ( save_parallel ) then
+
+      idx(1) = nE%iE(Node)
+      cnt(1) = 1
+      if ( idx(1) <= 0 ) then
+        idx(1) = 1
+        cnt(1) = 0
+      end if
+      call ncdf_put_var(ncdf,'E',nE%E(Node),start=idx(1:1), count=cnt(1:1))
+
+    else
+
+      ! Save the different options given to this routine
+      ! We need to save the energy
+#ifdef MPI
+      do iN = 0 , Nodes - 1
+        if ( nE%iE(iN) <= 0 ) cycle
+        call ncdf_put_var(ncdf,'E',nE%E(iN),start=nE%iE(iN:iN) )
+      end do
+#else
+      call ncdf_put_var(ncdf,'E',nE%E(Node),start=nE%iE(Node:Node) )
+#endif
+
     end if
+    end if ikpt_if
 
     if ( 'DOS-Gf' .in. save_DATA ) then
 
@@ -1379,13 +1450,13 @@ contains
           if ( ('DOS-A-all' .nin. save_DATA) .and. &
               ('T-all'.nin. save_DATA) ) cycle
         end if
-
+          
         call ncdf_open_grp(ncdf,trim(Elecs(iEl)%name),grp)
-
+          
         call local_save_DOS(grp,'ADOS',ikpt,nE,NDOS,DOS(1:NDOS,1+iEl))
 
       end do
-
+       
     end if
 
 #ifdef MPI
@@ -1437,7 +1508,7 @@ contains
           call ncdf_put_var(grp,c_tmp2,T(N_Elec+1,iEl), &
               start = idx, count = cnt )
         end if
-
+       
 #ifdef MPI
         if ( Node == 0 .and. .not. save_parallel ) then
           do iN = 1 , Nodes - 1
@@ -1457,6 +1528,10 @@ contains
           call local_save_DOS(grp,trim(c_tmp)//'.Eig',ikpt,nE,&
               N_eigen,Teig(:,jEl,iEl))
         end if
+        if ( 'T-Spin' .in. save_DATA ) then
+          call local_save_DOS(grp,trim(c_tmp)//'.Spin',ikpt,nE,&
+              4,TSpin(:,jEl,iEl))
+        end if
 
       end do
     end do
@@ -1475,14 +1550,13 @@ contains
   subroutine state_cdf_save_Elec(ncdf, ikpt, nE, N_Elec, Elecs, &
        DOS, T, &
        save_DATA)
-
+    
     use parallel, only : Node, Nodes
 
     use dictionary
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Double_Precision
-    use mpi_siesta, only : MPI_Gather
 #endif
     use ts_electrode_m
 
@@ -1572,7 +1646,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
 
@@ -1587,8 +1661,7 @@ contains
 
     integer :: iN, cnt(3), idx(3)
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     idx(1) = 1
@@ -1612,7 +1685,7 @@ contains
     if ( nE%iE(Node) > 0 ) then
       call ncdf_put_var(grp,var,DOS,start = idx )
     end if
-
+    
 #ifdef MPI
     if ( .not. save_parallel ) then
       if ( Node == 0 ) then
@@ -1629,11 +1702,11 @@ contains
       end if
     end if
 #endif
-
+    
   end subroutine local_save_DOS
-
-  subroutine state_cdf_save_sp_dev(ncdf, ikpt, nE, var_name, dat, El)
-
+  
+  subroutine state_cdf_save_sp1D_dev(ncdf, ikpt, nE, var_name, dat, El)
+    
     use parallel, only : Node, Nodes
     use class_dSpData1D
 
@@ -1641,6 +1714,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
     use mpi_siesta, only : MPI_Send, MPI_Recv
+    use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
     use ts_electrode_m
@@ -1656,8 +1730,7 @@ contains
     integer :: nnzs_dev, iN, cnt(3), idx(3)
     real(dp), pointer :: D(:)
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
 #ifdef TBTRANS_TIMING
@@ -1674,7 +1747,7 @@ contains
     ! Get data and size of data
     D => val(dat)
     nnzs_dev = size(D)
-
+    
     ! Save the current
     idx(1) = 1
     idx(2) = nE%iE(Node)
@@ -1710,7 +1783,92 @@ contains
     call timer('cdf-w-sp-dev',2)
 #endif
 
-  end subroutine state_cdf_save_sp_dev
+  end subroutine state_cdf_save_sp1D_dev
+  
+  subroutine state_cdf_save_sp2D_dev(ncdf, ikpt, nE, var_name, dat, El)
+    
+    use parallel, only : Node, Nodes
+    use class_dSpData2D
+
+    use netcdf_ncdf, ncdf_parallel => parallel
+#ifdef MPI
+    use mpi_siesta, only : MPI_COMM_WORLD
+    use mpi_siesta, only : MPI_Send, MPI_Recv
+    use mpi_siesta, only : MPI_STATUS_SIZE
+    use mpi_siesta, only : Mpi_double_precision
+#endif
+    use ts_electrode_m
+
+    type(hNCDF), intent(inout) :: ncdf
+    integer, intent(in) :: ikpt
+    type(tNodeE), intent(in) :: nE
+    character(len=*), intent(in) :: var_name
+    type(dSpData2D), intent(inout) :: dat
+    type(electrode_t), intent(inout), optional :: El
+
+    type(hNCDF) :: grp
+    integer :: nnzs_dev, nspin, iN, cnt(4), idx(4), is
+    real(dp), pointer :: D(:,:)
+#ifdef MPI
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
+#endif
+
+#ifdef TBTRANS_TIMING
+    call timer('cdf-w-sp-dev',1)
+#endif
+
+    if ( present(El) ) then
+       call ncdf_open_grp(ncdf,trim(El%name),grp)
+    else
+       ! Copy information to grp (no opening)
+       grp = ncdf
+    end if
+
+    ! Get data and size of data
+    D => val(dat)
+    if ( spar_dim(dat) /= 1 ) call die('Sparse dimension has to be first.')
+    nnzs_dev = nnzs(spar(dat))
+    nspin = size(D, dim=2)
+    
+    
+    ! Save the current
+    idx(1) = 1
+    idx(2) = 1
+    idx(3) = nE%iE(Node)
+    idx(4) = ikpt
+    cnt(1) = nnzs_dev
+    cnt(2) = nspin
+    cnt(3) = 1
+    cnt(4) = 1
+    if ( idx(3) <= 0 ) then
+      cnt(:) = 0
+      idx(3) = 1
+    end if
+    call ncdf_put_var(grp,var_name,D,start = idx, count = cnt )
+
+#ifdef MPI
+    if ( .not. save_parallel ) then
+      if ( Node == 0 ) then
+        do iN = 1 , Nodes - 1
+          if ( nE%iE(iN) > 0 ) then
+            call MPI_Recv(D(1,1),nspin*nnzs_dev,Mpi_double_precision, &
+                iN, iN, Mpi_comm_world,status,MPIerror)
+                idx(3) = nE%iE(iN)
+                call ncdf_put_var(grp,var_name,D,start = idx)
+          end if
+        end do
+      else if ( nE%iE(Node) > 0 ) then
+        call MPI_Send(D(1,1),nspin*nnzs_dev,Mpi_double_precision, &
+            0, Node, Mpi_comm_world,MPIerror)
+      end if
+    end if
+#endif
+
+#ifdef TBTRANS_TIMING
+    call timer('cdf-w-sp-dev',2)
+#endif
+
+  end subroutine state_cdf_save_sp2D_dev
 
 
   ! Routine for reading in the TBT.nc file
@@ -1748,7 +1906,7 @@ contains
     integer :: NE, nkpt, no_d
     real(dp), allocatable :: rkpt(:,:), rwkpt(:)
     real(dp), allocatable :: rE(:)
-    real(dp), allocatable :: r2(:,:), r3(:,:,:)
+    real(dp), allocatable :: r2(:,:), r3(:,:,:), r4(:,:,:)
 
     real(dp), parameter :: Coulomb = 1.6021766208e-19_dp
     real(dp), parameter :: eV2J = Coulomb
@@ -1765,7 +1923,7 @@ contains
 #endif
     integer, allocatable :: pvt(:)
 
-    ! In case we are doing something parallel,
+    ! In case we are doing something parallel, 
     ! we simply read in and write them in text based formats
     if ( Node /= 0 ) return
 
@@ -1888,6 +2046,7 @@ contains
       end if
 
       if ( N_eigen > 0 ) allocate(r3(N_eigen,NE,nkpt))
+      if ( 'T-Spin' .in. save_DATA ) allocate(r4(4,NE,nkpt))
 
       do jEl = 1 , N_Elec
         ! Calculating iEl -> jEl is the
@@ -1923,7 +2082,7 @@ contains
                 '# Out transmission correction eigenvalues, k-averaged')
           end if
 
-          ! The transmission is now the total incoming wave
+          ! The transmission is now the total incoming wave 
           ! [G-G^\dagger].\Gamma
           call ncdf_get_var(grp,trim(Elecs(jEl)%name)//'.T',r2)
         else
@@ -1954,6 +2113,21 @@ contains
             El1=Elecs(iEl), El2=Elecs(jEl))
         call save_DAT(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r2,'T',&
             '# Transmission, k-averaged')
+
+        if ( 'T-Spin' .in. save_DATA ) then
+          ! Save spin channel projected tansmission
+          call ncdf_get_var(grp,trim(Elecs(jEl)%name)//'.T.Spin',r4)
+          if ( nkpt > 1 ) then
+            call name_save(ispin,nspin,ascii_file,end='SPIN_PROJ_TRANS', &
+                El1=Elecs(iEl), El2=Elecs(jEl))
+            call save_DAT_Spin(ascii_file,nkpt,rkpt,rwkpt,0,NE,rE,pvt,r4,'T',&
+                '# Transmission, k-resolved')
+          end if
+          call name_save(ispin,nspin,ascii_file,end='SPIN_PROJ_AVTRANS', &
+              El1=Elecs(iEl), El2=Elecs(jEl))
+          call save_DAT_Spin(ascii_file,1,rkpt,rwkpt,0,NE,rE,pvt,r4,'T',&
+              '# Spin channel projected transmission, k-averaged')
+        end if
 
         ! The array r2 now contains the k-averaged transmission.
 #ifdef TBT_PHONON
@@ -2051,7 +2225,7 @@ contains
         !  and apply 1 / h [eV s]
         Power = Power / eV / h_eVs
         ! Power is now in [eV] / [s]
-        !   [eV] => [J]
+        !   [eV] => [J] 
         Power = Power * eV2J
 
         ! Calculate applied bias
@@ -2071,6 +2245,8 @@ contains
 
       ! Clean-up TEIG variable
       if ( allocated(r3) ) deallocate(r3)
+      ! Clean-up T-Spin variable
+      if ( allocated(r4) ) deallocate(r4)
 
     end do
 
@@ -2126,7 +2302,7 @@ contains
       integer :: iu, ik, i
 
       call io_assign(iu)
-      open( iu, file=trim(fname), form='formatted', status='unknown' )
+      open( iu, file=trim(fname), form='formatted', status='unknown' ) 
 
       write(iu,'(a)') trim(header)
       write(iu,'(a)') '# Date: '//trim(c_tmp)
@@ -2136,7 +2312,7 @@ contains
       write(iu,'(a,a9,tr1,a16)')"#","E [eV]", value
 #endif
 
-      do ik = 1 , nkpt
+      do ik = 1 , nkpt 
         if ( nkpt > 1 ) then
           write(iu,'(/,a6,3(e16.8,'' ''),a,e15.8)') '# kb= ',kpt(:,ik) ,'w= ',wkpt(ik)
         end if
@@ -2174,7 +2350,7 @@ contains
       ! Create format
       write(fmt,'(a,i0,a)')'(f10.5,tr1,',neig,'e16.8)'
       call io_assign(iu)
-      open( iu, file=trim(fname), form='formatted', status='unknown' )
+      open( iu, file=trim(fname), form='formatted', status='unknown' ) 
 
       write(iu,'(a)') trim(header)
       write(iu,'(a)') '# Date: '//trim(c_tmp)
@@ -2183,7 +2359,7 @@ contains
 #else
       write(iu,'(a,a9,tr1,a16)')"#","E [eV]", value
 #endif
-      do ik = 1 , nkpt
+      do ik = 1 , nkpt 
         if ( nkpt > 1 ) then
           write(iu,'(/,a6,3(e16.8,'' ''),a,e15.8)') &
               '# kb= ',kpt(:,ik) ,'w= ',wkpt(ik)
@@ -2204,6 +2380,60 @@ contains
       call io_close(iu)
 
     end subroutine save_EIG
+
+    subroutine save_DAT_Spin(fname,nkpt,kpt,wkpt,N,NE,E,ipiv,DAT,value,header)
+      character(len=*), intent(in) :: fname
+      integer, intent(in) :: nkpt, NE, ipiv(:), N
+      real(dp), intent(in) :: kpt(:,:), wkpt(:), E(:)
+      real(dp), intent(inout) :: DAT(:,:,:)
+      character(len=*), intent(in) :: value, header
+      
+      character(len=len(value)+12), dimension(4) :: values
+      integer :: iu, ik, i, j, k, l
+      character(len=2), dimension(2), parameter :: UD = (/'UP', 'DN'/)
+
+      call io_assign(iu)
+      open( iu, file=trim(fname), form='formatted', status='unknown' ) 
+
+      do i = 1,2
+        do j = 1,2
+            values(2*(i-1)+j) = value//&
+                '[' // UD(j) // '->' // UD(i) //']'
+        end do
+      end do
+
+      write(iu,'(a)') trim(header)
+      write(iu,'(a)') '# Date: '//trim(c_tmp)
+#ifdef TBT_PHONON
+      write(iu,'(a,a9,4(tr1,a16))')"#","Omega [eV]", values
+#else
+      write(iu,'(a,a9,4(tr1,a16))')"#","E [eV]", values
+#endif
+
+      do ik = 1 , nkpt 
+        if ( nkpt > 1 ) then
+          write(iu,'(/,a6,3(e16.8,'' ''),a,e15.8)') '# kb= ',kpt(:,ik) ,'w= ',wkpt(ik)
+        end if
+        do i = 1 , NE
+#ifdef TBT_PHONON
+          write(iu,'(f10.6,4(tr1,e16.8))') E(ipiv(i)), DAT(:,ipiv(i),ik)
+#else
+          write(iu,'(f10.5,4(tr1,e16.8))') E(ipiv(i)), DAT(:,ipiv(i),ik)
+#endif
+        end do
+        if ( nkpt > 1 ) then
+          ! Update the average values in the first entry
+          if ( ik == 1 ) then
+            call dscal(4*NE, wkpt(1), DAT(1,1,1), 1)
+          else
+            call daxpy(4*NE, wkpt(ik), DAT(1,1,ik), 1, DAT(1,1,1), 1)
+          end if
+        end if
+      end do
+
+      call io_close(iu)  
+
+    end subroutine save_DAT_Spin
 
 #ifdef TBT_PHONON
     elemental function nb2(E,E1,kT1,E2,kT2)
@@ -2264,7 +2494,7 @@ contains
 #endif
 
     ! Now figure out the file name
-    if ( nspin > 1 ) then
+    if ( nspin == 2 ) then
        if( ispin .eq. 1 ) fname = trim(fname)//"_UP"
        if( ispin .eq. 2 ) fname = trim(fname)//"_DN"
     end if
@@ -2286,7 +2516,7 @@ contains
 #ifndef NCDF_4
   ! These routines are for creating the output data in
   ! pure ASCII format.
-
+  
 
   ! This routine prepares the files for saving ASCII format
   ! data.
@@ -2294,7 +2524,7 @@ contains
   ! of Netcdf not being compiled in
   subroutine init_save(iounits,ispin,nspin,no_d, N_Elec, Elecs, &
        N_eigen, save_DATA)
-
+    
     use parallel, only : Node
 
     use dictionary
@@ -2327,15 +2557,15 @@ contains
        call name_save(ispin,nspin,ascii_file,end='DOS')
 
        call io_assign(iu)
-       open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+       open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
        write(iu,'(a)') '# DOS calculated from the Green function, k-resolved'
        write(iu,'(a)') '# Date: '//trim(c_tmp)
        write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'DOS [1/eV]'
-
+       
        iounits(cu) = iu
 
        cu = cu + 1
-
+       
     end if
 
     do iEl = 1 , N_Elec
@@ -2347,19 +2577,19 @@ contains
           if ( ('DOS-A-all' .nin. save_DATA) .and. &
                ('T-all'.nin. save_DATA) ) cycle
        end if
-
+       
        if ( 'DOS-A' .in. save_DATA ) then
 
           call name_save(ispin,nspin,ascii_file,end='ADOS',El1=Elecs(iEl))
 
           call io_assign(iu)
-          open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+          open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
           write(iu,'(a)') '# DOS calculated from the spectral function, k-resolved'
           write(iu,'(a)') '# Date: '//trim(c_tmp)
           write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'DOS [1/eV]'
 
           iounits(cu) = iu
-
+          
           cu = cu + 1
 
        end if
@@ -2380,34 +2610,34 @@ contains
 
              call name_save(ispin,nspin,ascii_file,end='CORR', &
                   El1=Elecs(iEl))
-
+             
              call io_assign(iu)
-             open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+             open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
              write(iu,'(a)') '# Out transmission correction, k-resolved'
              write(iu,'(a)') '# Date: '//trim(c_tmp)
              write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'Correction'
 
              iounits(cu) = iu
-
+             
              cu = cu + 1
 
              if ( N_eigen > 0 ) then
                 call name_save(ispin,nspin,ascii_file,end='CEIG', &
                      El1=Elecs(iEl))
-
+                
                 call io_assign(iu)
-                open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+                open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
                 write(iu,'(a)') '# Out transmission correction eigenvalues, k-resolved'
                 write(iu,'(a)') '# Date: '//trim(c_tmp)
                 write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'Eigenvalues'
-
+                
                 iounits(cu) = iu
-
+                
                 cu = cu + 1
              end if
-
+             
           end if
-
+             
           call name_save(ispin,nspin,ascii_file,end='TRANS', &
                El1=Elecs(iEl), El2=Elecs(jEl))
 
@@ -2418,32 +2648,32 @@ contains
           write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'Transmission'
 
           iounits(cu) = iu
-
+          
           cu = cu + 1
 
           if ( jEl /= iEl .and. N_eigen > 0 ) then
              call name_save(ispin,nspin,ascii_file,end='TEIG', &
                   El1=Elecs(iEl), El2=Elecs(jEl))
-
+             
              call io_assign(iu)
              open( iu, file=trim(ascii_file), form='formatted', status='unknown')
              write(iu,'(a)') '# Transmission eigenvalues, k-resolved'
              write(iu,'(a)') '# Date: '//trim(c_tmp)
              write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'Eigenvalues'
-
+             
              iounits(cu) = iu
-
+             
              cu = cu + 1
           end if
-
+          
        end do
-
+       
     end do
 
   end subroutine init_save
 
   subroutine init_save_Elec(iounits,ispin,nspin,N_Elec,Elecs,save_DATA)
-
+    
     use parallel, only : Node
 
     use dictionary
@@ -2478,35 +2708,35 @@ contains
           call name_save(ispin,nspin,ascii_file,end='BDOS',El1=Elecs(iEl))
 
           call io_assign(iu)
-          open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+          open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
           write(iu,'(a)') '# Bulk DOS, k-resolved'
           write(iu,'(a)') '# Date: '//trim(c_tmp)
           write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'DOS [1/eV]'
 
           iounits(cu) = iu
-
+          
           cu = cu + 1
 
           call name_save(ispin,nspin,ascii_file,end='BTRANS',El1=Elecs(iEl))
 
           call io_assign(iu)
-          open( iu, file=trim(ascii_file), form='formatted', status='unknown' )
+          open( iu, file=trim(ascii_file), form='formatted', status='unknown' ) 
           write(iu,'(a)') '# Bulk transmission, k-resolved'
           write(iu,'(a)') '# Date: '//trim(c_tmp)
           write(iu,'(a,a9,tr1,a16)')'#','E [eV]', 'T'
 
           iounits(cu) = iu
-
+          
           cu = cu + 1
 
        end do
-
+       
     end if
-
+    
   end subroutine init_save_Elec
 
   subroutine step_kpt_save(iounits,nkpt,bkpt,wkpt)
-
+    
     use parallel, only : Node
 
     integer, intent(in) :: iounits(:), nkpt
@@ -2528,7 +2758,7 @@ contains
 
        call wrt_k(iounits(cu),bkpt,wkpt)
        cu = cu + 1
-
+       
     end do
 
   contains
@@ -2538,12 +2768,12 @@ contains
       real(dp) :: bkpt(3), wkpt
       write(iu,'(/,a6,3(e16.8,'' ''),a,e15.8)') '# kb= ',bkpt(:) ,'w= ',wkpt
     end subroutine wrt_k
-
+    
   end subroutine step_kpt_save
 
 
   subroutine end_save(iounits)
-
+    
     use parallel, only : Node
 
     integer, intent(in) :: iounits(:)
@@ -2563,7 +2793,7 @@ contains
 
        call io_close(iounits(cu))
        cu = cu + 1
-
+       
     end do
 
   end subroutine end_save
@@ -2573,9 +2803,12 @@ contains
   ! NOTE that ASCII data will only be created in case
   ! of Netcdf not being compiled in
   subroutine state_save(iounits,no_d, nE,N_Elec,Elecs, DOS, T, &
-       N_eigen, Teig, &
+       N_eigen, Teig, TSpin4D &
        save_DATA )
 
+    use iso_c_binding
+
+    
     use parallel, only : Nodes
     use units, only : eV
     use m_interpolate, only : crt_pivot
@@ -2591,12 +2824,14 @@ contains
     real(dp), intent(in)   :: DOS(:,:), T(:,:)
     integer, intent(in)    :: N_eigen
     real(dp), intent(in)   :: Teig(:,:,:)
+    real(dp), intent(in), target, optional :: TSpin4D(:,:,:,:)
     type(dictionary_t), intent(in) :: save_DATA
 
     integer :: cu
     integer :: iEl, jEl, N
     real(dp), allocatable, target :: thisDOS(:)
     integer, allocatable :: ipvt(:)
+    real(dp), pointer :: TSpin(:,:,:)
 
     allocate(ipvt(Nodes))
     ipvt = 1
@@ -2614,6 +2849,15 @@ contains
        call save_attach_buffer(thisDOS)
     end if
 #endif
+
+    if ( 'T-Spin' .in. save_DATA ) then
+      if ( present(TSpin4D) ) then
+        call c_f_pointer(c_loc(TSpin4D), TSpin, [4, N_Elec+1, N_Elec])
+      else
+        call die('Programming error: Did not receive TSpin4D...')
+      end if
+    end if
+
 
     ! Correct for rank indices
     ipvt(:) = ipvt(:) - 1
@@ -2637,13 +2881,13 @@ contains
           if ( ('DOS-A-all' .nin. save_DATA) .and. &
                ('T-all'.nin. save_DATA) ) cycle
        end if
-
+       
        if ( 'DOS-A' .in. save_DATA ) then
 
           call local_save_DAT(iounits(cu),nE,ipvt,no_d,DOS(1:no_d,1+iEl),fact=eV)
-
+          
           cu = cu + 1
-
+          
        end if
 
        do jEl = 1 , N_Elec
@@ -2658,7 +2902,7 @@ contains
                iEl == jEl ) cycle
 
           if ( jEl == iEl ) then
-             ! Note this is reversed according to the
+             ! Note this is reversed according to the 
              ! creation of the arrays.
              ! This is because the reflection is 1->1
              ! and the transmission is the G.\Gamma
@@ -2674,16 +2918,21 @@ contains
           end if
 
           call local_save_DAT(iounits(cu),nE,ipvt,1,T(jEl:jEl,iEl))
-
+          
           cu = cu + 1
 
+          if ( 'T-Spin' .in. save_DATA ) then
+             call local_save_EIG(iounits(cu),nE,ipvt,4,TSpin(:,jEl,iEl))
+             cu = cu + 1
+          end if 
+          
           if ( jEl /= iEl .and. N_eigen > 0 ) then
              call local_save_EIG(iounits(cu),nE,ipvt,N_eigen,Teig(:,jEl,iEl))
              cu = cu + 1
           end if
 
        end do
-
+       
     end do
 
     deallocate(ipvt)
@@ -2700,7 +2949,7 @@ contains
   subroutine state_save_Elec(iounits,nE,N_Elec,Elecs, &
        DOS, T, &
        save_DATA )
-
+    
     use parallel, only : Nodes
     use units, only : eV
     use m_interpolate, only : crt_pivot
@@ -2721,7 +2970,7 @@ contains
 #ifdef MPI
     real(dp), allocatable, target :: thisDOS(:)
 #endif
-
+    
     allocate(ipvt(Nodes))
     ipvt = 1
 
@@ -2746,14 +2995,14 @@ contains
 
           N = Elecs(iEl)%no_u
           call local_save_DAT(iounits(cu),nE,ipvt,N,DOS(1:N,iEl),fact=eV)
-
+          
           cu = cu + 1
 
           ! save bulk transmission
           call local_save_DAT(iounits(cu),nE,ipvt,1,[T(iEl)])
 
           cu = cu + 1
-
+          
        end do
 
     end if
@@ -2764,7 +3013,7 @@ contains
 #endif
 
   end subroutine state_save_Elec
-
+  
   subroutine local_save_DAT(iu,nE,ipvt,N,DATA,fact)
     use parallel, only : Node, Nodes
     use units, only : eV
@@ -2772,7 +3021,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
 
@@ -2785,8 +3034,7 @@ contains
     integer :: iN, i
     real(dp) :: rnd
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     if ( present(fact) ) then
@@ -2794,7 +3042,7 @@ contains
     else
       rnd = 1._dp
     end if
-
+    
     if ( Node == 0 ) then
        do iN = 0 , Nodes - 1
           i = ipvt(iN+1) ! sorting E
@@ -2830,7 +3078,7 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
 #endif
 
@@ -2842,8 +3090,7 @@ contains
     integer :: iN, i
     character(len=20) :: fmt
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     write(fmt,'(a,i0,a)')'(f10.5,tr1,',N,'e16.8)'

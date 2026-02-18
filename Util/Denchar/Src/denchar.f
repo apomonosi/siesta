@@ -28,9 +28,7 @@ C
       USE BASIS_IO
       USE LISTSC_MODULE, ONLY: LISTSC_INIT
       USE FDF
-      use units, only: inquire_unit
       use parallel, only: nodes, node
-      use chemical, only: read_chemical_types
       use m_getopts
 
       IMPLICIT NONE
@@ -66,7 +64,7 @@ C
      .  FILEIN*20, FILEOUT*20, sname*30
 
       LOGICAL 
-     .  FOUND, CHARGE, WAVES, WANNIER, ionode, debug
+     .  FOUND, CHARGE, WAVES, ionode, debug
       logical :: gamma_wfsx, non_coll
       integer :: nspin_wfsx, nspin_blocks, wf_unit
       integer :: no_u_wfsx
@@ -75,8 +73,6 @@ C
       EXTERNAL
      .  IODM, READPLA, REDATA_DENCHAR, REINIT, RHOOFR, VOLCEL
 
-      external :: die
-      
       DATA NORMAL /0.D0,0.D0,1.D0/
       DATA COORPO /1.D0,0.D0,0.D0,0.D0,1.D0,0.D0,0.D0,0.D0,1.D0/
       DATA DIRVER1 /1.D0,0.D0,0.D0/
@@ -122,7 +118,6 @@ C ****** INFORMATION OF THE POINT, PLANE OR 3D GRID ***********************
 C INTEGER IDIMEN              : Specifies 2D or 3D mode
 C LOGICAL CHARGE              : Should charge density be computed?
 C LOGICAL WAVES               : Should wave functions be computed?
-C LOGICAL WANNIER             : Should Wannier functions be computed?
 C INTEGER IOPTION             : Option to generate the plane or 3D grid
 C                               1 = Normal vector to xy plane (ie, z direction)
 C                               2 = Two vectors belonging to the xy plane
@@ -199,11 +194,10 @@ C Set up fdf -----------------------------------------------------------
       !      FILEIN  = 'stdin'
       FILEOUT = 'out.fdf'
       CALL FDF_INIT(FILEIN,FILEOUT)
-      call fdf_set_unit_handler(inquire_unit)
 
 C Read some variables from SIESTA to define the limits of some arrays --
       CALL REINIT( NO_S, NA_S, NO_U, MAXND, MAXNA, NSPIN, IDIMEN,
-     .     CHARGE, WAVES, WANNIER )
+     .     CHARGE, WAVES )
 
 C Allocate some variables ----------------------------------------------
       ALLOCATE(XA(3,NA_S))
@@ -219,7 +213,6 @@ C Read some variables from SIESTA --------------------------------------
      .             CELL, NSC, XA, RMAXO, DATM )
 
 C Read the information about the basis set -----------------------------
-      call read_chemical_types()
       CALL READ_BASIS_ASCII(ns_dummy)
 
 C Initialize listsc ----------------------------------------------------
@@ -283,34 +276,7 @@ C Read Density Matrix from files ---------------------------------------
 
       ENDIF
 
-      IF (WANNIER) THEN
-
-      ! Read header of WANNX file
-
-      SNAME = FDF_STRING('SystemLabel','siesta')
-      CALL IO_ASSIGN(wf_unit)
-      OPEN (wf_unit, FILE=trim(SNAME)//'.WANNX', FORM='unformatted',
-     $       STATUS='unknown',position='rewind')
-
-      read(wf_unit) nk, gamma_wfsx
-      read(wf_unit) nspin_wfsx
-
-      ! Non-collinear or SOC files have a single "spin" block as opposed to collinear-spin
-      ! files, which contain two spin blocks per k section.
-      non_coll = (nspin_wfsx == 4)
-      nspin_blocks = nspin_wfsx
-      if (non_coll) nspin_blocks = 1
-
-      read(wf_unit) no_u_wfsx
-      if (no_s /= no_u_wfsx) then
-         call die("Mismatch in no_u in WFSX and DIM/PLD files")
-      endif
-      read(wf_unit)   ! orbital labels
-
-      ENDIF
-
-
-      IF (CHARGE .OR. WAVES .OR. WANNIER) THEN
+      IF (CHARGE .OR. WAVES) THEN
 C Read option to generate the plane or 3D-grid -------------------------
         CALL READPLA( NA_S, XA, VOLUME, IDIMEN,
      .                IOPTION, IUNITCD, ISCALE, NPX, NPY, NPZ,
@@ -333,18 +299,6 @@ C Form Density Matrix for Neutral and Isolated Atoms -------------------
 
       IF (WAVES) THEN
         CALL WAVOFR( NA_S, NO_S, NO_U, MAXNA, NSPIN_wfsx, nspin_blocks,
-     $               non_coll,
-     .               ISA, IPHORB, INDXUO, LASTO, XA, CELL,
-     .               wf_unit, NK, gamma_wfsx,
-     .               IDIMEN, IOPTION, XMIN, XMAX, YMIN, YMAX, 
-     .               ZMIN, ZMAX, NPX, NPY, NPZ, COORPO, NORMAL, 
-     .               DIRVER1, DIRVER2, 
-     .               ARMUNI, IUNITCD, ISCALE, RMAXO,
-     .               kpoint_selected, wf_selected)
-      ENDIF
-
-      IF (WANNIER) THEN
-        CALL WANNOFR( NA_S, NO_S, NO_U, MAXNA, NSPIN_wfsx, nspin_blocks,
      $               non_coll,
      .               ISA, IPHORB, INDXUO, LASTO, XA, CELL,
      .               wf_unit, NK, gamma_wfsx,

@@ -261,7 +261,7 @@ contains
 
     use units, only : eV
     use fdf
-    use fdf_parse, only : search_fun, characters, ntokens
+    use parse, only : search_fun, characters, ntokens
 
     character(len=*), intent(in) :: prefix, suffix
     character(len=C_N_NAME_LEN), intent(in) :: bName
@@ -529,7 +529,7 @@ contains
   end subroutine ts_read_contour_block
 
   function ts_c_bisphysical(pline,ind)
-    use fdf_parse
+    use parse
     implicit none
 !------------------------------------------------- Input Variables
     type(parsed_line), pointer        :: pline
@@ -544,7 +544,7 @@ contains
     
   function ts_c_bphysical(pline,ind,defunit)
     use fdf
-    use fdf_parse, only : die
+    use parse, only : die
     
     implicit none
 !------------------------------------------------- Input Variables
@@ -574,7 +574,7 @@ contains
        val,V,kT, &
        before)
     use fdf
-    use fdf_parse, only : characters, ntokens
+    use parse, only : characters, ntokens
     use units, only : eV
     
     ! This routine will parse a pline from an index and collect the values from units

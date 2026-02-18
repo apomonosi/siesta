@@ -143,7 +143,7 @@
 
       write(name,"(a,a,a,f7.5,a)")
      $        trim(name1), trim(name2), "-", xmix, ".psf"
-      call pseudo_write_formatted(name,p,print_gen_zval=.true.)
+      call pseudo_write_formatted(name,p)
       write(name,"(a,a,a,f7.5,a)")
      $        trim(name1), trim(name2), "-", xmix, ".synth"
       open (unit=4,file=name, form="formatted", status="unknown",

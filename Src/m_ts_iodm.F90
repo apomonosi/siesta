@@ -8,8 +8,6 @@
 
 ! Fully created by Nick Papior Andersen to conform with the io_s
 ! library.
-#include "mpi_macros.f"
-
 module m_ts_iodm
   
   use precision, only: dp
@@ -21,6 +19,8 @@ module m_ts_iodm
 
   use m_os, only : file_exist
   use io_sparse_m, only: io_read, io_write
+
+  use m_spin, only : spin
 
   implicit none
   
@@ -55,7 +55,6 @@ contains
     integer :: iu, five(5), no_u, nspin, ierr
     integer, allocatable, target :: gncol(:)
 #ifdef MPI
-    MPI_COMM_TYPE :: comm
     integer :: MPIerror
 #endif
 
@@ -95,8 +94,8 @@ contains
     if ( lBcast ) then
       call MPI_Bcast(five,5,MPI_integer,0,MPI_Comm_World,MPIerror)
     else
-      comm = dist_comm(dit)
-      call MPI_Bcast(five,5,MPI_integer,0,comm,MPIerror)
+      ierr = dist_comm(dit)
+      call MPI_Bcast(five,5,MPI_integer,0,ierr,MPIerror)
     end if
 #endif
 
@@ -114,10 +113,10 @@ contains
 
     ! Read in the sparsity pattern (distributed)
     call io_read(iu, no_u, sp, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
-    call io_read(iu, sp, DM, nspin, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
+    call io_read(iu, sp, DM, spin%DM, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Read EDM
-    call io_read(iu, sp, EDM, nspin, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
+    call io_read(iu, sp, EDM, spin%EDM, trim(fn), gncol=gncol, dit=dit, Bcast=Bcast)
 
     ! Clean-up
     call delete(sp)
@@ -138,9 +137,9 @@ contains
       call MPI_BCast(Ef,1,MPI_Double_Precision, &
           0,MPI_Comm_World, MPIerror)
     else
-      comm = dist_comm(dit)
+      ierr = dist_comm(dit)
       call MPI_Bcast(Ef,1,MPI_Double_Precision, &
-          0,comm,MPIerror)
+          0,ierr,MPIerror)
     end if
 #endif
 

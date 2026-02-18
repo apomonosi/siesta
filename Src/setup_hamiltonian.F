@@ -12,7 +12,6 @@
 
       subroutine setup_hamiltonian( iscf )
 
-      use option_charges_m, only: OPT_CHARGE_SCF
       USE siesta_options
       use sparse_matrices, only: H_2D, S_1D, xij_2D
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
@@ -51,27 +50,12 @@
       use alloc, only: re_alloc, de_alloc
       use io_hsx_m, only: write_hsx
       use sys, only: die, bye
-      use partial_charges_m, only: want_partial_charges
+      use m_partial_charges, only: want_partial_charges
       use files, only : filesOut_t    ! derived type for output file names
       use m_rhog, only: rhog_in, rhog
       use m_dftu_so, only: dftu_so_hamil
 #ifdef MPI
       use m_mpi_utils, only: globalize_sum
-      use mpi_siesta
-#endif
-      use kpoint_scf_m, only: kpoint_scf
-
-#ifdef SIESTA__WANNIER90
-      use w90_wrapper_types,   only: compute_chempotwann_after_scf
-      use w90_wrapper_types,   only: first_chempotwann
-      use m_chempotwann,     only: compute_H_chempotwann
-      use m_chempotwann,     only: add_Hamiltonian_chempotwann
-      use sparse_matrices,   only: DM_2D
-      use sparse_matrices,   only: EDM_2D
-      use sparse_matrices,   only: H_chempotwann_2D
-      use sparse_matrices,   only: DM_history
-      use class_dSpData2D,   only: val
-      use m_new_dm,          only: new_dm
 #endif
 
       implicit none
@@ -80,7 +64,6 @@
       real(dp), pointer   :: fal(:,:)   ! Local-node part of atomic F
 #ifdef MPI
       real(dp)            :: buffer1
-      integer             :: MPIError
 #endif
       integer             :: io, is, ispin
       integer             :: ifa     ! Calc. forces?      0=>no, 1=>yes
@@ -97,11 +80,6 @@
 
       complex(dp):: Dc
       integer :: ind, i, j, jo
-
-#ifdef SIESTA__WANNIER90
-      integer             :: index_manifold
-      real(dp), pointer   :: H_chempotwann(:,:)
-#endif
 
 !------------------------------------------------------------------------- BEGIN
 
@@ -289,16 +267,16 @@
 !        
 !------- H(u,u)
          H(:,1) = H(:,1) + real(H_dftu_so(:,1), dp)
-         H(:,5) = H(:,5) + aimag(H_dftu_so(:,1))
+         H(:,5) = H(:,5) + dimag(H_dftu_so(:,1))
 !------- H(d,d)
          H(:,2) = H(:,2) + real(H_dftu_so(:,2), dp)
-         H(:,6) = H(:,6) + aimag(H_dftu_so(:,2))
+         H(:,6) = H(:,6) + dimag(H_dftu_so(:,2))
 !------- H(u,d)
          H(:,3) = H(:,3) + real(H_dftu_so(:,3), dp)
-         H(:,4) = H(:,4) - aimag(H_dftu_so(:,3))
+         H(:,4) = H(:,4) - dimag(H_dftu_so(:,3))
 !------- H(d,u)
          H(:,7) = H(:,7) + real(H_dftu_so(:,4), dp)
-         H(:,8) = H(:,8) + aimag(H_dftu_so(:,4))
+         H(:,8) = H(:,8) + dimag(H_dftu_so(:,4))
 
 #ifdef MPI
           ! Global reduction of E_dftu_so 
@@ -331,6 +309,7 @@
       endif
 ! ..................
 
+
 ! Add SCF contribution to energy and matrix elements ..................
       g2max = g2cut
 
@@ -339,14 +318,10 @@
       ifa  = 0
       istr = 0
       ihmat = 1
-
-      want_partial_charges = 0
-      if ( option_charges%hirshfeld%run(OPT_CHARGE_SCF) ) then
-         want_partial_charges = OPT_CHARGE_SCF
-      end if
-      if ( option_charges%voronoi%run(OPT_CHARGE_SCF) ) then
-         want_partial_charges = OPT_CHARGE_SCF
-      end if
+      if ((hirshpop .or. voropop)
+     $     .and. partial_charges_at_every_scf_step) then
+         want_partial_charges = .true.
+      endif
       use_rhog_in =  (mix_charge .and. iscf > 1)
   
       call dhscf( spin%Grid, no_s, iaorb, iphorb, no_l,
@@ -356,8 +331,6 @@
      .            maxnh, H, Enaatm, Enascf, Uatm, Uscf, DUscf, DUext,
      .            Exc, Dxc, dipol, stress, fal, stressl,
      .            use_rhog_in)
-
-      want_partial_charges = 0
 
       if ( spin%SO_offsite ) then
 
@@ -417,40 +390,12 @@
 
       endif
 
-! Energy term coming from the chemical potential added to the Wannier functions
-#ifdef SIESTA__WANNIER90
-      if( w90_wrapper_processing ) then
-        if( compute_chempotwann_after_scf ) then
-          H_chempotwann => val(H_chempotwann_2D)
-          if( first_chempotwann ) then
-!           In this subroutine an extra contribution to the 
-!           DFT hamiltonian is computed.
-!           This extra contribution rises or lowers the diagonal energy element
-!           of the Hamiltonian expressed in a Wannier function basis.
-!           The magnitude of this shifting is introduced in the
-!           Wannier.ChemicalPotential block
-            call compute_H_chempotwann( H_chempotwann )
-            first_chempotwann = .false.
-          endif  ! Endif first_chempotwann
-          call add_Hamiltonian_chempotwann( H_chempotwann )
-!! For debugging
-!#ifdef MPI
-!          call MPI_barrier(MPI_Comm_world,MPIError)
-!#endif
-!          call die()  
-!! End debugging
-        endif    ! Endif compute_chempotwann_after_scf
-      endif      ! Endif w90_wrapper_processing
-#endif
-
-! ..................
-
-
       ! This statement will apply to iscf = 1, for example, when
       ! we do not use rhog_in. Rhog here is always the charge used to
       ! build H, that is, rhog_in.
       if (mix_charge) rhog_in = rhog
 
+      want_partial_charges = .false.
       call de_alloc( fal, 'fal', 'setup_hamiltonian' ) 
 
       call timer('setup_H',2)
@@ -465,8 +410,7 @@
         if (savehs .or. write_coop) then
 !         We don't know the fermi-level of this one. So we will pass
 !         a huge number to signal this.
-          call write_hsx(H_2D, S_1D, huge(0._dp), qtot, temp,
-     &        kpoint_scf, extension="0.HSX")
+          call write_hsx(H_2D, S_1D, huge(0._dp), qtot, temp)
         end if
 
         call timer( 'all', 2 )  ! New call to close the tree

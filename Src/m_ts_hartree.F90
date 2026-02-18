@@ -13,6 +13,11 @@ module m_ts_hartree
 ! Module for fixing the Hartree potential so that the potential fluctuations
 ! does not go wild.
 ! This is necessary to get a stable SCF solution
+!
+! Created and copyrighted by: Nick Papior Andersen, 2014
+! The use of this program is allowed for not-for-profit research only.
+! Copy or disemination of all or part of this package is not
+! permitted without prior and explicit authorization by the author.
   
   use precision, only : dp
 

@@ -1,8 +1,0 @@
-SystemLabel     si-basis
-
-PAO.basis-size TZP
-
-%block ChemicalSpeciesLabel
- 1  14  Si Si.tm2.nrl.psml
-%endblock ChemicalSpeciesLabel
-

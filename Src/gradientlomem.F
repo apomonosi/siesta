@@ -77,7 +77,7 @@ C ************************************************************************
       use alloc,     only : re_alloc, de_alloc
       use globalise
 #ifdef MPI
-      use mpi_siesta, only: mpi_comm_world, mpi_sum, MPI_AllReduce
+      use mpi_siesta, only: mpi_comm_world, mpi_sum
       use mpi_siesta, only: mpi_double_precision
 #endif
 

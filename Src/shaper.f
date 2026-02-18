@@ -46,7 +46,7 @@ C **********************************************************************
       INTEGER           NA, ISA(NA), NV
       real(dp)          CELL(3,3), XA(3,NA), VECS(3,3)
       EXTERNAL          LIVEC
-      CHARACTER(len=*)  SHAPE
+      CHARACTER         SHAPE*(*)
 
 C     Internal variables and arrays
       integer :: IA, IN, IS, JA, JS, NNA

@@ -1,5 +1,5 @@
 ! 
-! Copyright (C) 1996-2025	The SIESTA group
+! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
@@ -24,24 +24,13 @@
 !
 ! Interfaces of public procedures:
 !
-!   NOTE: The optional external communicator information passed to siesta_launch
-!         is in INTEGER form (for interoperability in case of mixed mpi/mpi_f08 module use
-!         by the client and the library).
-!         The 'comm_int' argument is preferred, but the 'comm' argument is kept
-!         for backward compatibility.
-!
-!   subroutine siesta_launch( label, nnodes, comm_int, comm, launcher, localhost )
+!   subroutine siesta_launch( label, nnodes, mpi_comm, launcher, localhost )
 !     character(len=*),intent(in) :: label    : Name of siesta process
 !                                               (prefix of its .fdf file)
 !     integer,optional,intent(in) :: nnodes   : Number of MPI processes
 !                                               reserved for each siesta process
-!     integer,optional,intent(in) :: comm_int : MPI communicator defined by the
+!     integer,optional,intent(in) :: mpi_comm : MPI communicator defined by the
 !                                               calling program for siesta use
-!                                               (Integer for portability)
-!     integer,optional,intent(in) :: comm     : (Alternate keyword name for 'comm_int')
-!                                               MPI communicator defined by the
-!                                               calling program for siesta use
-!                                               (Integer for portability)
 !     character(len=*),optional,intent(in):: launcher (not used in this version)
 !     logical,optional,intent(in) :: localhost : will siesta run at localhost?
 !                                                (not used in this version)
@@ -82,22 +71,18 @@
 !
 ! Usage:
 ! - The typical expected profiles for calling siesta_launch are
-
 !   - call siesta_launch(myLabel) => a siesta process is launched for each
 !     label, with as many MPI processes as they use the same label. Each
 !     siesta process will read a different myLabel.fdf data file.
-
-!   - call siesta_launch(singleLabel,siestaNodes) => a number nSiestaRuns =
-!     (totalNodes/siestaNodes) of siesta runs are launched, each with 
+!   - call siesta_launch(singleLabel,siestaNodes) => a number nSiestaProc =
+!     (totalNodes/siestaNodes) of siesta processes are launched, each with 
 !     siestaNodes MPI processes. All will read the same file singleLabel.fdf
-!     The MPI processes of any given siesta run have consecutive ranks
+!     The MPI processes of any given siesta process have conscutive ranks
 !     so that siestaNode = int(MPInode/siestaNodes)
-
-!   - call siesta_launch(singleLabel,comm_int=siestaComm) => the same as
+!   - call siesta_launch(singleLabel,mpi_comm=siestaComm) => the same as 
 !     previous one, but with more control and flexibility in distributing 
-!     MPI processes among siesta processes (notice: 'comm_int=' is mandatory)
-
-! - Using nnodes/comm AND different labels is possible but care must be
+!     MPI processes among siesta processes (notice: 'mpi_comm=' is mandatory)
+! - Using nnodes/mpi_comm AND different labels is possible but care must be
 !   paid to their consistency, i.e. different labels cannot occur within the
 !   same siesta process.
 ! - A data file named label.fdf (e.g. H2O.fdf) must be present in the working
@@ -109,7 +94,7 @@
 !   instead the geometries from the master program
 ! - A pseudopotential data file for each atomic species must also be present
 ! - The call to siesta_launch can be omited in serial execution, and when
-!   neither nnodes nor comm are present. If the call is present, it must
+!   neither nnodes nor mpi_comm are present. If the call is present, it must
 !   be before the first call to siesta_forces.
 ! - siesta_units may be called either before or after siesta_launch
 ! - The stress is defined as dE/d(strain)/Volume, with a positive sign
@@ -147,8 +132,7 @@
 !   ! Or equivalently (but not simultaneously)
 !     myNudge = myNode / nNudges
 !     call MPI_Comm_Split( MPI_Comm_World, myNudge, 0, MPI_Comm_Siesta, error )
-!     call siesta_launch( label, comm_int=MPI_Comm_Siesta )
-!       !! mpi_f08 form:  call siesta_launch( label, comm_int=MPI_Comm_Siesta%mpi_val )
+!     call siesta_launch( label, mpi_comm=MPI_Comm_Siesta )
 !   call siesta_units( 'bohr', 'Ryd' )
 !   do iStep = relaxSteps
 !     ... find my nudge's new geometry
@@ -156,17 +140,17 @@
 !   end do
 !
 ! Behaviour:
-! - Different siesta runs are distiguished because they either:
+! - Different siesta processes are distiguished because they either:
 !   - have different labels in siesta_launch
-!   - belong to different MPI groups, as set by nnodes or comm
-! - If comm is present, nnodes is ignored
-! - If neither nnodes nor comm are present, the MPI processes are
-!   assigned to the siesta runs according to the input labels
+!   - belong to different MPI groups, as set by nnodes or mpi_comm
+! - If mpi_comm is present, nnodes is ignored
+! - If neither nnodes nor mpi_comm are present, the MPI processes are
+!   assigned to the siesta processes according to the input labels
 ! - If siesta_units is not called, length='Ang', energy='eV' are
 !   used by default. If it is called more than once, the units in the
 !   last call become in effect.
 ! - The physical units set by siesta_units are used for all the siesta
-!   runs launched
+!   processes launched
 ! - If siesta_forces is called without a previous call to siesta_launch
 !   for that label, an internal call siesta_launch(label) is generated
 ! - If argument cell is not present in the call to siesta_forces, or if
@@ -175,8 +159,8 @@
 !   different images do not overlap. In this case the stress returned
 !   has no physical meaning.
 ! - The following events result in a stopping error message:
-!   - comm_int (or comm) is not a valid MPI communicator value
-!   - two MPI processes in the same siesta run have a different label
+!   - mpi_comm is not a valid MPI communicator
+!   - two MPI processes in the same siesta process have a different label
 !   - two different labels are used in any calls within the same MPI process
 !   - siesta_launch is called twice
 !   - siesta_quit is called before a call to siesta_launch or siesta_forces
@@ -187,14 +171,12 @@
 !
 ! Written by J.M.Soler. Oct.2010
 !-----------------------------------------------------------------------------
-#include "mpi_macros.f"
 
 MODULE fsiesta
 
 ! Used module parameters and procedures
   use precision,        only: dp              ! Double precision real kind
   use sys,              only: die             ! Termination routine
-  use sys,              only: message         ! For warning messages
   use m_siesta_init,    only: siesta_init     ! Siesta initialization
   use m_siesta_analysis,only: siesta_analysis ! Post processing calculations
   use m_siesta_move,    only: siesta_move     ! Move atoms
@@ -215,12 +197,10 @@ MODULE fsiesta
                                                               ! MPI_COMM_WORLD
   use mpi_siesta, only: MPI_Comm_Siesta => MPI_Comm_World ! What siesta uses
                                                           ! as MPI_Comm_World
-  use mpi_siesta, only: MPI_Comm_DFT          ! Siesta-instance (dft-calc)
   use mpi_siesta, only: MPI_Integer           ! Integer data type
   use mpi_siesta, only: MPI_Character         ! Character data type
   use mpi_siesta, only: MPI_Double_Precision  ! Real double precision type
   use mpi_siesta, only: MPI_Max               ! Maximum-option switch
-  USE_MPI_ONLY_COMM                           ! Declaration for comm type
 #endif
 
   implicit none
@@ -249,8 +229,7 @@ PRIVATE ! Nothing is declared public beyond this point
   character(len=maxLenLabel):: myLabel = ' '
   character(len=*),parameter:: mainOutFileDef = 'MAIN_OUTPUT'
   character(len=maxLenFile) :: mainOutFile = mainOutFileDef
-  character(len=maxLenLabel) :: dir_label    ! subdirectory name
-  
+
 interface siesta_get
   module procedure siesta_get_rank0, siesta_get_rank1, siesta_get_rank2
 end interface 
@@ -259,20 +238,14 @@ CONTAINS
 
 !---------------------------------------------------
 
-subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, localhost )
+subroutine siesta_launch( label, nNodes, mpi_comm, launcher, localhost )
 #ifdef MPI
   use posix_calls, only: system
-  use mpi_siesta, only: MPI_Initialized, MPI_Init, MPI_Comm_Size
-  use mpi_siesta, only: MPI_Comm_Rank, MPI_AllReduce, mpi_comm_dup
-  use mpi_siesta, only: MPI_Comm_Split, MPI_AllGather, MPI_Bcast
 #endif
   implicit none
   character(len=*),  intent(in) :: label    ! Name of the siesta process
   integer, optional, intent(in) :: nNodes   ! Number of MPI processes to be used
-  integer, optional, intent(in) :: comm     ! MPI communicator to be used
-  integer, optional, intent(in) :: comm_int ! MPI communicator to be used (to be preferred)
-                                            ! (Integer for portability)
-  integer, optional, intent(in) :: comm_id  ! MPI communicator ID for unique directory creation
+  integer, optional, intent(in) :: mpi_comm ! MPI communicator to be used
   character(len=*),optional,intent(in):: launcher  ! Not used in this version
   logical,         optional,intent(in):: localhost ! Not used in this version
 
@@ -282,7 +255,6 @@ subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, loca
             myColor, myLenLabel, myNode, mySiestaNode, &
             nColors, siestaNodes, totNodes
   integer,  allocatable:: color(:)
-  MPI_COMM_TYPE :: mpi_comm       ! Communicator used internally
   character(len=maxLenLabel):: rootLabel
   character(len=maxLenLabel),allocatable:: colorLabel(:), nodeLabel(:)
 #endif
@@ -302,12 +274,8 @@ subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, loca
   siesta_subroutine = .true.
   input_file = trim(label)//'.fdf'
 
-! Store label (if it fits)
-  if (len(trim(label)) > MaxLenLabel) then
-     call die('(API) siesta_launch: ERROR: parameter maxLenLabel too small')
-  else
-     myLabel = label
-  endif
+! Store label
+  myLabel = label
 
 #ifdef MPI
 
@@ -316,65 +284,36 @@ subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, loca
   call MPI_Initialized( initialized, error )
   if (.not.initialized) call MPI_Init( error )
 
-! Name of the working directory. Defaults to label.
-  dir_label = label
+! Get total number of MPI processes (nodes) and my index among them
+  call MPI_Comm_Size( MPI_Comm_World, totNodes, error )
+  call MPI_Comm_Rank( MPI_Comm_World, myNode, error )
+
+! Find maximum label length
+  myLenLabel = len(trim(label))
+  call MPI_AllReduce( myLenLabel, lenLabel, 1, MPI_Integer, &
+                      MPI_Max, MPI_Comm_World, error )
+  if (lenLabel>maxLenLabel) &
+    call die('siesta_launch: ERROR: parameter maxLenLabel too small')
 
 ! Start parallel siesta process
-  if (present(comm_int) .or. present(comm)) then ! Use input MPI communicator
+  if (present(mpi_comm)) then                   ! Use input MPI communicator
 
-    ! Both argument names are valid, for backwards compatibility
-    ! (and both are integers, for MPI portability (use mpi/use mpi_f08)
-
-    ! Assign the input communicator information to the internal communicator
-    ! The macro MPI_COMM_ID is empty when in 'use mpi' mode, and translates
-    ! to, e.g. mpi_comm%mpi_val = comm_int when in 'use mpi_f08' mode
-
-    if (present(comm_int)) then
-       MPI_COMM_ID(mpi_comm) = comm_int
-    else
-       MPI_COMM_ID(mpi_comm) = comm
-    endif
-
-     ! Check that comm is a valid MPI communicator
+    ! Check that mpi_comm is a valid MPI communicator
     call MPI_Comm_Size( mpi_comm, siestaNodes, error )
     if (error/=0) &
-      call die('(API) siesta_launch: ERROR: comm not a valid MPI communicator')
+      call die('siesta_launch: ERROR: mpi_comm not a valid MPI communicator')
 
     ! Assign communicator to siesta
-    call mpi_comm_dup( mpi_comm, MPI_Comm_Siesta, error ) !MPI_Comm_Siesta = comm
+    MPI_Comm_Siesta = mpi_comm
 
-    ! In some cases different Siesta runs share the same label,
-    ! but they must run in different sub-directories to avoid race conditions
-    ! This comm_id disambiguator (typically the 'color' in a MPI comm split
-    ! operation), can only be specified when the communicator is explicitly given.
+  elseif (present(nNodes) .and. nNodes>0) then  ! Create new MPI communicator
 
-    if (present(comm_id)) then
-       write(dir_label,"(a,a,i0)") trim(label), "_", comm_id
-    endif
+    call MPI_Comm_Rank( MPI_Comm_World, myNode, error )
+    myColor = myNode/nNodes
+    call MPI_Comm_Split( MPI_Comm_World, myColor, 0, MPI_Comm_Siesta, error )
 
- elseif (present(nNodes)) then
-
-    if (nNodes>0) then  ! Create new MPI communicator
-
-       call MPI_Comm_Rank( MPI_Comm_World, myNode, error )
-       myColor = myNode/nNodes
-       call MPI_Comm_Split( MPI_Comm_World, myColor, 0, MPI_Comm_Siesta, error )
-       ! This is a minor backward incompatibility, but this (rather obscure)
-       ! use case probably requires separate working directories in the general case.
-       write(dir_label,"(a,a,i0)") trim(label), "_", myColor
-    else
-       call die("(API) nNodes <= 0 in siesta_launch")
-    endif
-    
   else   ! Create new MPI communicator according to label(s)
 
-    ! Get total number of MPI processes (nodes) and my index among them
-    call MPI_Comm_Size( MPI_Comm_World, totNodes, error )
-    call MPI_Comm_Rank( MPI_Comm_World, myNode, error )
-
-    if (myNode == 0) then
-       write(*,*) "Defining communicators on the basis of labels"
-    endif
     ! Collect all labels
     allocate( nodeLabel(totNodes) )
     call MPI_AllGather( myLabel,   maxLenLabel, MPI_Character, &
@@ -405,14 +344,14 @@ subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, loca
     call MPI_Comm_Split( MPI_Comm_World, myColor, 0, MPI_Comm_Siesta, error )
     deallocate( color, colorLabel, nodeLabel )
 
-  end if ! (present(comm))
+  end if ! (present(mpi_comm))
 
 ! Check that my siesta process has a unique label
   rootLabel = myLabel
   call MPI_Bcast( rootLabel, maxLenLabel, MPI_Character, &
                   0, MPI_Comm_Siesta, error )
   if (myLabel/=rootLabel) &
-    call die('(API) siesta_launch: ERROR: label mismatch in siesta process')
+    call die('siesta_launch: ERROR: label mismatch in siesta process')
 
 ! Store name of output file of the calling program
   inquire( unit=6, name=mainOutFile )
@@ -422,21 +361,16 @@ subroutine siesta_launch( label, nNodes, comm, comm_int, comm_id, launcher, loca
 !  if (myNode==0) print*,'siesta_launch: mainOutFile= ',trim(mainOutFile)
 ! END DEBUG
 
+! Create a directory for each siesta process, e.g.
+!   mkdir -p H2O_proc07
+!   cp -n H2O_proc07.* *.fdf *.psf *.vps *.ion H2O_proc07 2> /dev/null
   call MPI_Comm_Rank( MPI_Comm_Siesta, mySiestaNode, error )
   if (mySiestaNode==0) then
-
-     ! We use a mpi communicator id (some integer which is different for
-     ! different communicators, such as the 'color' for splitting
-     ! to create different subdirectories  (dir_label set according to use mode)
-
-    call system('mkdir -p '//trim(dir_label))
-!!    call system('cp -n ' // trim(label) // '.* ' // trim(dir_label))
+    call system('mkdir -p '//trim(label))
+    call system('cp -n ' // trim(label) // '.* ' // trim(label))
     call system('cp -n *.fdf *.vps *.psf *.ion ' &
-                // trim(dir_label) // ' 2> /dev/null')
+                // trim(label) // ' 2> /dev/null')
   endif
-
-  ! Set the whole-siesta-instance (dft calc) communicator
-  MPI_Comm_DFT = MPI_Comm_Siesta
 
 #endif
 
@@ -466,7 +400,6 @@ end subroutine siesta_units
 subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
 #ifdef MPI
   use posix_calls, only: chdir
-  use mpi_siesta,  only: MPI_Comm_Rank, MPI_Bcast
 #endif
   implicit none
   character(len=*),   intent(in) :: label
@@ -485,12 +418,11 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
   real(dp):: c(3,3), x(3,na)
 #endif
 
-  if (.not.siesta_launched) then
-    call die('(API) siesta_forces: ERROR: siesta_launch has not been called')
-  endif
+! Launch siesta, if not yet done
+  if (.not.siesta_launched) call siesta_launch( label )
 
 ! Check label
-  if (label/=myLabel) call die('(API) siesta_forces: ERROR: label mismatch')
+  if (label/=myLabel) call die('siesta_forces: ERROR: label mismatch')
 
 ! Set unit cell vectors
   if (present(cell)) then
@@ -506,15 +438,15 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
   x = xa
   c = myCell
   call MPI_Bcast( n, 1, MPI_Integer, 0, MPI_Comm_Siesta, error )
-  call MPI_Bcast( x(1,1), 3*na, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
-  call MPI_Bcast( c(1,1), 3*3, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
+  call MPI_Bcast( x, 3*na, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
+  call MPI_Bcast( c, 3*3, MPI_Double_Precision, 0, MPI_Comm_Siesta, error )
   if (n/=na .or. any(x/=xa) .or. any(c/=myCell)) &
-    call die('(API) siesta_forces: ERROR: input mismatch among MPI processes')
+    call die('siesta_forces: ERROR: input mismatch among MPI processes')
 #endif
 
 #ifdef MPI
 ! Change directory and set output file
-  call chdir(trim(dir_label))
+  call chdir(trim(label))
   call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
@@ -532,7 +464,7 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
 
 ! Move atoms (positions will be read from master repository)
   if (step==0) then
-    call siesta_init( skip_cmdargs=.true. )
+    call siesta_init()
   else
     call siesta_move( step, relaxed )
   end if
@@ -621,15 +553,15 @@ recursive subroutine siesta_get_value( label, property, vsize, value, units )
 
 #ifdef MPI
 ! Change directory and set output file
-  call chdir(trim(dir_label))
+  call chdir(trim(label))
   call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
 ! Check that siesta has been launched
-  if (.not.siesta_launched) call die('(API) siesta_get: ERROR: siesta not launched')
+  if (.not.siesta_launched) call die('siesta_get: ERROR: siesta not launched')
 
 ! Check label
-  if (label/=myLabel) call die('(API) siesta_get: ERROR: label mismatch')
+  if (label/=myLabel) call die('siesta_get: ERROR: label mismatch')
 
 ! Get property from master repository
   call getPropertyForMaster( property, vsize, value, units, error )
@@ -637,7 +569,7 @@ recursive subroutine siesta_get_value( label, property, vsize, value, units )
 ! Check that this property is returned with the right size
   if (error=='unknown_property') then
     if (analysed) then
-      write(message,*) '(API) siesta_get: ERROR: not prepared for property = ', &
+      write(message,*) 'siesta_get: ERROR: not prepared for property = ', &
                         trim(property)
       call die( trim(message) )
     else ! (.not.analysed) => try again after performing post-processing
@@ -646,7 +578,7 @@ recursive subroutine siesta_get_value( label, property, vsize, value, units )
       call siesta_get_value( label, property, vsize, value, units )
     end if ! (analysed)
   elseif (error=='wrong_size') then
-    write(message,*) '(API) siesta_get: ERROR: wrong array size for property = ', &
+    write(message,*) 'siesta_get: ERROR: wrong array size for property = ', &
                       trim(property)
     call die( trim(message) )
   end if ! (error=='unknown_property')
@@ -670,14 +602,14 @@ subroutine siesta_quit( label )
 
 #ifdef MPI
 ! Change directory and set output file
-  call chdir(trim(dir_label))
+  call chdir(trim(label))
   call reopen_unit_append(6, trim(label)//'.out')
 #endif
 
   if (.not.siesta_launched) then
-    call die('(API) siesta_quit: ERROR: no siesta process launched')
+    call die('siesta_quit: ERROR: no siesta process launched')
   elseif (label /= myLabel) then
-    call die('(API) siesta_quit: ERROR: label mismatch')
+    call die('siesta_quit: ERROR: label mismatch')
   endif
 
 ! Finish siesta process

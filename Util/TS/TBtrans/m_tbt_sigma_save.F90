@@ -13,11 +13,9 @@
 ! Please attribute the original author in case of dublication
 
 ! Creation of the hssigma files.
-#include "mpi_macros.f"
-
 module m_tbt_sigma_save
 
-  use precision, only : dp
+  use units, only : dp
 
   use m_tbt_hs, only : tTSHS
   use m_tbt_save, only : tNodeE
@@ -141,7 +139,7 @@ contains
 #ifdef NCDF_PARALLEL
     if ( sigma_parallel ) then
       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
-          comm = MPI_COMM_ID(MPI_COMM_WORLD) )
+          comm = MPI_COMM_WORLD )
 
       ! Assign all writes to be collective
       ! Collective is faster since we don't need syncronization
@@ -206,7 +204,7 @@ contains
     type(tRgn) :: r_tmp
 
     logical :: prec_Sigma
-    logical :: exist, same_dims
+    logical :: exist, same
     character(len=256) :: c_tmp
     type(byte_count_t) :: mem
     integer :: i, iEl, no_e
@@ -238,10 +236,10 @@ contains
       call ncdf_assert(ncdf,exist,dims=dic)
       call delete(dic)
 #ifdef MPI
-      call MPI_Bcast(same_dims,1,MPI_Logical,0, &
+      call MPI_Bcast(same,1,MPI_Logical,0, &
           MPI_Comm_World,MPIerror)
 #endif
-      if ( .not. same_dims ) then
+      if ( .not. same ) then
         call die('Dimensions in the TBT.SE.nc file does not conform &
             &to the current simulation.')
       end if
@@ -269,13 +267,13 @@ contains
       if ( a_Buf%n > 0 )then
         dic = dic // ('a_buf'.kvp.a_Buf%r )
       end if
-      call ncdf_assert(ncdf,same_dims,vars=dic, d_EPS = 1.e-4_dp )
+      call ncdf_assert(ncdf,same,vars=dic, d_EPS = 1.e-4_dp )
       call delete(dic,dealloc=.false.) ! we have them pointing...
 #ifdef MPI
-      call MPI_Bcast(same_dims,1,MPI_Logical,0, &
+      call MPI_Bcast(same,1,MPI_Logical,0, &
           MPI_Comm_World,MPIerror)
 #endif
-      if ( .not. same_dims ) then
+      if ( .not. same ) then
         call die('pivot, lasto, xa or a_buf in the TBT.nc file does &
             &not conform to the current simulation.')
       end if
@@ -287,8 +285,8 @@ contains
         call kpoint_convert(TSHS%cell,kpt(1,i),r2(1,i),1)
       end do
       dic = ('kpt'.kvp. r2) // ('wkpt'.kvp. wkpt)
-      call ncdf_assert(ncdf,same_dims,vars=dic, d_EPS = 1.e-7_dp )
-      if ( .not. same_dims ) then
+      call ncdf_assert(ncdf,same,vars=dic, d_EPS = 1.e-7_dp )
+      if ( .not. same ) then
         call die('k-points or k-weights are not the same')
       end if
       call delete(dic,dealloc = .false. )
@@ -314,7 +312,7 @@ contains
 #ifdef NCDF_PARALLEL
     if ( sigma_parallel ) then
       call ncdf_create(ncdf,fname, mode=ior(NF90_NETCDF4,NF90_MPIIO), overwrite=.true., &
-          comm = MPI_COMM_ID(MPI_COMM_WORLD), &
+          comm = MPI_COMM_WORLD, &
           parallel = .true. )
     else
       call ncdf_create(ncdf,fname, mode=NF90_NETCDF4, overwrite=.true.)
@@ -384,9 +382,8 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
-    USE_MPI_ONLY_STATUS
 #endif
     use ts_electrode_m
 
@@ -404,8 +401,7 @@ contains
     type(c_ptr) :: sigma_ptr
     complex(dp), pointer :: Sigma2D(:,:)
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     if ( .not. sigma_save ) return

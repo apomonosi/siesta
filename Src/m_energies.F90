@@ -12,7 +12,7 @@ module m_energies
   private :: dp
   public
   save
-
+  
   real(dp):: DEharr     ! Tr[H * (DM_out - DM_in)], for Harris energy
   real(dp):: DEna       ! Neutral-atom energy term, calculated  in dnaefs
   real(dp):: DUext      ! Interaction energy with external  electric field,
@@ -46,15 +46,11 @@ module m_energies
   real(dp):: Uscf       ! SCF hartree electron energy,  calculated in dhscf
   real(dp):: Ebs        ! Band-structure energy, Tr(DM*H), calculated in compute_dm
   real(dp):: Eso        ! Spin-orbit energy
-  real(dp):: Evdw_d3    ! Grimme's D3 energy corrections.
   real(dp):: E_dftu_so  ! Spin-orbit energy when DFT+U is considered
-  real(dp):: E_correc_dc! Correction energy required for the
-  real(dp):: Edftu
+  real(dp):: E_correc_dc! Correction energy required for the 
+  real(dp):: Edftu      
   real(dp):: DEdftu
                         !    LDA+U+SO calculations
-
-  !< Free energy correction when a bulk current is running (applied bias far from bulk part)
-  real(dp) :: E_bulk_bias
 
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
   real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
@@ -64,11 +60,12 @@ module m_energies
   real(dp) :: NEGF_Ebs
   real(dp) :: NEGF_Ekin
   real(dp) :: NEGF_Enl
+  real(dp) :: NEGF_Eso
   real(dp) :: NEGF_DEharr
   real(dp) :: NEGF_Eharrs
   real(dp) :: NEGF_Etot
   real(dp) :: NEGF_FreeE
-  
+
 contains
 
   !> Initialize ALL energies to 0.
@@ -105,10 +102,9 @@ contains
     Uscf = 0._dp
     Ebs = 0._dp
     Eso = 0._dp
-    Evdw_d3 = 0._dp
     E_dftu_so = 0._dp
     E_correc_dc = 0._dp
-    Edftu = 0._dp
+    Edftu = 0._dp      
     DEdftu = 0._dp
 
     ! NEGF part
@@ -119,11 +115,9 @@ contains
     NEGF_Enl = 0._dp
     NEGF_DEharr = 0._dp
     NEGF_Eharrs = 0._dp
+    NEGF_Eso = 0._dp
     NEGF_Etot = 0._dp
     NEGF_FreeE = 0._dp
-
-    ! Bulk_bias
-    E_bulk_bias = 0._dp
 
   end subroutine init_Energies
 
@@ -134,7 +128,7 @@ contains
   subroutine update_DEna()
 
     DEna = Enascf - Enaatm
-
+    
   end subroutine update_DEna
 
   subroutine update_E0()
@@ -142,21 +136,21 @@ contains
     E0 = Ena + Ekin + Enl + Eso - Eions
 
   end subroutine update_E0
-
+  
   subroutine update_Etot()
     use m_ts_global_vars, only: TSrun
-
+    
     ! DUext (external electric field) -- should it be in or out?
     Etot = Ena + Ekin + Enl + Eso + E_dftu_so + E_correc_dc - Eions + &
         DEna + DUscf + DUext + Exc + &
-        Ecorrec + Emad + Emm + Emeta + Edftu + Evdw_d3
+        Ecorrec + Emad + Emm + Emeta + Edftu
 
     if ( TSrun ) then
-      NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
+      NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl + NEGF_Eso - Eions + &
           DEna + DUscf + DUext + Exc + Ecorrec + Emad + Emm + Emeta + &
-          Edftu + Evdw_d3
+          Edftu + NEGF_DE
     end if
-
+    
   end subroutine update_Etot
 
   !> @param kBT the temperature in energy
@@ -164,11 +158,9 @@ contains
     use m_ts_global_vars, only: TSrun
     real(dp), intent(in) :: kBT
 
-    FreeE = Etot - kBT * Entropy + E_bulk_bias
+    FreeE = Etot - kBT * Entropy
 
     if ( TSrun ) then
-      ! A TS-run will not incorporate the bulk-bias energy.
-      ! So it should be left out.
       NEGF_FreeE = NEGF_Etot - kBT * Entropy
     end if
 
@@ -178,7 +170,7 @@ contains
   subroutine update_FreeEHarris( kBT )
     real(dp), intent(in) :: kBT
 
-    FreeEHarris = Eharrs - kBT * Entropy + E_bulk_bias
+    FreeEHarris = Eharrs - kBT * Entropy
 
   end subroutine update_FreeEHarris
 

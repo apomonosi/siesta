@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -16,7 +16,7 @@ C
       use fdf
       use siesta_options, only: want_domain_decomposition
       use siesta_options, only: want_spatial_decomposition
-      use siesta_options, only: isolve, SOLVE_ORDERN
+      use siesta_options, only: isolve, SOLVE_ORDERN, SOLVE_PEXSI
       use siesta_options, only: rcoor
       use parallel,     only : Node, Nodes, BlockSize, ProcessorY
       use parallelsubs, only : WhichNodeOrb, GetNodeOrbs
@@ -125,7 +125,7 @@ C Find cell parameters
       degtorad = 4.0d0*atan(1.0d0)/180.0d0
       call uncell(ucell,acell,bcell,ccell,alpha,bbeta,gamma,degtorad)
 
-C Set ProcessorY
+C Set ProcessorY  
 #ifdef MPI
       ! The divisions are along Y and Z.
 
@@ -138,36 +138,19 @@ C Set ProcessorY
      $        xovery=ccell/bcell)
       endif
 
-      procYval = fdf_integer( 'processorY', procYdefault )
+      procYval = fdf_integer('processorY',procYdefault)
       ! Sanity check
-      if ( procYval > Nodes ) then
-        if ( Node == 0 ) then
-          write(6,'(a)')
-     &       '* Warning: ProcessorY > Nodes in fdf file. '//
-     &       'Reset to estimated optimal value.'
-        endif
-        call set_processorY( procYdefault )
-
-      elseif ( procYval < 1 ) then
-        if ( Node == 0 ) then
-          write(6,'(a)')
-     &       '* Warning: ProcessorY can only be a positive integer. '//
-     &       'Reset to estimated optimal value.'
-        endif
-        call set_processorY( procYdefault )
-
-      elseif ( mod(Nodes,procYval) /= 0 ) then
-        if ( Node == 0 ) then
-          write(6,'(a)')
-     &       '* Warning: ProcessorY is not a factor of Nodes, '//
-     &       'reset to estimated optimal value.'
-        endif
-        call set_processorY( procYdefault )
-
+      if (procYval > Nodes) then
+         if (Node.eq.0) then
+            write(6,'(a)')
+     .       '* Warning: ProcessorY > Nodes in fdf file. '//
+     $       'Reset to estimated optimal value.'
+         endif
+         call set_processorY(procYdefault)
       else
-        call set_processorY( procYval )
+         call set_processorY(procYval)
       endif
-
+         
 #else
       call set_processorY(1)
 #endif
@@ -178,7 +161,7 @@ C Override spatial cut-off
       else
         rcmax = max(rmaxh,rcoor)
 
-C Check that this will lead to a reasonable number of domains relative to
+C Check that this will lead to a reasonable number of domains relative to 
 C number of processors and if not then modify
         ncell(1) = abs(ucell(1,1)/rcmax) + 1
         ncell(2) = abs(ucell(2,2)/rcmax) + 1
@@ -210,11 +193,11 @@ C Check that cut-off is less than cell parameter
         ! strategy, of course. But anyway.
         !  They should be small enough that there is
         ! a reasonable division of cells per node.
-        !  However, they should not be so small that
+        !  However, they should not be so small that 
         ! we have so many cells that our accounting
         ! arrarys become stupidly long. Therefore
         ! I will arbitrarily decide (for the moment)
-        ! that we should have
+        ! that we should have 
         if (Nodes<16) then
           rcmax = 0.5_dp*cellmin/dble(Nodes)
         else
@@ -309,15 +292,15 @@ C
             call io_assign(iu)
             open(unit=iu,file="BLOCK_INDEXES",form="formatted")
             write(iu,*) "nl2g"
-            do Lorb = 1, no_u
+            do Lorb = 1, no_u   
                write(iu, "(i6,8i9)") Lorb, (nL2G(Lorb,j),j=1,Nodes)
             enddo
             write(iu,*) "nNode"
-            do Gorb = 1, no_u
+            do Gorb = 1, no_u   
                write(iu, "(i6,i5)") Gorb, nNode(Gorb)
             enddo
             write(iu,*) "nG2L (node 0)"
-            do Gorb = 1, no_u
+            do Gorb = 1, no_u   
                write(iu, "(i6,i5)") Gorb, nG2L(Gorb)
             enddo
             write(iu,*) "nOrbPerNode"

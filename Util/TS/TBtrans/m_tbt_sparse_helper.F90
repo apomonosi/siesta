@@ -41,6 +41,7 @@ module m_tbt_sparse_helper
 
   interface create_region_HS
      module procedure create_HS_kpt
+     module procedure create_HS_kpt_spinor
   end interface 
   public :: create_region_HS
 
@@ -258,6 +259,257 @@ contains
     ! on order of summation.
 
   end subroutine create_HS_kpt
+
+   ! Helper routine to create and distribute the sparse 
+   ! k-point Hamiltonian.
+  subroutine create_HS_kpt_spinor(dit,sp, &
+       Ef, cell, n_k, r_k, na_u, lasto, &
+       N_Elec, Elecs, no_u, n_s, &
+       n_nzs, H, S, sc_off, SpArrH, SpArrS, &
+       nwork, work)
+
+    use parallel, only : Node
+    use class_OrbitalDistribution
+    use class_Sparsity
+    use class_zSpData1D
+    use class_zSpData3D
+
+    use m_spin, only : spin
+    use m_region
+
+    use intrinsic_missing, only : SFIND
+    use geom_helper,       only : UCORB
+
+    use ts_electrode_m
+
+    use m_tbt_kregions, only : kRegion, kregion_k
+
+! *********************
+! * INPUT variables   *
+! *********************
+    ! the distribution that the H and S live under
+    type(OrbitalDistribution), intent(inout) :: dit
+    ! The (local) sparsity pattern that H, S lives by
+    type(Sparsity), intent(inout) :: sp
+    ! Fermi-level
+    real(dp), intent(in) :: Ef, cell(3,3)
+    ! Number of different k-regions
+    integer, intent(in) :: n_k
+    ! Different k-regions (0 is Gamma)
+    type(kRegion), intent(in) :: r_k(0:)
+    ! Number of atoms, and the last orbital per atom
+    integer, intent(in) :: na_u, lasto(0:)
+    ! The electrodes
+    integer, intent(in) :: N_Elec
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
+    integer, intent(in) :: no_u, n_s
+    ! The number of elements in the sparse arrays
+    integer, intent(in) :: n_nzs
+    ! The hamiltonian and overlap sparse matrices 
+    real(dp), intent(in) :: H(:,:),S(:)
+    ! The supercell offsets
+    real(dp), intent(in) :: sc_off(:,0:)
+    ! The arrays we will save in...
+    type(zSpData3D), intent(inout) :: SpArrH
+    type(zSpData1D), intent(inout) :: SpArrS
+    ! we pass a work array
+    integer, intent(in) :: nwork
+    ! work-array
+    complex(dp), intent(inout) :: work(:)
+
+! *********************
+! * LOCAL variables   *
+! *********************
+    ! Create loop-variables for doing stuff
+    integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
+    integer, pointer :: k_ncol(:), k_ptr(:), k_col(:), kp_col(:)
+    real(dp) :: bk(3), k(3), rcell(3,3)
+    complex(dp), pointer :: zH(:,:,:), zS(:)
+    complex(dp) :: ph(0:n_s-1)
+    real(dp) :: H1D(spin%H)
+    type(tRgn) :: ro
+    type(Sparsity), pointer :: sp_k
+    integer :: no_l, lio, io, ind, jo, ind_k, kp, i, il
+    integer :: io_T, jo_T
+    real(dp) :: E_Ef(0:N_Elec)
+    logical :: Bulk(0:N_Elec)
+     
+    ! obtain the local number of rows and the global...
+    no_l = nrows(sp)
+    if ( no_u /= nrows_g(sp) ) then
+       call die('Creating the k-&point matrix in &
+            &tbtrans went wrong. Please TODO...')
+    end if
+
+    ! Create all the local sparsity super-cell
+    call attach(sp, n_col=l_ncol,list_ptr=l_ptr,list_col=l_col)
+
+    ! obtain the full sparsity unit-cell
+    sp_k => spar(SpArrH)
+    call attach(sp_k, n_col=k_ncol,list_ptr=k_ptr,list_col=k_col)
+
+    call reclat(cell,rcell,1)
+
+    ! create the overlap electrode fermi-level
+    ! Note that for bulk V_frac_CT will be set to 0.
+    E_Ef(0) = Ef
+    Bulk(0) = .false. ! value doesn't matter, this is to look it up
+    do i = 1, N_elec
+      E_Ef(i) = Ef - Elecs(i)%V_frac_CT * Elecs(i)%mu%mu
+      Bulk(i) = Elecs(i)%bulk
+    end do
+
+    ! obtain the value arrays...
+    zH => val(SpArrH)
+    zS => val(SpArrS)
+
+    zH(:,:,:) = cmplx(0._dp,0._dp,dp)
+    zS(:) = cmplx(0._dp,0._dp,dp)
+
+!$OMP parallel default(shared), &
+!$OMP&private(il,i,io,io_T,lio,kp,kp_col,ind,jo,jo_T,ind_k,bk,k)
+
+! No data race condition as each processor takes a separate row
+    do il = 0 , n_k
+
+       ! Update k-point
+       if ( il == 0 ) then
+          ! Gamma-region
+          bk(:) = 0._dp
+          k(:)  = 0._dp
+       else
+          call kregion_k(il,bk)
+          call kpoint_convert(rcell,bk,k,-2)
+       end if
+
+!$OMP sections
+!$OMP section
+       do i = 0 , n_s - 1
+          ph(i) = exp(cmplx(0._dp, -dot_product(k, sc_off(:,i)), dp))
+       end do
+
+!$OMP section
+       ! Convert to orbital space
+       call rgn_Atom2Orb(r_k(il)%atm,na_u,lasto,ro)
+!$OMP end sections
+
+!$OMP do
+    do i = 1 , ro%n
+       io = ro%r(i)
+       ! obtain the global index of the orbital.
+       io_T = orb_type(io)
+       if ( io_T /= TYP_BUFFER ) then
+
+       lio = index_global_to_local(dit,io,Node)
+       if ( lio > 0 ) then
+
+       ! if there is no contribution in this row
+       if ( k_ncol(io) /= 0 ) then
+
+       kp = k_ptr(io)
+       kp_col => k_col(kp+1:kp+k_ncol(io))
+
+       ! Loop number of entries in the row... (index frame)
+       do ind = l_ptr(lio) + 1 , l_ptr(lio) + l_ncol(lio)
+          ! as the local sparsity pattern is a super-cell pattern,
+          ! we need to check the unit-cell orbital
+          ! The unit-cell column index
+          jo = UCORB(l_col(ind),no_u)
+
+          ! If we are in the buffer region, cycle (lup_DM(ind) =.false. already)
+          jo_T = orb_type(jo)
+          if ( jo_T == TYP_BUFFER ) cycle
+
+          if ( io_T > 0 .and. jo_T > 0 .and. io_T /= jo_T ) cycle
+          if ( io_T /= jo_T ) then
+            ! we definitely have Elec -> device
+            ! Choose the electrode fermi-level
+            jo_T = max(io_T, jo_T)
+          else if ( io_T == jo_T .and. Bulk(jo_T) ) then
+            ! no need to shift since we have a bulk H/S
+            jo_T = 0
+          end if
+           
+          ! Notice that SFIND REQUIRES that the sparsity pattern
+          ! is SORTED!
+          ! Thus it will only work for UC sparsity patterns.
+          ind_k = kp + SFIND(kp_col,jo)
+          if ( kp < ind_k ) then
+            jo = (l_col(ind)-1) / no_u
+            H1D(:) = H(ind,:)
+            call mat_convert(zH(:,:,ind_k), H1D, S(ind), E_Ef(jo_T), ph(jo))
+            zS(ind_k) = zS(ind_k) + S(ind) * ph(jo)
+          end if
+
+       end do
+
+       end if
+
+       end if
+
+       end if
+
+    end do
+!$OMP end do nowait
+
+!$OMP single
+    call rgn_delete(ro)
+!$OMP end single
+
+    end do
+!$OMP end parallel
+     
+#ifdef MPI
+    if ( dist_nodes(dit) > 1 ) then
+       ! Note that zH => val(SpArrH)
+       ! Note that zS => val(SpArrS)
+       call AllReduce_SpData(SpArrH,nwork,work)
+       call AllReduce_SpData(SpArrS,nwork,work)
+    end if
+#endif
+
+    ! It could be argued that MPI reduction provides
+    ! numeric fluctuations.
+    ! However, the block-cyclic distribution ensures that
+    ! there are no two elements accessed by two or more processors.
+    ! This makes all non-local elements ZERO, and there should not
+    ! be flucuations on adding ZEROS as they are *only* dependent
+    ! on order of summation.
+
+    contains
+
+    subroutine mat_convert(zH, H, S, Ef, kph)
+      complex(dp), intent(inout) :: zH(2,2)
+      real(dp), intent(in) :: H(:), S
+      real(dp), intent(in) :: Ef
+      complex(dp), intent(in) :: kph
+
+      if ( spin%NCol ) then
+        ! zH is complex so we combine the real and complex parts of Hk already
+        !
+        !      | H(1) + i H(5)   H(3) - i H(4) |      | S(:)  0    |
+        ! zH = |                               | - Ef*|            |
+        !      | H(3) + i H(4)   H(2) + i H(6) |      | 0     S(:) | 
+        zH(1,1) = zH(1,1) + cmplx(H(1) - S * Ef, 0._dp, dp) * kph
+        zH(2,2) = zH(2,2) + cmplx(H(2) - S * Ef, 0._dp, dp) * kph
+        zH(1,2) = zH(1,2) + cmplx(H(3)         , -H(4), dp) * kph
+        zH(2,1) = zH(2,1) + cmplx(H(3)         ,  H(4), dp) * kph
+
+      else ! spin%SO
+        ! zH is complex so we combine the real and complex parts of Hk already
+        !
+        !      | H(1) + i H(5)   H(3) - i H(4) |      | S(:)  0    |
+        ! zH = |                               | - Ef*|            |
+        !      | H(7) + i H(8)   H(2) + i H(6) |      | 0     S(:) | 
+        zH(1,1) = zH(1,1) + cmplx(H(1) - S * Ef,  H(5), dp) * kph
+        zH(2,2) = zH(2,2) + cmplx(H(2) - S * Ef,  H(6), dp) * kph
+        zH(1,2) = zH(1,2) + cmplx(H(3)         , -H(4), dp) * kph
+        zH(2,1) = zH(2,1) + cmplx(H(7)         ,  H(8), dp) * kph
+      end if
+
+    end subroutine
+
+  end subroutine create_HS_kpt_spinor
 
 end module m_tbt_sparse_helper
 

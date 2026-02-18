@@ -1,5 +1,0 @@
-%include ../base_si8.fdf
-SystemLabel     si_procy
-
-Diag.ProcessorY 2
-

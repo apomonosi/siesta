@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -10,11 +10,11 @@
       program vibra
 
 c *********************************************************************
-c Calculation of vibrational modes for clusters, linear chains, slabs
+c Calculation of vibrational modes for clusters, linear chains, slabs 
 c and 3D xtals.
-c
+c 
 c Uses the FDF (Flexible Data Format) package (version 0.66.1.5)
-c of J.M.Soler and A. Garcia,
+c of J.M.Soler and A. Garcia, 
 c
 c Written by P.Ordejon, August'98
 c
@@ -23,8 +23,7 @@ c
 c **********************************************************************
 
       use fdf
-      use units, only: deg, Ang, inquire_unit, h_planck, c_light, eV,Pi2
-      use units, only: unit_convfac
+      use units, only: Pi
       use precision, only: dp
 
       implicit none
@@ -32,14 +31,14 @@ c **********************************************************************
 c Internal variables ...
 
       character(len=150) ::
-     .  filein, fileout, fname,
+     .  filein, fileout, fname, 
      .  slabel, sname
 
-      integer
+      integer 
      .  i, i1, i2, iatom, iunit,
      .  ik, iunit2, iunit3, ind, ix, j,
-     .  ij, ii, iq, jj, jx, icall,
-     .  lx, ly, lz, lxmax, lymax, lzmax,
+     .  ij, ii, iq, jj, jx, icall, 
+     .  lx, ly, lz, lxmax, lymax, lzmax, 
      .  llx, lly, llz,
      .  natoms, ncells, nnat, ndof
 
@@ -56,8 +55,8 @@ c Internal variables ...
 !     the Wiegner-Sietz cells. Due to the loop it will never be more
 !     than 27 (3 x -1:1)
       parameter (maxnq = 27)
-
-      integer
+     
+      integer 
      .  in, neq, nk, nlines, lastk(maxlin)
 
       character label(maxlin)*8
@@ -66,7 +65,7 @@ c Internal variables ...
 
       real(dp) :: dx, alat, alp, blp, clp, alplp, betlp, gamlp, xxx
 
-      real(dp) :: zpe, planck, xmagic
+      real(dp) :: zpe, planck
       logical :: eigen, intensity
 
       ! ek(maxd,maxk)
@@ -103,35 +102,27 @@ c Work space for diagonalization.
 #endif
       real(dp), allocatable :: omega(:)
 
+c Conversion factor from sqrt(K/M) in eV and Ang to cm**-1 is 519.6
+      real(dp), parameter :: xmagic = 519.6_dp
+
       data nk / 0 /
 
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
 c ZPE contains the zero point energy of the system
-      zpe = 0.0_dp
+      zpe = 0.0d0
 
 c Planck contains planck's constant in eV.cm
-      planck = ( h_planck * c_light / eV ) * unit_convfac('time:fs','s')
-     &       * unit_convfac('length:m','cm')
-
-c Conversion factor from sqrt(K/M) in eV and Ang to cm**-1 is 519.6
-      ! This is derived from:
-      ! sqrt( eV/A^2 / a.m.u.) / (2 * Pi * c) (~521.5)
-      xmagic = unit_convfac('energy:eV','J') *
-     &         unit_convfac('mass:kg','amu')
-      xmagic = sqrt( xmagic ) * unit_convfac('length:cm','Ang')
-      xmagic = xmagic / (Pi2 * c_light)
-
+      planck = 6.62618d-5*2.997925d0/1.602189d0
 c ...
-
+     
 C ****************** READ DATA FROM FDF FILE *********************
 
 c Set up fdf ...
       filein = 'stdin'
       fileout = 'out.fdf'
       call fdf_init(filein,fileout)
-      call fdf_set_unit_handler(inquire_unit)
 c ...
 
 c Defile Name of the system ...
@@ -149,13 +140,13 @@ c ...
 c Read Number of Atoms in Unit cell ...
       natoms = fdf_get('NumberOfAtoms', 0)
       if (natoms .le. 0) then
-        write(6,'(a)')
+        write(6,'(a)') 
      . 'ERROR: Number of atoms must be larger than zero.'
-        write(6,'(a)')
+        write(6,'(a)') 
      . '       You MUST specify NumberOfatoms in fdf file.'
         stop
       endif
-      write(6,'(a,i5)')
+      write(6,'(a,i5)') 
      . 'Number of Atoms                  = ',natoms
 c ...
 
@@ -163,11 +154,11 @@ c ...
       ndof = natoms * 3
 
 c Lattice constant of unit cell...
-      alat = fdf_get('LatticeConstant',Ang,'Bohr')
-      if (alat .eq. 0.0_dp) then
-        write(6,'(a)')
+      alat = fdf_get('LatticeConstant',0.d0,'Bohr')
+      if (alat .eq. 0.d0) then
+        write(6,'(a)') 
      . 'ERROR: No valid lattice constant specified.'
-        write(6,'(a)')
+        write(6,'(a)') 
      . '       You MUST specify LatticeConstant in fdf file.'
         stop
       endif
@@ -178,8 +169,8 @@ c Lattice vectors of unit cell...
       if ( fdf_block('LatticeParameters',bfdf) .and.
      .     fdf_block('LatticeVectors',bfdf) ) then
          write(6,'(2a)')'ERROR: Lattice vectors doubly ',
-     .     'specified: by LatticeVectors and by LatticeParameters.'
-         stop
+     .     'specified: by LatticeVectors and by LatticeParameters.' 
+         stop 
       endif
 
       if ( fdf_block('LatticeParameters',bfdf) ) then
@@ -198,15 +189,15 @@ c Lattice vectors of unit cell...
      .    'Lattice Parameters (units of Lattice Constant) ='
          write(6,'(a,3f10.5,3f9.3)')
      .    '    ',alp,blp,clp,alplp,betlp,gamlp
-         alplp = alplp * deg
-         betlp = betlp * deg
-         gamlp = gamlp * deg
+         alplp = alplp * pi/180.d0
+         betlp = betlp * pi/180.d0
+         gamlp = gamlp * pi/180.d0
          cell(1,1) = alp
-         cell(2,1) = 0.0_dp
-         cell(3,1) = 0.0_dp
+         cell(2,1) = 0.d0
+         cell(3,1) = 0.d0
          cell(1,2) = blp * cos(gamlp)
          cell(2,2) = blp * sin(gamlp)
-         cell(3,2) = 0.0_dp
+         cell(3,2) = 0.d0
          cell(1,3) = clp * cos(betlp)
          xxx = (cos(alplp) - cos(betlp)*cos(gamlp))/sin(gamlp)
          cell(2,3) = clp * xxx
@@ -222,12 +213,12 @@ c Lattice vectors of unit cell...
       else
         do i = 1,3
           do j  = 1,3
-            cell(i,j) = 0.0_dp
+            cell(i,j) = 0.d0
           enddo
-          cell(i,i) = 1.0_dp
+          cell(i,i) = 1.d0
         enddo
       endif
-      write(6,'(a)')
+      write(6,'(a)') 
      .   'Lattice vectors (in units of Lattice Constant) ='
       do i = 1,3
         write(6,'(a,3f10.5)')
@@ -241,7 +232,7 @@ c Multiply cell vectors by lattice constant ...
           cell(ix,i) = alat * cell(ix,i)
         enddo
       enddo
-      write(6,'(a)')
+      write(6,'(a)') 
      .   'Lattice vectors (in Bohr) ='
       do i = 1,3
         write(6,'(a,3f10.5)') '        ',(cell(j,i), j=1,3)
@@ -342,7 +333,7 @@ c ...
 
 c  Determine the indices of the atoms in the central (lx=ly=lz=0) cell
 c  (those that need to be displaced to calculate the force constants)  ...
-      i1 = natoms * (4*lxmax*lymax*lzmax +
+      i1 = natoms * (4*lxmax*lymax*lzmax + 
      .               2*(lxmax*lymax + lxmax*lzmax + lymax*lzmax) +
      .               lxmax + lymax + lzmax) + 1
       i2 = i1 + natoms - 1
@@ -416,8 +407,8 @@ c Now form phibar(1). This force constant matrix is hermitian.
               do ly=-lymax,lymax
               do lz=-lzmax,lzmax
 c                phi(ii,i,ij,j,lx,ly,lz) = phi0(ii,i,ij,j,lx,ly,lz)
-                phi(ii,i,ij,j,lx,ly,lz) =
-     .            0.5_dp * (phi0(ii,i,ij,j,lx,ly,lz)
+                phi(ii,i,ij,j,lx,ly,lz) = 
+     .            0.5d0 * (phi0(ii,i,ij,j,lx,ly,lz) 
      .            + phi0(ij,j,ii,i,-lx,-ly,-lz))
               enddo
               enddo
@@ -437,7 +428,7 @@ c Now form zero(ix,jx,j), defined as zijbeta in the notes.
       do j=1,natoms
         do ii=1,3
           do ij=1,3
-            zero(ii,ij,j) = 0.0_dp
+            zero(ii,ij,j) = 0.0d0
             do i=1,natoms
               do lx=-lxmax,lxmax
               do ly=-lymax,lymax
@@ -451,14 +442,14 @@ c Now form zero(ix,jx,j), defined as zijbeta in the notes.
           enddo
         enddo
       enddo
-
+         
 
 c =================================================================
 c     Now form zeroo(ix,jx), the sum ofer beta of z(i,j,beta)
 
       do ii=1,3
         do ij=1,3
-          zeroo(ii,ij) = 0.0_dp
+          zeroo(ii,ij) = 0.0d0
           do j=1,natoms
             zeroo(ii,ij) = zeroo (ii,ij) + zero(ii,ij,j)
           enddo
@@ -519,7 +510,7 @@ c Now form phibar(2)
         do j=1,natoms
           do ii=1,3
             do ij=1,3
-              correct = 0.5_dp * (zeroo(ii,ij)+zeroo(ij,ii)) -
+              correct = (zeroo(ii,ij)+zeroo(ij,ii))/2.0d0 -
      .                  (zero(ii,ij,j)+zero(ij,ii,i))
               do lx=-lxmax,lxmax
               do ly=-lymax,lymax
@@ -573,7 +564,7 @@ c Now form phibar(2)
 100   continue
 
 c =================================================================
-c Now finally compute the dynamical matrix. We store in real-hermitian
+c Now finally compute the dynamical matrix. We store in real-hermitian 
 c form because hermdp.f wants input this way.
 
       allocate(dc(ndof,ndof), omega(ndof))
@@ -586,7 +577,7 @@ c form because hermdp.f wants input this way.
       allocate(work(3*ndof), work2(2,16*ndof))
 #endif
       allocate(ek(ndof,maxk))
-c Loop over k points
+c Loop over k points 
 
       do ik=1,nk
 #ifdef VIBRA_DEBUG
@@ -623,7 +614,7 @@ c Loop over k points
                 rl(jj)=llx*scell(jj,1)+lly*scell(jj,2)+llz*scell(jj,3)
                 R2=R2+(rl(jj)+r(jj))**2
               enddo
-              if (abs(R2-dmin) .gt. 0.0001_dp) then
+              if (abs(R2-dmin) .gt. 0.0001) then
                 if (R2 .lt. dmin) then
                   neq = 1
                   dmin = R2
@@ -633,7 +624,7 @@ c Loop over k points
                   goto 10
                 endif
               endif
-              if (abs(R2-dmin) .lt. 0.0001_dp) then
+              if (abs(R2-dmin) .lt. 0.0001) then
                 neq = neq+1
                 qr(neq)=q(1)*(rl(1)+r(1))+
      .                  q(2)*(rl(2)+r(2))+
@@ -748,7 +739,7 @@ c write out eigenvalues.
         do i=1,ndof
 c convert to cm**-1. the conversion factor is xmagic (511**2)
           omega(i)=xmagic*xmagic*omega(i)
-          if(omega(i).gt.0.0_dp)then
+          if(omega(i).gt.0.0d0)then
             omega(i)=sqrt(omega(i))
           else
             omega(i)=-omega(i)
@@ -759,7 +750,7 @@ c     1 ' sqrt(abs(omega2))=',omega(i)
           write(*,*)' eigenvalue #',i,' omega=',omega(i)
 
 c Add zero point energy contribution for positive modes
-          if (omega(i).gt.0.0_dp) then
+          if (omega(i).gt.0.0d0) then
             zpe = zpe + omega(i)
           endif
 
@@ -806,18 +797,32 @@ Cc =================================================================
 
 c Finish computation of zero point energy (averaged across k points) and output
       if (nk.gt.0) then
-        zpe = 0.5_dp*planck*zpe/dble(nk)
+        zpe = 0.5d0*planck*zpe/dble(nk)
         write(*,'('' Zero point energy = '',f20.6,'' eV'')') zpe
       endif
 
 c Write eigenvalues ...
       if (nk .gt. 0) then
         call outbands(0, 1, ndof, ndof, maxk, nk, nlines, lastk,
-     .                label, kpoint, ek, 0.0_dp)
+     .                label, kpoint, ek, 0.0d0)
       endif
 C ...
+
+
    33 format(7(f10.4,2x))
 Cc
       stop
+
+      CONTAINS
+
+      subroutine die(str)
+      character(len=*), intent(in), optional:: str
+      if (present(str)) then
+         write(6,"(a)") str
+         write(0,"(a)") str
+      endif
+      STOP
+      end subroutine die
+
 
       end

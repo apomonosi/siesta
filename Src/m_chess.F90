@@ -2,7 +2,7 @@ module m_chess
 
   use precision,      only : dp
 #ifdef MPI
-!!!  use mpi_siesta,     only : mpi_integer, mpi_double_precision, mpi_status_size
+  use mpi_siesta,     only : mpi_integer, mpi_double_precision, mpi_status_size
   use parallelsubs,   only : GetNodeOrbs, GlobalToLocalOrb, WhichNodeOrb
   use parallelsubs,   only : set_BlockSizeDefault
 #endif

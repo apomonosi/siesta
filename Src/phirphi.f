@@ -47,7 +47,7 @@ C *********************************************************************
       use alloc,        only : re_alloc, de_alloc
       use neighbour,    only : jna=>jan, xij, r2ij
       use neighbour,    only : mneighb, reset_neighbour_arrays
-      use matel_m,      only : matel
+      use m_new_matel,  only : new_matel
 
       implicit none
 
@@ -109,31 +109,31 @@ C Allocate local memory
                    jg = orb_gindex(js,joa)
 
                   if (abs(dk(1)).gt.tiny) then
-                    call matel('X', ig, jg, xij(1:3,jn),
+                    call new_MATEL('X', ig, jg, xij(1:3,jn),
      .                          Sij, grSij ) 
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(1)  
  
-                    call matel('X', jg, ig, xinv,
+                    call new_MATEL('X', jg, ig, xinv,
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(1)  
                   endif
                      
                   if (abs(dk(2)).gt.tiny) then
-                    call matel('Y', ig, jg, xij(1:3,jn),
+                    call new_MATEL('Y', ig, jg, xij(1:3,jn),
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(2) 
                 
-                    call matel('Y', jg, ig, xinv,
+                    call new_MATEL('Y', jg, ig, xinv,
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(2)  
                   endif
  
                   if (abs(dk(3)).gt.tiny) then
-                    call matel('Z', ig, jg, xij(1:3,jn),
+                    call new_MATEL('Z', ig, jg, xij(1:3,jn),
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(3) 
  
-                    call matel('Z', jg, ig, xinv,
+                    call new_MATEL('Z', jg, ig, xinv,
      .                          Sij, grSij )
                     Si(jo) = Si(jo) + 0.5d0*Sij*dk(3) 
                   endif
@@ -151,7 +151,7 @@ C Allocate local memory
       enddo
 
 C Deallocate local memory
-
+!      call new_MATEL('Z', 0, 0, 0, 0, xinv, Sij, grSij )
       call reset_neighbour_arrays( )
       call de_alloc( Si, name='Si' )
 

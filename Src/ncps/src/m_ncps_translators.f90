@@ -172,10 +172,19 @@ CONTAINS
         ! This is an example of a "PSML plugin"
         call check_atom_grid(ps,log_grid_in_file,p%nrval,p%a,p%b)
 
-        ! But we might override the internal grid if we want to
-        ! reparametrize
-        
-        if (want_new_grid) then
+        if (log_grid_in_file) then
+           
+           if (p%nrval > 0) then  ! Normal ATOM grid
+              print *, "Using ATOM log grid in PSML file ..."
+              p%nr = p%nrval - 1  ! For backwards compatibility
+           else    ! Sampled ATOM grid; nrval not available               
+              print *, "Using ATOM log grid {a,b} parameters in PSML file ..."
+              rmax_grid = rmax_def
+              p%nr = nint(log(rmax_grid/(p%b)+1.0d0)/(p%a))
+              p%nrval = p%nr + 1  ! Count also r=0
+           endif
+
+        else if (want_new_grid) then
            if (.not. present(a)) call die("new grid: a not present")
            if (.not. present(b)) call die("new grid: b not present")
            if (.not. present(rmax)) call die("new grid: rmax not present")
@@ -188,19 +197,6 @@ CONTAINS
            p%b = b
            p%nr = nint(log(rmax_grid/b+1.0d0)/a)
            p%nrval = p%nr + 1  ! Count also r=0
-
-        else if (log_grid_in_file) then
-           
-           if (p%nrval > 0) then  ! Normal ATOM grid
-              print *, "Using ATOM log grid in PSML file ..."
-              p%nr = p%nrval - 1  ! For backwards compatibility
-           else    ! Sampled ATOM grid; nrval not available               
-              print *, "Using ATOM log grid {a,b} parameters in PSML file ..."
-              rmax_grid = rmax_def
-              p%nr = nint(log(rmax_grid/(p%b)+1.0d0)/(p%a))
-              p%nrval = p%nr + 1  ! Count also r=0
-           endif
-
 
         else 
               print *, "Using ATOM defaults for log grid..."

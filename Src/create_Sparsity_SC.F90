@@ -9,6 +9,7 @@ module create_Sparsity_SC
 
   public :: TM_ALL
   public :: crtSparsity_SC
+  public :: crtSparsity_NC_SC
 
 contains
 
@@ -191,6 +192,174 @@ contains
     deallocate(num,listptr,list)
 
   end subroutine crtSparsity_SC
+
+  subroutine crtSparsity_NC_SC(in,out, &
+       DUMMY, &
+       MASK, & ! 1. option
+       UC, &   ! 2. option
+       TM,ucell,lasto,xa,xij,isc_off) ! 3. option
+    use class_Sparsity
+
+    ! The matrix which contains the supercell.
+    type(Sparsity), intent(in out) :: in
+    ! Maybe (in) is not needed, however, for this, it does't make a
+    ! difference, everything is overwritten
+    type(Sparsity), intent(in out) :: out
+    
+    ! this IS a DUMMY argument, supplying it will cause the program to DIE!
+    logical, intent(in), optional :: DUMMY 
+
+    ! A mask of same size af list_col(in)
+    ! Every true value contributes to the sparse matrix
+    logical, intent(in out), optional :: MASK(:) ! IT HAS TO HAVE THE SAME SIZE
+    ! AS nnzs(in)
+
+    ! Determines whether we wish to refer the sparsity
+    ! to the unit-cell columns...
+    logical, intent(in), optional :: UC
+
+    ! TM stands for Transfer Matrix
+    ! It enables to retrieve the coupling between the UC and the requested
+    ! it tells which TM we retieve (x,y,z) (can be negative as well)
+    integer, intent(in), optional :: TM(3)
+
+    real(dp), intent(in), optional :: ucell(3,3)
+
+    ! The last orbital of each atom (needed, for determining the 
+    ! orbital on a supercell orbital)
+    integer, intent(in), optional :: lasto(:) ! lasto(0:na_u)
+    ! The atomic coordinates in the unit-cell.
+    real(dp),intent(in), optional :: xa(:,:) ! (xa(3,na_u)
+
+    ! Supply the xij matrix
+    ! *NOTE* This is necessary if one requests a TM matrix
+    real(dp), intent(in), optional :: xij(:,:)
+
+    ! Supply the super-cell offset array
+    integer, intent(in), optional :: isc_off(:,:)
+
+    ! We need space to create the new sparsity pattern:
+    integer :: n_rows, n_rows_g, n_nzs
+    integer, allocatable :: num(:), listptr(:), list(:)
+    integer, allocatable :: entries(:)
+    ! This will accomodate a scheme up to 2 decimals in the integer region,
+    ! comma seperated:    
+    character(len=11) :: cTM
+    integer :: ir,i,iu
+
+    ! If DUMMY is present, kill...
+    if (present(DUMMY)) call die('Create sparsity: name arguments!')
+
+    if ( present(MASK) ) then
+       if ( ubound(MASK,dim=1) /= nnzs(in) ) then
+          call die('Could not recognize the MASK attributed. &
+               &Please supply a MASK of same size as in-sparsity &
+               &pattern.')
+       end if
+    end if
+
+    if ( present(xij) ) then
+       if ( ubound(xij,dim=2) /= nnzs(in) ) then
+          call die('Could not recognize the xij attributed. &
+               &Please supply a xij of same size as in-sparsity &
+               &pattern.')
+       end if
+    end if
+
+    ! Save the rows ( this is the same for all cases)
+    ! Even for TM which typically have 0 entries
+    ! in some rows. However, it provides the full information.
+    n_rows   = 2*nrows  (in)
+    n_rows_g = 2*nrows_g(in)
+
+    ! Prepare creation of num and listptr arrays
+    allocate(num(n_rows))
+    allocate(listptr(n_rows))
+
+    ! The list pointer for the first entry is always the "first"
+    ! element, hence we can already initialize it here...
+    listptr(1) = 0
+
+    ! We initialize the sparsity creation via the first row
+    do ir = 1 , n_rows
+       call sparsity_row_entries(in,ir,n=num(ir), &
+            MASK=MASK, &
+            UC=UC,TM=TM,ucell=ucell,lasto=lasto,xa=xa,xij=xij, &
+            isc_off=isc_off)
+       ! Update list pointer
+       if ( ir > 1 ) &
+            listptr(ir) = listptr(ir-1) + num(ir-1)
+    end do
+
+    ! The number of non-zero elements in the requested array
+    n_nzs = listptr(n_rows) + num(n_rows)
+
+    ! Now we will create the list array...
+    allocate(list(n_nzs))
+
+    ! allocate a temporary array which holds
+    ! the maximum number of entries per row...
+    iu = num(1)
+    do ir = 2, n_rows
+       if ( num(ir) > iu ) iu = num(ir)
+    end do       
+    allocate(entries(iu))
+
+    do ir = 1, n_rows
+       if ( num(ir) > 0 ) then
+          call sparsity_row_entries(in,ir,n=num(ir),entries=entries, &
+               MASK=MASK, &
+               UC=UC,TM=TM,ucell=ucell,lasto=lasto,xa=xa,xij=xij, &
+               isc_off=isc_off)
+          ! Step to the element corresponding to the pointer
+          iu = listptr(ir)
+          ! Update all the entries
+          do i = 1 , num(ir)
+             list(iu+i) = entries(i)
+          end do
+       end if
+    end do
+
+    ! Deallocate un-needed space before we create the actual sparsity
+    deallocate(entries)
+
+    ! Down here we are sure that the options passed has
+    ! been sufficient to create a sparsity pattern.
+    ! Thus we simply check for existence of options
+    if ( present(MASK) ) then
+       call newSparsity(out,n_rows,n_rows_g,n_nzs,num,listptr,list, &
+            name='(M of: '//name(in)//')', &
+            ncols=ncols(in),ncols_g=ncols_g(in))
+    else if ( present(TM) ) then
+       do i = 1 , 3
+          if ( TM(i) == TM_ALL ) then
+             cTM((i-1)*3+1:i*3) = '--,'
+          else
+             write(cTM((i-1)*3+1:i*3),'(i2,'','')') TM(i)
+          end if
+       end do
+       cTM(9:) = ' '
+       call newSparsity(out,n_rows,n_rows_g,n_nzs,num,listptr,list, &
+            name='(TM ['//trim(cTM)//'] of: '//name(in)//')', &
+            ncols=ncols(in),ncols_g=nrows_g(in))
+    else if ( present(UC) ) then
+       if ( UC ) then
+          call newSparsity(out,n_rows,n_rows_g,n_nzs,num,listptr,list, &
+               name='(UC of: '//name(in)//')', &
+               ncols=ncols(in),ncols_g=nrows_g(in))
+       else
+          ! THIS SHOULD NEVER HAPPEN (the dependency check
+          ! should be performed in the initialization of this routine)
+          call die('INITIALIZATION GONE WRONG IN SPARSITY_UC')
+       end if
+    end if
+
+    ! We need to deallocate the arrays used, remember, that they
+    ! are allocated.
+    ! The newSparsity copies the values...
+    deallocate(num,listptr,list)
+
+  end subroutine crtSparsity_NC_SC
 
   subroutine sparsity_row_entries(sp,row,n,entries, &
        DUMMY, &

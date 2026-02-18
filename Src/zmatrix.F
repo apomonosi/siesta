@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -68,13 +68,13 @@ C  nVars specifies the number of constrained variables
         integer,           save :: nVars
 C  ZmatVarNames(nVars) gives the names of the constrained variables
         character(len=10), pointer, save :: ZmatVarNames(:)
-C  iZmattoVars(3*na) is the index in the variable array of a
+C  iZmattoVars(3*na) is the index in the variable array of a 
 C     symbolic coordinate
-        integer, pointer,  save :: iZmattoVars(:)
-C  iVarstoZmat(nVars) is the Zmat index of the first symbolic
+        integer, pointer,  save :: iZmattoVars(:) 
+C  iVarstoZmat(nVars) is the Zmat index of the first symbolic 
 C    coordinate corresponding to the variable
         integer, pointer,  save :: iVarstoZmat(:)
-C  lZmatVarsDef(nVars) tells us whether the variable name has been
+C  lZmatVarsDef(nVars) tells us whether the variable name has been 
 C    given a value
         logical, pointer,  save :: lZmatVarsDef(:)
 C  lCalcAllForces specifies whether forces for fixed coorinates should
@@ -90,8 +90,8 @@ C       v2 = a*v1 + B
 
 
       ! AG: convenience variables
-        integer, pointer,  save :: species(:)
-        real(dp),  save :: scale_length, scale_angle
+        integer, pointer,  save :: species(:) 
+        real(dp),  save :: scale_length, scale_angle 
         real(dp),  save :: zmatrix_alat
         logical,   save :: unknown_cell
 
@@ -107,9 +107,7 @@ C       v2 = a*v1 + B
       public :: nZmol, nZmolStartAtom, nZmolAtoms
       public :: nZcart, nZcartStartAtom, nZcartAtoms
 
-      public :: zmatrix_reset
-
-      private
+      private 
 
       contains
 
@@ -144,7 +142,7 @@ C Local variables
         integer                       :: input_type
         integer                       :: units_type
         character(len=10), parameter  :: unitslen_default = 'Bohr'
-        character(len=10), parameter  :: unitsang_default = 'rad'
+        character(len=10), parameter  :: unitsang_default = 'rad' 
         real(dp),          parameter  :: ftollen_default = 1.55574d-3
         real(dp),          parameter  :: ftolang_default = 3.56549d-3
         real(dp),          parameter  :: dxmaxlen_default = 0.2d0
@@ -223,7 +221,7 @@ C Read units for lengths and angles
           endif
 
           angleunits = fdf_string('ZM.UnitsAngle',unitsang_default)
-          if (leqi(angleunits,'rad').or.leqi(angleunits,'radians'))
+          if (leqi(angleunits,'rad').or.leqi(angleunits,'radians')) 
      .        then
             ZmatUnitsAng = 0
           elseif (leqi(angleunits,'deg').or.
@@ -233,7 +231,7 @@ C Read units for lengths and angles
             call die('Invalid Zmatrix angular units')
           endif
 
-C Read maximum force tolerance for lengths and angles
+C Read maximum force tolerance for lengths and angles        
           ZmatForceTolLen = fdf_physical('ZM.ForceTolLength',
      .                                   ftollen_default,'Ry/Bohr')
           ZmatForceTolAng = fdf_physical('ZM.ForceTolAngle',
@@ -292,7 +290,7 @@ C Read data block up to endblock statement
           if (Node.eq.0) write(*,"(a)") trim(pline%line)
 
           if (fdf_substring_search(pline, 'molecule')) then
-C Found new molecule
+C Found new molecule          
             nZmol = nZmol + 1
             nZmolAtoms(nZmol) = 0
             nZmolStartAtom(nZmol) = nAtoms + 1
@@ -341,12 +339,12 @@ C Found new cartesian(fractional) block
           elseif (fdf_substring_search(pline, 'constraint')) then
             input_type = 4
 
-          else
+          else 
 C Check that the lines contains the correct type of data
             if (input_type.eq.0) then
 C Molecule (1-4: integers, 5-7: reals or symbolic names)
               if (.not. (fdf_bmatch(pline, 'iiiisss'))) then
-                call die('read_Zmatrix: (iiiisss) Error in syntax')
+                call die('read_Zmatrix: (iiiisss) Error in syntax') 
               endif
             elseif (input_type.eq.1) then
 C Cartesian (1: integer, 2-4: reals or symbolic names)
@@ -377,7 +375,7 @@ C Increment molecule/cartesian block count
 C Molecule/cartesian block
             if (input_type.eq.0.or.input_type.eq.1) then
 
-C Increment atom number
+C Increment atom number 
               nAtoms = nAtoms + 1
 C Check number of atoms against input number
               if (nAtoms.gt.na) then
@@ -414,8 +412,8 @@ C Molecule, not first atom
                 ZmatType(3*nAtoms)   = 1
               endif
             elseif (input_type.eq.1) then
-C Cartesian block
-              do k= 1, 3
+C Cartesian block              
+              do k= 1, 3 
                 ZmatType(3*(nAtoms-1)+k) = 6+units_type
               enddo
             endif
@@ -441,14 +439,14 @@ C String/symbol
                   if (found) then
                     iZmattoVars(indi) = i-1
                     VaryZmat(indi) = .false.
-                    j = iVarstoZmat(i-1)
+                    j = iVarstoZmat(i-1) 
 C Check length/angle dependency incompatibility
                     if (ZmatType(indi).eq.1.and.
      .                  ZmatType(j).ne.1) then
                       call die('read_Zmatrix: error - angle/length
-     .                          dependency')
+     .                          dependency')                       
                     endif
-                    do while (iNextDept(j).ne.0)
+                    do while (iNextDept(j).ne.0) 
                       j = iNextDept(j)
                     enddo
                     iNextDept(j) = indi
@@ -462,7 +460,7 @@ C Check length/angle dependency incompatibility
                   coeffA(indi) = 1.0d0
                   coeffB(indi) = 0.0d0
                 else
-C Explicit values
+C Explicit values                
                   nreals = nreals + 1
                   Zmat(indi) = fdf_breals(pline, nreals)
                   iZmattoVars(indi) = 0
@@ -483,7 +481,7 @@ C Read variable/constant definitions
             if (input_type.eq.2.or.input_type.eq.3) then
               i = 1
               found = .false.
-              do while (i.le.nVars.and..not.found)
+              do while (i.le.nVars.and..not.found) 
                 found = leqi(ZmatVarNames(i),fdf_bnames(pline,1))
                 i = i+1
               enddo
@@ -493,17 +491,17 @@ C Read variable/constant definitions
      .                      Z-matrix symbol')
                 else
                   indi = iVarstoZmat(i-1)
-                  do while (indi.ne.0)
+                  do while (indi.ne.0) 
                     Zmat(indi) = fdf_breals(pline,1)
                     indi = iNextDept(indi)
                   enddo
                   lZmatVarsDef(i-1) = .true.
                 endif
                 if (input_type.eq.2) then
-C Fixed, symbolic
+C Fixed, symbolic                  
                   VaryZmat(iVarstoZmat(i-1)) = .false.
                 else
-C Vary, symbolic
+C Vary, symbolic                  
                   VaryZmat(iVarstoZmat(i-1)) = .true.
                 endif
               else
@@ -511,7 +509,7 @@ C Vary, symbolic
               endif
             endif
 
-C Read constraint definitions
+C Read constraint definitions              
             if (input_type.eq.4) then
               i = 1
               found = .false.
@@ -556,7 +554,7 @@ C If coefficient A=0 then its really a constant definition
 
 C Put values into the newly defined Zmat components
               j = indi
-              do while (j.ne.0)
+              do while (j.ne.0) 
                 Zmat(j) = fdf_breals(pline,1)*Zmat(indi1) +
      .                    fdf_breals(pline,2)
                 j = iNextDept(j)
@@ -578,7 +576,7 @@ C Now indi1 is the independent var with indi = A*indi1+B
 C Link the dependency lists of the two variables and update
 C   coeffiecients and iZmattoVars array
               j = indi1
-              do while (iNextDept(j).ne.0)
+              do while (iNextDept(j).ne.0) 
                 j = iNextDept(j)
               enddo
               iNextDept(j) = indi
@@ -593,7 +591,7 @@ C   coeffiecients and iZmattoVars array
             endif
 
           endif
-C End of parsing input line
+C End of parsing input line            
 
         enddo
   10    continue
@@ -605,12 +603,12 @@ C Done reading Z-matrix
 C Check that all variables have been defined
         do i = 1,nVars
           if (.not.lZmatVarsDef(i)) then
-            call die('read_Zmatrix: Symbol has not been given a
+            call die('read_Zmatrix: Symbol has not been given a 
      .                value')
           endif
         enddo
 
-C Scale all coordinates according to their type
+C Scale all coordinates according to their type            
         do i = 1,3*nAtoms
 C Angle
           if (ZmatType(i).eq.1) then
@@ -624,13 +622,13 @@ C Bond length/pure cartesian
             Zmat(i) = Zmat(i) * (1.0d0+(Ang-1.0d0)*ZmatUnitsLen)
             coeffB(i) = coeffB(i) * (1.0d0+(Ang-1.0d0)*ZmatUnitsLen)
           endif
-
+             
 C Scaled cartesian
           if (ZmatType(i).eq.4.or.ZmatType(i).eq.7) then
             Zmat(i) = Zmat(i) * alat
             coeffB(i) = coeffB(i) * alat
           endif
-
+                    
         enddo
 
 C Translate pure cartesians by the origin
@@ -643,7 +641,7 @@ C Translate pure cartesians by the origin
           endif
         enddo
 
-C Fractional cartesian
+C Fractional cartesian 
         do i=1,nAtoms
           if (ZmatType(3*i).eq.5.or.ZmatType(3*i).eq.8) then
             do k=1,3
@@ -661,7 +659,7 @@ C Fractional cartesian
           endif
         enddo
 
-C Set remaining undefined dependencies to 1 (they are not used but if they
+C Set remaining undefined dependencies to 1 (they are not used but if they 
 C   are 0 the program might crash later)
         do m=1,nZmol
           nStart = nZmolStartAtom(m)
@@ -679,7 +677,7 @@ C Check Z matrix data for consistency
 C   - are all atoms defined in terms of previous atoms?
 C   - are the three dependencies for every atom distinct?
 
-C Loop over molecules
+C Loop over molecules        
         do m = 1,nZmol
           nStart = nZmolStartAtom(m)
           nAtoms = nZmolAtoms(m)
@@ -692,7 +690,7 @@ C         Check whether any atom info has been read.
                 write (6,'(A,i3)')
      .               'read_Zmatrix: no atoms defined at molecule', m
              endif
-             call die("stopping program")
+             call die()
           endif
 C PB END
 
@@ -704,7 +702,7 @@ C Second atom
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr 2'')') m
               endif
-              call die("stopping program")
+              call die()
             endif
           endif
 
@@ -718,11 +716,11 @@ C Third atom
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr 3'')') m
               endif
-              call die("stopping program")
+              call die ()
             endif
           endif
 
-C Fourth atom and up -> general case
+C Fourth atom and up -> general case          
           do i = nStart+3,nStart+nAtoms-1
             if (iZmat(3*i-2).gt.i-1.or.
      .          iZmat(3*i-2).eq.iZmat(3*i-1)) then
@@ -731,7 +729,7 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die("stopping program")
+              call die()
             endif
             if (iZmat(3*i-1).gt.i-1.or.
      .          iZmat(3*i-1).eq.iZmat(3*i)) then
@@ -740,7 +738,7 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die("stopping program")
+              call die()
             endif
             if (iZmat(3*i).gt.i-1.or.
      .          iZmat(3*i).eq.iZmat(3*i-2)) then
@@ -749,10 +747,10 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die("stopping program")
+              call die()
             endif
           enddo
-C End looping over molecules
+C End looping over molecules          
         enddo
 
         if (ZmatUnitsAng == 0) then
@@ -785,7 +783,7 @@ C
 C  Passed variables
 C
         real(dp), intent(inout) ::  Cartesian(:,:)
-C
+C        
 C  Local Variables
 C
         integer               :: i
@@ -859,7 +857,7 @@ C  Loop over cartesian blocks
         end subroutine Zmat_to_Cartesian
 
         subroutine iofaZmat()
-
+        
         implicit none
 C
 C  Local variables
@@ -911,7 +909,7 @@ C  Print cartesian forces in the user's units
      .          (ZmatForce(3*(i-1)+k)*(1+(Ang-1)*ZmatUnitsLen)/eV
      .          ,k=1,3),i=nStart,nStart+nAtoms-1)
         enddo
-        write (6,'(/)')
+        write (6,'(/)') 
 
 C  Print variables' forces in user's units
         write(6,'(''Variable forces (eV/'',a4,
@@ -923,7 +921,7 @@ C  Print variables' forces in user's units
           if (ZmatType(iVarstoZmat(i)).eq.1) then
             write(6,*) ZmatVarNames(i), ZmatForceVar(i)*
      .                      (1+(deg-1)*ZmatUnitsAng)/eV
-          else
+          else 
             write(6,*) ZmatVarNames(i), ZmatForceVar(i)*
      .                      (1+(Ang-1)*ZmatUnitsLen)/eV
           endif
@@ -965,7 +963,7 @@ C
         real(dp)                    :: h
 #ifdef MPI
         integer                     :: MPIerror
-#endif
+#endif        
 
       if (IOnode) then
 C       Allocate local workspace arrays
@@ -994,14 +992,14 @@ C  Loop over all atoms
         do ia = 1,na
 C  Loop over all coordinates of the atom
           do k = 1,3
-C  Index for this coordinate
+C  Index for this coordinate          
             i = 3*(ia-1) + k
-C  Only proceed if this coordinate is allowed to vary or CalcAllForces is true
+C  Only proceed if this coordinate is allowed to vary or CalcAllForces is true            
             if (VaryZmat(i).or.lCalcAllForces) then
 C  Set the h-increment for the coordinate
-              if (Zmat(i).eq.0.0_dp) then
+              if (Zmat(i).eq.0.0_dp) then 
                 h = hfrac
-              else
+              else 
                 h = hfrac*Zmat(i)
               endif
 C  Update the FD and BD Zmatrices for this coordinate
@@ -1014,7 +1012,7 @@ C  Calculate the force on this coordinate
      .                                  ZmatF,ZmatB,
      .                                  i,h,.false.)
               endif
-C  Check if variable is independent
+C  Check if variable is independent              
               vi = iZmattoVars(i)
               j = 0
               if (vi.ne.0) then
@@ -1023,7 +1021,7 @@ C  Check if variable is independent
 C  Calculate the force on this variable
               if (j.eq.i) then
 C  Update the FD and BD Z-matrices for all dependents
-                do while (iNextDept(j).ne.0)
+                do while (iNextDept(j).ne.0) 
                   j = iNextDept(j)
                   ZmatF(j) = Zmat(j) + h*coeffA(j)
                   ZmatB(j) = Zmat(j) - h*coeffA(j)
@@ -1044,7 +1042,7 @@ C  reset the FD and BD Z-matrices
               ZmatB(i) = Zmat(i)
             endif
           enddo
-C  Done looping over 3 coordinate of this atom
+C  Done looping over 3 coordinate of this atom          
 C  From now on the previous atoms will always be unchanged
           CartesianF(1:3,ia) = Cartesian(1:3,ia)
           CartesianB(1:3,ia) = Cartesian(1:3,ia)
@@ -1063,7 +1061,7 @@ C  Deallocate workspace arrays
      .                 MPI_Comm_World,MPIerror)
         call MPI_Bcast(ZmatForceVar,nVars,MPI_double_precision,0,
      .                 MPI_Comm_World,MPIerror)
-#endif
+#endif        
 
       end subroutine CartesianForce_to_ZmatForce
 
@@ -1101,21 +1099,21 @@ C  Local variables
 
 C  Initialize force
       GetForce = 0.0d0
-C  Add force contributions from all the affected cartesian coordinates
+C  Add force contributions from all the affected cartesian coordinates 
       m = 1
       prevm = 0
-C  Loop over affected Zmat Coords
+C  Loop over affected Zmat Coords            
       j = i
-      do while (j.ne.0)
-C  l is the atom number for index j
+      do while (j.ne.0) 
+C  l is the atom number for index j            
         l = (j+2)/3
         if (ZmatType(j).lt.6) then
-C  Molecule
+C  Molecule              
 C  Find correct molecule
           do while (l.gt.nZmolStartAtom(m)+nZmolAtoms(m)-1)
             m = m + 1
           enddo
-C  Only add force contributions if this is the first affected
+C  Only add force contributions if this is the first affected 
 C     coordinate for a specific molecule (otherwise it has been done already)
           if (m.ne.prevm) then
             prevm = m
@@ -1127,8 +1125,8 @@ C  Initialise FD and BD cartesians that come before changed atom
 C  Add force contributions from all atoms later than and
 C     including the changed one in this molecule
             do ca = l,nZmolStartAtom(m)+nZmolAtoms(m)-1
-C  Forward cartesian
-
+C  Forward cartesian     
+           
               RelatedC(1:3,1) = CartesianF(1:3,iZmat(3*ca-2))
               RelatedC(1:3,2) = CartesianF(1:3,iZmat(3*ca-1))
               RelatedC(1:3,3) = CartesianF(1:3,iZmat(3*ca))
@@ -1155,7 +1153,7 @@ C  Forward cartesian
      .                    CartesianF(1,ca),CartesianF(2,ca),
      .                    CartesianF(3,ca), phi_ref_F)
 
-C  Backward cartesian
+C  Backward cartesian               
 
               RelatedC(1:3,1) = CartesianB(1:3,iZmat(3*ca-2))
               RelatedC(1:3,2) = CartesianB(1:3,iZmat(3*ca-1))
@@ -1166,7 +1164,7 @@ C  Backward cartesian
      .                    CartesianB(1,ca),CartesianB(2,ca),
      .                    CartesianB(3,ca), phi_ref_B)
 
-C  Add in force constribution
+C  Add in force constribution     
               X = CartesianForce(1,ca)*
      .            (CartesianF(1,ca)-CartesianB(1,ca))/(2*h)
               Y = CartesianForce(2,ca)*
@@ -1178,13 +1176,13 @@ C testing
 C             write(6,*) 'test:',i,ca,X,Y,Z
             enddo
             endif
-        else
-C  Cartesian
+        else  
+C  Cartesian              
           GetForce = GetForce+CartesianForce(j-3*(l-1),l)*coeffA(j)
-        endif
+        endif  
         if (doAll) then
           j = iNextDept(j)
-        else
+        else 
           j=0
         endif
       enddo
@@ -1206,9 +1204,9 @@ C  Cartesian
 !     The output is to file "OUT.CANON.ZMATRIX" by default, but a new filename
 !     might be specified as an optional argument. If a unit number is used
 !     output is directly appended to it.
-!
+!     
         implicit none
-
+        
         character(len=*), intent(in), optional :: filename
         integer, intent(in), optional          :: iunit
 C
@@ -1269,8 +1267,8 @@ C  Write molecule coordinates in user's units
           ! Mask the references for the second and third atom
           do i=nStart+1,nStart+nAtoms-1
              js = 3*i-3
-             select case (i-nStart+1)
-             case (2)
+             select case (i-nStart+1) 
+             case (2) 
                 mask = (/ 1, 0, 0 /)
              case (3)
                 mask = (/ 1, 1, 0 /)
@@ -1289,7 +1287,7 @@ C  Write molecule coordinates in user's units
           enddo
         enddo
 
-C  Write cartesian coordinates in user's units
+C  Write cartesian coordinates in user's units        
         do m = 1,nZcart
           nStart = nZcartStartAtom(m)
           nAtoms = nZcartAtoms(m)
@@ -1349,18 +1347,18 @@ C  Write molecule coordinates in user's units
           write(6,'(3f16.8)') (Zmat(3*(nStart-1)+k)/(1.0d0+(Ang-1.0d0)*
      .                         ZmatUnitsLen),k=1,3)
           do i=nStart+1,nStart+nAtoms-1
-            write(6,'(3f16.8)')
+            write(6,'(3f16.8)') 
      .            Zmat(3*i-2)/(1.0d0+(Ang-1.0d0)*ZmatUnitsLen),
      .            Zmat(3*i-1)/(1.0d0+(deg-1.0d0)*ZmatUnitsAng),
      .            Zmat(3*i)/(1.0d0+(deg-1.0d0)*ZmatUnitsAng)
           enddo
         enddo
 
-C  Write cartesian coordinates in user's units
+C  Write cartesian coordinates in user's units        
         do m = 1,nZcart
           nStart = nZcartStartAtom(m)
           nAtoms = nZcartAtoms(m)
-          write(6,'(''cartesian block'',i5,'' ('',i6,'' atoms)'')')
+          write(6,'(''cartesian block'',i5,'' ('',i6,'' atoms)'')') 
      .              m,nAtoms
           write(6,'(3f16.8)')((Zmat(3*(i-1)+k)/(1+(Ang-1)*ZmatUnitsLen),
      .                         k=1,3),i=nStart,nStart+nAtoms-1)
@@ -1378,7 +1376,7 @@ C  Subroutine for generation of cartesian coordinates from Z-matrix
 C  given the following special cases:
 C    - the first entry is pure cartesian coordinates
 C    - the second entry is spherical coordinates relative to the first atom
-C    - the third entry is general Z-matrix coordinates, but with the torsion atom
+C    - the third entry is general Z-matrix coordinates, but with the torsion atom 
 C      a dummy atom 1 unit in the z direction above the second
 C    - the fourth entry onwards are general Z-matrix coordinates
 C
@@ -1396,7 +1394,7 @@ C
         real(dp), intent(out)    :: z
 !
         real(dp), intent(in)     :: phi_ref
-C
+C        
         real(dp), dimension(3), parameter ::
      $        ex = (/ 1.0_dp, 0.0_dp, 0.0_dp /),
      $        ez = (/ 0.0_dp, 0.0_dp, 1.0_dp /)
@@ -1460,7 +1458,7 @@ C
           ! Atom 1 at the origin
           RelatedC(:,2) = 0.0_dp  ! Note the index: atom1 is now j
 
-          ! Fake reference atom at (0,0,1) over the second
+          ! Fake reference atom at (0,0,1) over the second 
           ! Atom k in the Zmatrix spec
           RelatedC(:,3) = RelatedC(:,1)  + ez
 
@@ -1482,7 +1480,7 @@ C
 
             unit_vector = rotate(ex,ez, phi_1-pi/2.0_dp)
 
-            ! Rotate
+            ! Rotate 
             ! with the unit_vector as axis and an angle of 90-theta_1
 
             angle_2 = pi/2.0_dp - theta_1
@@ -1496,7 +1494,7 @@ C
             y = third_atom_coords(2)
             z = third_atom_coords(3)
 
-
+            
         elseif(atomNr.gt.2) then
           call Z2C(r,theta,phi,RelatedC,x,y,z)
         endif
@@ -1671,12 +1669,12 @@ C    8 - fractional cartesian (scaled by lattice vectors)
       case(4,7)
          x =  xin / zmatrix_alat
       case(5,8)
-
+   
          ! Get other cart coords and compute fractional coords
          ! we assume that any use of fractional coordinates is
          ! on a whole-atom basis, i.e., there are no bond lenghts
          ! or angles involved, so Zmat(base+1:base+3) is homogeneous
-
+   
          natom = 1 + (i-1)/3
          r(1:3) = Zmat(3*(natom-1)+1:3*(natom-1)+3)
          call cart2frac(r,rfrac)
@@ -1777,7 +1775,7 @@ C
       ! The rotation is counterclockwise looking down from
       ! the head to the foot of v.
       ! v does not need to be a unit vector
-      ! See, for example,  Wikipedia
+      ! See, for example,  Wikipedia 
 
       real(dp)                :: cos_ang, sin_ang, dot_wx, v2
       real(dp), dimension(3)  :: cross_wx, w
@@ -1837,10 +1835,10 @@ C
 !     The output is to file "OUT.UCELL.ZMATRIX" by default, but a new filename
 !     might be specified as an optional argument. If a unit number is used
 !     output is directly appended to it.
-!
+!     
 !
         implicit none
-
+        
         character(len=*), intent(in), optional :: filename
         integer, intent(in), optional          :: iunit
 C
@@ -1873,31 +1871,4 @@ C
 
       end subroutine write_canonical_ucell_and_Zmatrix
 
-      subroutine zmatrix_reset()
-        implicit none
-
-        call de_alloc( Zmat, 'Zmat', 'zmatrix' )
-        call de_alloc( species, 'species',   'zmatrix' )
-        call de_alloc( ZmatForce, 'ZmatForce', 'zmatrix' )
-        call de_alloc( iZmat, 'iZmat', 'zmatrix' )
-        call de_alloc( VaryZmat, 'VaryZmat',  'zmatrix' )
-        call de_alloc( nZmolAtoms, 'nZmolAtoms',  'zmatrix' )
-        call de_alloc( nZmolStartAtom, 'nZmolStartAtom', 'zmatrix' )
-        call de_alloc( nZcartAtoms, 'nZcartAtoms', 'zmatrix' )
-        call de_alloc( nZcartStartAtom, 'nZcartStartAtom', 'zmatrix')
-        call de_alloc( ZmatType, 'ZmatType', 'zmatrix' )
-        call de_alloc( iZmattoVars, 'iZmattoVars','zmatrix' )
-        call de_alloc( iNextDept, 'iNextDept', 'zmatrix' )
-        call de_alloc( coeffA, 'coeffA', 'zmatrix' )
-        call de_alloc( coeffB, 'coeffB', 'zmatrix' )
-        call de_alloc( ZmatForceVar, 'ZmatForceVar', 'zmatrix' )
-        call de_alloc( iVarstoZmat, 'iVarstoZmat', 'zmatrix' )
-        call de_alloc( lZmatVarsDef, 'lZmatVarsDef', 'zmatrix' )
-        call de_alloc( ZmatVarNames, 'ZmatVarNames', 'zmatrix' )
-
-      nullify( zmat, species, ZmatForce, iZmat, VaryZmat, nZmolAtoms )
-      nullify( nZmolStartAtom, nZcartAtoms, nZcartStartAtom, ZmatType )
-      nullify( iZmattoVars, iNextDept, coeffA, coeffB, ZmatForceVar )
-      nullify( iVarstoZmat, lZmatVarsDef, ZmatVarNames )
-      end subroutine zmatrix_reset
       end module zmatrix

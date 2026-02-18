@@ -1,23 +1,30 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-      subroutine cgvc_zmatrix( na, xa, fa, cell, stress, dxmax,
-     .                 tp, ftol, strtol, varcel, relaxd, usesavecg )
+      subroutine cgvc_zmatrix( na, xa, fa, cell, stress, dxmax, 
+     .                 tp, ftol, strtol, varcel, relaxd, usesavecg ) 
 c ***************************************************************************
 c Variable-cell conjugate-gradient geometry optimization
 c
 c   Energy minimization including atomic coordinates and unit cell vectors.
+c   It allows an external target stress:
+c              %block MD.TargetStress
+c                  3.5  0.0  0.0  0.0  0.0  0.0
+c              %endblock MD.TargetStress
+c   corresponding to xx, yy, zz, xy, xz, yz.
+c   In units of (-MD.TargetPressure)
+c   Default: hydrostatic pressure: -1, -1, -1, 0, 0, 0
 c
 c   Based on E({xa},stress), with {xa} in fractional coor
 c   The gradient of the energy given by {cfa} forces (fractional!)
 c   The fractional coordinates are multiplied by the initial cell vectors
 c   to get them in Bohr for dxmax and preconditioning.
-c
-c Written by E. Artacho. November 1998.
+c      
+c Written by E. Artacho. November 1998. 
 c ******************************** INPUT ************************************
 c integer na            : Number of atoms in the simulation cell
 c real*8 fa(3,na)       : Atomic forces
@@ -31,7 +38,7 @@ c logical usesavecg     : true if we're using saved CG files
 c *************************** INPUT AND OUTPUT ******************************
 c real*8 xa(3,na)       : Atomic coordinates
 c                         input: current step; output: next step
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 stress(3,3)    : Stress tensor components
@@ -49,8 +56,6 @@ C
       use fdf
       use m_mpi_utils, only:  broadcast
       use units, only: kBar, Ang
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
 
       use zmatrix,     only : VaryZmat, lUseZmatrix, Zmat
       use zmatrix,     only : CartesianForce_to_ZmatForce
@@ -89,11 +94,13 @@ C Saved internal variables:
       integer,       save :: ndeg, linmin
       logical,       save :: frstme = .true.
       logical,       save :: tarstr = .false.
+      logical,       save :: constant_volume
       real(dp),      save :: initial_volume
 
       real(dp),      save :: cgcntr(0:20) = 0.0_dp
-      real(dp),      save :: modcel(3)
-      real(dp),      save :: precon
+      real(dp),      save :: tstres(3,3) 
+      real(dp),      save :: modcel(3) 
+      real(dp),      save :: precon 
       real(dp),      save :: strain(3,3)
       real(dp),      save :: cellin(3,3)
 
@@ -110,12 +117,72 @@ c ---------------------------------------------------------------------------
 C If first call to cgvc_zmatrix, check dim and get target stress --------------------
 
       if ( frstme ) then
-
+  
 C Look for target stress and read it if found, otherwise generate it --------
 
         if ( varcel ) then
+     
+C Check if we want a constant-volume simulation
+          constant_volume = fdf_get("MD.ConstantVolume", .false.)
 
-          call set_target_stress( tp )
+          tarstr = fdf_block('MD.TargetStress',bfdf)
+
+          if (tarstr) then
+            if (Node.eq.0) then
+              write(6,'(/a,a)')
+     $            'cgvc_zmatrix: Reading %block MD.TargetStress',
+     .                     ' (units of MD.TargetPressure).'
+            endif
+            if (.not. fdf_bline(bfdf,pline))
+     $        call die('cgvc_zmatrix: ERROR in MD.TargetStress block')
+            sxx = fdf_bvalues(pline,1)
+            syy = fdf_bvalues(pline,2)
+            szz = fdf_bvalues(pline,3)
+            sxy = fdf_bvalues(pline,4)
+            sxz = fdf_bvalues(pline,5)
+            syz = fdf_bvalues(pline,6)
+            call fdf_bclose(bfdf)
+            
+            tstres(1,1) = - sxx * tp
+            tstres(2,2) = - syy * tp
+            tstres(3,3) = - szz * tp
+            tstres(1,2) = - sxy * tp
+            tstres(2,1) = - sxy * tp
+            tstres(1,3) = - sxz * tp
+            tstres(3,1) = - sxz * tp
+            tstres(2,3) = - syz * tp
+            tstres(3,2) = - syz * tp
+          else
+            if (Node.eq.0) then
+              write(6,'(/a,a)')
+     $            'cgvc_zmatrix: No target stress found, ',
+     .            'assuming hydrostatic MD.TargetPressure.'
+            endif
+            do i= 1, 3
+              do j= 1, 3
+                tstres(i,j) = 0.0_dp
+              enddo
+              tstres(i,i) = - tp
+            enddo
+          endif
+
+C Write target stress down --------------------------------------------------
+
+          if (constant_volume) then
+            tstres(:,:) = 0.0_dp
+            if (Node.eq.0) then
+              write(6,"(a)") "***Target stress set to zero " //
+     $            "for constant-volume calculation"
+            endif
+          endif
+          if (Node.eq.0) then
+            write(6,"(/a)") 'cgvc_zmatrix: Target stress (kBar)'
+            do i = 1, 3
+              write(6,"(a,2x,3f12.3)") 
+     .             'cgvc_zmatrix:', (tstres(1,j)/kBar,j=1,3)
+            enddo
+          endif
+
 C Moduli of original cell vectors for fractional coor scaling back to au ---
           do n= 1, 3
             modcel(n) = 0.0_dp
@@ -133,7 +200,7 @@ C ---- (a length in Bohrs typical of bond lengths ..) -----------------------
 
 C Initialize absolute strain and save initial cell vectors -----------------
 C Initialization to 1. for numerical reasons, later substracted ------------
-
+       
           strain(1:3,1:3) = 1.0_dp
           cellin(1:3,1:3) = cell(1:3,1:3)
           initial_volume = volcel(cellin)
@@ -208,7 +275,7 @@ C Inverse of matrix of cell vectors  (transverse of) ------------------------
 
         call reclat( cell, celli, 0 )
 
-C Transform coordinates and forces to fractional ----------------------------
+C Transform coordinates and forces to fractional ---------------------------- 
 C but scale them again to Bohr by using the (fix) moduli of the original ----
 C lattice vectors (allows using maximum displacement as before) -------------
 C convergence is checked here for input forces as compared with ftol --------
@@ -234,10 +301,10 @@ C Loop over degrees of freedom, scaling cartesian coordinates to fractional
                   force = ZmatForce(indi)
                 else
                   force = ZmatForceVar(vi)
-                endif
+                endif 
                 relaxd=relaxd.and.(dabs(force).lt.ftoln(ndegi))
                 if (ZmatType(indi).gt.2) then
-C Cartesian coordinate
+C Cartesian coordinate                
                   gxa(ndegi) = 0.0_dp
                   gfa(ndegi) = 0.0_dp
                   do i = 1,3
@@ -249,7 +316,7 @@ C Cartesian coordinate
                     else
                       force1 = ZmatForce(indi1)
                     endif
-                    gfa(ndegi) = gfa(ndegi)+
+                    gfa(ndegi) = gfa(ndegi)+ 
      .                          cell(i,n)*force1/modcel(n)
                   enddo
                 else
@@ -288,7 +355,7 @@ C Symmetrizing the stress tensor --------------------------------------------
 
 C Subtract target stress
 
-        stress_dif = stress - target_stress
+        stress_dif = stress - tstres
 !
 !       Take 1/3 of the trace out here if constant-volume needed
 !
@@ -299,7 +366,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append stress (substracting target stress) and strain to gxa and gfa ------
+C Append stress (substracting target stress) and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
         do i = 1,3
           do j = i,3
@@ -316,19 +383,19 @@ C preconditioning: scale stress and strain so as to behave similarly to x,f -
 
 C  testing
 !!          print *, "ndeg, ndegi:", ndeg, ndegi
-
+        
 C Check stress convergence --------------------------------------------------
         strtol = dabs(strtol)
         do i = 1,3
           do j = 1,3
-            relaxd = relaxd .and.
+            relaxd = relaxd .and. 
      .        ( dabs(stress_dif(i,j)) .lt. abs(strtol) )
           enddo
         enddo
 
-C Call conjugate gradient minimization --------------------------------------
+C Call conjugate gradient minimization -------------------------------------- 
         if ( .not. relaxd ) then
-          do i=1,ndeg
+          do i=1,ndeg 
             ftoln_tmp(i) = 0.d0
 !!            print *, "gxa, gfa ", i, gxa(i), gfa(i)
           enddo
@@ -378,7 +445,7 @@ C Set number of degrees of freedom & variables
         endif
 
         if (.not. relaxd) then
-!!           do i=1,ndeg
+!!           do i=1,ndeg 
 !!              print *, "gxa, gfa ", i, gxa(i), gfa(i)
 !!           enddo
            call conjgr( ndeg, gxa, gfa, dxmaxn, ftoln, cgcntr, cgaux)
@@ -399,7 +466,7 @@ C Checking line minimizations and convergence -------------------------------
         linmin = nint(cgcntr(1))
       endif
 
-C Transform back if variable cell -------------------------------------------
+C Transform back if variable cell ------------------------------------------- 
       if ( varcel .and. (.not. relaxd)) then
 
 C New cell ------------------------------------------------------------------
@@ -420,7 +487,7 @@ C New cell ------------------------------------------------------------------
            cell =  cell * (initial_volume/new_volume)**(1.0_dp/3.0_dp)
         endif
 
-C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
+C Output fractional coordinates to cartesian Bohr, and copy to xa ----------- 
         ndegi = 0
         if (lUseZmatrix) then
           do ia=1,na
@@ -429,7 +496,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
               if (VaryZmat(indi)) then
                 ndegi = ndegi + 1
                 j = indi
-                do while (j.ne.0)
+                do while (j.ne.0) 
                   if (ZmatType(j).gt.2) then
                     Zmat(j) = 0.0_dp
                     do n=1,3
@@ -447,7 +514,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
                 enddo
               endif
             enddo
-          enddo
+          enddo  
           call Zmat_to_Cartesian(xa)
         else
           do ia = 1,na
@@ -465,7 +532,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
 
       else    ! fixed cell
 
-        ! Return coordinates to correct arrays
+        ! Return coordinates to correct arrays 
         ndegi = 0
         if (lUseZmatrix) then
           do ia = 1,na
@@ -495,7 +562,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
 
 C Save cgaux ----------------------------------------------------------------
 
-      if (Node.eq.0)
+      if (Node.eq.0) 
      .  call iocg( 'write', ndeg*2, cgaux, cgcntr, relaxd, found )
 
 C Deallocate local memory

@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
 MODULE m_sankey_change_basis 
 
   IMPLICIT NONE
@@ -85,7 +83,7 @@ MODULE m_sankey_change_basis
     if(ParallelOverK) then
       call die ( "chgbasis: tddft-siesta not parallelized over k-points." )
     endif
-      call ms_scalapack_setup(MPI_COMM_ID(mpi_comm_world),1,'c',BlockSize)
+      call ms_scalapack_setup(mpi_comm_world,1,'c',BlockSize)
   endif
 #else
   Node = 0

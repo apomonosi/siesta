@@ -2,7 +2,6 @@ C...............................................................
 C
       subroutine write_movie(io2,is1,nbox,ivmin,ivmax,iev,
      .                       cc_ang,nat,iz,freq,disp,nsteps)
-      use units, only: pi2
 C
 C     write down atom coordinates and animation of the vibration mode
 C     in the format for Xcrysden
@@ -11,25 +10,27 @@ C     in the format for Xcrysden
      .        nsteps,istep
       double precision cc_ang(3,3),coort(3),
      .       disp(3,nat,ivmin:ivmax),freq(ivmin:ivmax),
-     .       dscal
+     .       btoang,dscal,twopi
+      data btoang/0.529177/  !  Bohr to Angstroem
 
+      twopi=8.d0*atan(1.d0)
       write (io2,212) iev,freq(iev)
-      write (io2,'(A,i5)') 'ANIMSTEPS',nsteps
+      write (io2,'(A,i5)') 'ANIMSTEPS',nsteps 
       if (nsteps.le.0) return
-      write (io2,'(A,i5)') 'CRYSTAL'
-      write (io2,'(A)') 'PRIMVEC'
-      do ii=1,3
-         write (io2,'(3f16.9)') (cc_ang(jj,ii),jj=1,3)
-      enddo
+C       write (io2,'(A,i5)') 'CRYSTAL'
+C       write (io2,'(A)') 'PRIMVEC' 
+C       do ii=1,3
+C         write (io2,'(3f16.9)') (cc_ang(ii,jj),jj=1,3)
+C       enddo
 C     assume fixed-cell animation, because we deal with phonons
       do istep=1,nsteps
         rewind is1
         write (io2,'(A,i5)') 'ATOMS',istep
         do ibox=1,nbox
-          read  (is1,'(i9,3f20.8)') iat, (coort(jj),jj=1,3)
-          write (io2,'(i9,3f12.7,2x,3f12.7)') iz(iat),
+          read  (is1,'(i4,3f20.8)') iat, (coort(jj),jj=1,3)
+          write (io2,'(i4,3f12.7,2x,3f12.7)') iz(iat), 
      .                (coort(jj) +
-     +                 sin(pi2*istep/nsteps) *
+     +                 sin(twopi*istep/nsteps) *
      *                 disp(jj,iat,iev),jj=1,3)
         enddo
       enddo

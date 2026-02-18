@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !     
-#include "mpi_macros.f"
-
       module m_iodm_old
 
       use precision,     only: dp
@@ -90,9 +88,7 @@ C     Internal variables
       integer   no_u, ml, ndmaxg
       integer, dimension(:), pointer  :: numdg
 #ifdef MPI
-      integer   MPIerror
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer   MPIerror, Request, Status(MPI_Status_Size)
       integer   BNode
 
       real(dp), dimension(:), pointer :: buffer
@@ -331,9 +327,7 @@ C     Internal variables
       integer   no_u, ml, ndmaxg
       integer, dimension(:), pointer  :: numdg
 #ifdef MPI
-      integer   MPIerror
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer   MPIerror, Request, Status(MPI_Status_Size)
       integer   BNode
 
       real(dp), dimension(:), pointer :: buffer
@@ -539,9 +533,7 @@ C     Create buffer arrays for transfering density matrix between nodes and list
 
       integer :: no_u, m, ml, im, ndmaxg, unit1, is
 #ifdef MPI
-      integer   MPIerror
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer   MPIerror, Request, Status(MPI_Status_Size)
       integer   BNode
       real(dp), dimension(:), pointer :: buffer
       integer,  dimension(:), pointer :: ibuffer

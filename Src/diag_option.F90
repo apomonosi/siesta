@@ -10,42 +10,30 @@
 # undef SIESTA__ELPA
 #endif
 module m_diag_option
-#ifdef SIESTA__ELPA
-  use configured_values_m, only: elpa_gpu_string
-#endif
+
   use precision, only: dp
-
+  
   implicit none
-
+  
 !  public :: read_diag, print_diag
 !  public :: diag_recognizes_neigwanted
 
-
+  public
+  
   save
 
-  !-----------------------------------------------------------------------------
-  ! These two variables can be reset from outside the module, hence they are 'public'
-  ! and not 'protected'. In addition, these variables are coupled.
-  ! This issue needs to be revisited.
-
   !> Whether diagonalization calls are made via LAPACK (true) or ScaLAPACK (false)
-  logical, public :: Serial = .true.
-
-  !> Whether k-point diagonalization is treated in parallel (with each processor
-  !> holding complete matrices)
-  logical, public :: ParallelOverK = .false.
-
-  !-----------------------------------------------------------------------------
+  logical :: Serial = .true.
 
   !> Whether ScaLAPACK uses a 2D distribution
-  logical, protected :: Use2D = .true.
+  logical :: Use2D = .true.
   !> Number of processors on the columns for the 2D distribution
-  integer, protected :: ProcessorY = 1
+  integer :: ProcessorY = 1
   !> The block-size
-  integer, protected :: diag_BlockSize = 64
-
+  integer :: diag_BlockSize = 24
+  
   !> Whether we should use the upper or lower part of the Hermitian/symmetric matrices
-  character, protected :: UpperLower = 'L'
+  character :: UpperLower = 'L'
 
   ! Different choices of algorithms.
 
@@ -77,30 +65,27 @@ module m_diag_option
   !> Use the 2-stage ELPA driver
   integer, parameter :: ELPA_2stage = 10
 
-  integer, protected :: algorithm = DivideConquer
+  integer :: algorithm = DivideConquer
 
   !> Tolerance for MRRR (LAPACK) and expert drivers
-  real(dp), protected :: abstol = 1.e-8_dp
+  real(dp) :: abstol = 1.e-8_dp
   !> Tolerance for expert ScaLAPACK driver
-  real(dp), protected :: orfac = 1.e-3_dp
+  real(dp) :: orfac = 1.e-3_dp
 
   !> Memory factor for the real work arrays
-  real(dp), protected :: mem_factor = 1._dp
+  real(dp) :: mem_factor = 1._dp
 
-  !> Flag to account for printing of options
-  !  logical, protected :: diag_options_printed = .false.
+  logical :: ParallelOverK = .false.
 #ifdef SIESTA__ELPA
   logical :: elpa_use_gpu = .false.
 #endif
-
+  
 contains
 
   subroutine read_diag(Gamma, nspin)
 
     use parallel, only: IONode, Nodes, BlockSize
-    use fdf, only: fdf_get, fdf_deprecated, leqi
-    use m_cite, only: add_citation
-    use sys, only: message
+    use fdf, only: fdf_get, leqi
 
     logical, intent(in) :: Gamma
     integer, intent(in) :: nspin
@@ -127,21 +112,6 @@ contains
     else
        Serial = .false.
     end if
-#endif
-
-#ifdef SIESTA__ELPA
-    ! This needs to be called before the blocksize
-    ! definitions, in order to avoid blocksizes that
-    ! are not powers of two.
-
-    call fdf_deprecated( 'Diag.ELPA.UseGPU', 'Diag.ELPA.GPU' )
-    elpa_use_gpu = fdf_get( 'Diag.ELPA.UseGPU', .false.      )
-    elpa_use_gpu = fdf_get( 'Diag.ELPA.GPU'   , elpa_use_gpu )
-    if (elpa_use_gpu .and. IONode) then
-       call add_citation("10.1007/978-3-319-96415-7")
-       call add_citation("10.1016/j.cpc.2020.107808")
-    endif
-
 #endif
 
     ! Determine whether we should default a 2D block-cyclic
@@ -176,26 +146,18 @@ contains
     ! Retrieve the blocksize
     diag_BlockSize = fdf_get('Diag.BlockSize', BlockSize)
 
-#ifdef SIESTA__ELPA
-    call elpa_gpu_block_size( elpa_use_gpu, diag_BlockSize )
-#endif
-
     ! If there are very few processors, it makes
     ! no sense to make them 2D distributed
     Use2D = (ProcessorY > 1) .and. (Nodes / ProcessorY > 1)
     Use2D = Use2D .or. (BlockSize /= diag_BlockSize)
     Use2D = fdf_get('Diag.Use2D', Use2D)
-
+    
     ! Fall back to original BlockSize when not requesting 2D
     ! distribution (the 1D distribution is not implemented
     ! for different blocksize)
     if ( .not. Use2D ) then
        diag_BlockSize = BlockSize
     end if
-
-#ifdef SIESTA__ELPA
-    call elpa_gpu_block_size( elpa_use_gpu, diag_BlockSize )
-#endif
 
     algo = fdf_get('Diag.UpperLower', 'lower')
     if ( leqi(algo, 'lower') .or. leqi(algo, 'l') ) then
@@ -206,31 +168,31 @@ contains
        call die('diag: Unknown argument to Diag.UpperLower U|L')
     end if
 
-
+    
     ! Decide the default algorithm
     algo = ' '
-
+    
     if ( fdf_get('Diag.DivideAndConquer',.true.) ) then
        algo = 'Divide-and-Conquer'
     end if
-
+    
 #ifdef SIESTA__MRRR
     if ( fdf_get('Diag.MRRR',.false.) ) then
        algo = 'MRRR'
     end if
 #endif
-
+    
 #ifdef SIESTA__ELPA
     if ( fdf_get('Diag.ELPA',.false.) ) then
        algo = 'ELPA'
     end if
 #endif
-
+    
     if ( fdf_get('Diag.NoExpert',.false.) ) then
        algo = 'QR'
     end if
 
-
+    
     ! Assert that it has been set, or default to the
     ! expert driver
     if ( len_trim(algo) == 0 ) then
@@ -240,8 +202,8 @@ contains
 
     ! Get the requested algorithm by using the above default
     algo = fdf_get('Diag.Algorithm', trim(algo))
-
-
+    
+    
     ! Determine the global method
     if ( leqi(algo, 'D&C') .or. leqi(algo, 'divide-and-conquer') .or. &
          leqi(algo, 'DandC') .or. leqi(algo, 'vd') ) then
@@ -263,8 +225,7 @@ contains
 #ifdef SIESTA__ELPA
     else if ( leqi(algo, 'elpa-1') .or. leqi(algo, 'elpa-1stage') ) then
        algorithm = ELPA_1stage
-       if (IOnode) call add_citation("10.1016/j.parco.2011.05.002")
-       if (IOnode) call add_citation("10.1088/0953-8984/26/21/213201")
+       
        ! The current ELPA implementation requires non-serial
        Serial = .false.
        ParallelOverK = .false.
@@ -272,14 +233,13 @@ contains
     else if ( leqi(algo, 'elpa') .or. &
          leqi(algo, 'elpa-2stage') .or. leqi(algo, 'elpa-2') ) then
        algorithm = ELPA_2stage
-       if (IOnode) call add_citation("10.1016/j.parco.2011.05.002")
-       if (IOnode) call add_citation("10.1088/0953-8984/26/21/213201")
+
        ! The current ELPA implementation requires non-serial
        Serial = .false.
        ParallelOverK = .false.
 
 #endif
-
+       
 #ifdef SIESTA__MRRR
     else if ( leqi(algo, 'MRRR') .or. leqi(algo, 'RRR') .or. &
          leqi(algo, 'vr') ) then
@@ -301,7 +261,7 @@ contains
 
     else if ( leqi(algo, 'expert') .or. leqi(algo, 'vx') ) then
        algorithm = Expert
-
+       
     else if ( leqi(algo, 'expert-2stage') .or. leqi(algo, 'expert-2') .or. &
          leqi(algo, 'vx_2stage') ) then
 #ifdef SIESTA__DIAG_2STAGE
@@ -313,7 +273,7 @@ contains
 #else
        algorithm = Expert
 #endif
-
+       
     else if ( leqi(algo, 'noexpert') .or. leqi(algo, 'qr') .or. &
          leqi(algo, 'v') ) then
        algorithm = QR
@@ -334,7 +294,7 @@ contains
     else
 
        write(*,'(a)') 'diag: Queried algorithm: '//trim(algo)
-
+      
 #ifndef SIESTA__MRRR
        write(*,'(a)') 'diag: Algorithm cannot be MRRR '// &
             '(not compiled with -DSIESTA__MRRR)'
@@ -348,6 +308,10 @@ contains
 
     end if
 
+#ifdef SIESTA__ELPA
+    elpa_use_gpu = fdf_get('Diag.ELPA.UseGPU',.false.)
+#endif
+
     ! Retrieve tolerances for the expert drivers
     abstol = fdf_get('Diag.AbsTol', 1.e-16_dp)
     orfac = fdf_get('Diag.OrFac', 1.e-6_dp)
@@ -360,10 +324,10 @@ contains
 
   !> A convenience function to keep track of which solvers in 'diag' are
   !> capable of working with a reduced number of eigenvectors/eigenvalues
-
+  
   function diag_recognizes_neigwanted() result (neig_capable)
     logical :: neig_capable
-
+    
     neig_capable =  ( algorithm == MRRR .or. &
                      algorithm == MRRR_2stage .or. &
                      algorithm == Expert .or.  &
@@ -376,14 +340,13 @@ contains
     use parallel, only: IONode, Nodes
 
     if ( .not. IONode ) return
-    !if ( diag_options_printed ) return
 
     write(*,*) ! new-line
-
+    
     select case ( algorithm )
-    case ( DivideConquer )
+    case ( DivideConquer ) 
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'D&C'
-    case ( DivideConquer_2stage )
+    case ( DivideConquer_2stage ) 
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'D&C-2stage'
     case ( MRRR )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'MRRR'
@@ -391,10 +354,8 @@ contains
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'MRRR-2stage'
     case ( ELPA_1stage )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'ELPA-1stage'
-       call print_elpa()
     case ( ELPA_2stage )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'ELPA-2stage'
-       call print_elpa()
     case ( Expert )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'Expert'
     case ( Expert_2stage )
@@ -424,50 +385,12 @@ contains
     else
        write(*,'(a,t53,''= '',a)') 'diag: Used triangular part', 'Upper'
     end if
-
+    
     write(*,'(a,t53,''= '', e10.3)') 'diag: Absolute tolerance', abstol
     write(*,'(a,t53,''= '', e10.3)') 'diag: Orthogonalization factor', orfac
 
     write(*,'(a,t53,''= '',f7.4)') 'diag: Memory factor', mem_factor
 
-    ! Signal completed operation
-    !diag_options_printed = .true.
-
-  contains
-
-   subroutine print_elpa()
-#ifdef SIESTA__ELPA
-      write(*,'(a,t53,''= '',a)') 'diag: ELPA GPU string key', trim(elpa_gpu_string)
-#endif
-   end subroutine
-
   end subroutine print_diag
-
-#ifdef SIESTA__ELPA
-  subroutine elpa_gpu_block_size( using_gpu, matrix_bs )
-    !! When using GPU-enabled elpa, the block size must be a power of 2.
-    implicit none
-    logical, intent(in)    :: using_gpu
-      !! Whether we are using GPU-enabled ELPA.
-    integer, intent(inout) :: matrix_bs
-      !! The blocksize used for diagonalization.
-
-    integer :: powerof2
-
-    if (.not. using_gpu) return
-
-    powerof2 = 2
-    do while ( powerof2 < matrix_bs )
-      powerof2 = powerof2 * 2
-    enddo
-
-    ! If the blocksize is already an appropriate size,
-    ! skip this.
-    if ( powerof2 == matrix_bs ) return
-
-    ! If not, then we take the closest power of two
-    ! that is LOWER than the current blocksize.
-    matrix_bs = powerof2 / 2
-  end subroutine elpa_gpu_block_size
-#endif
+  
 end module m_diag_option

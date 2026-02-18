@@ -392,6 +392,9 @@ contains
 #ifdef TRANSIESTA_DEBUG
     use parallel, only : IONode
 #endif
+#ifdef MPI
+    use mpi_siesta
+#endif
     use intrinsic_missing, only : SORT_QUICK
     use create_Sparsity_SC
     use ts_electrode_m

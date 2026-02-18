@@ -242,9 +242,9 @@ C --- write down accumulated DOS values: -----------------
       goto 100
   402 write (6,*) ' Error reading ',trim(string),' as string'
       goto 100
-  301 format('#',/,'#   partial DOS for atom index ',i9,/,'#')
+  301 format('#',/,'#   partial DOS for atom index ',i5,/,'#')
   302 format('#',/,'#   partial DOS for atom species: ',(a),/,'#')
-  303 format('#   Add data for atom_index =',i9,',  n,l,m,z=',4i3)
+  303 format('#   Add data for atom_index =',i4,',  n,l,m,z=',4i3)
   304 format('#',/,'#    Energy',10x,'spin 1',8x,'spin2',/,'#')    
   305 format(f13.7,4f15.8)
   306 format(' Illegal first character (ASCII =',i4,').',/

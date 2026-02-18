@@ -12,7 +12,6 @@
 
 ! All implemented methods employ a restart with variable
 ! history saving.
-#include "mpi_macros.f"
 
 module m_mixing
   
@@ -106,7 +105,7 @@ module m_mixing
      ! can implement a reduction scheme.
      ! This can be MPI_Comm_Self to not employ any
      ! reductions
-     MPI_COMM_TYPE :: Comm = MPI_Comm_Self
+     integer :: Comm = MPI_Comm_Self
 #endif
 
   end type tMixer
@@ -167,7 +166,7 @@ contains
     character(len=*), intent(in) :: prefix
     ! The array of mixers (has to be nullified upon entry)
     type(tMixer), pointer :: mixers(:)
-    MPI_COMM_TYPE, intent(in), optional :: Comm
+    integer, intent(in), optional :: Comm
 
     ! Block constructs
     type(block_fdf) :: bfdf

@@ -11,8 +11,7 @@ program get_chem_labels
 ! Alberto Garcia, Sep 2009
 !
   use chemical, only: read_chemical_types, number_of_species, species_label
-  use fdf
-  use units, only: inquire_unit
+  use fdf, only : fdf_init
 
   integer            :: i, n
   logical            :: silent
@@ -28,7 +27,6 @@ program get_chem_labels
   endif
 
   call fdf_init(filein,".tmp_fdflog")
-  call fdf_set_unit_handler(inquire_unit)
 
   call read_chemical_types(silent=.true.)
   n = number_of_species()

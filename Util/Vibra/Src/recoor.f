@@ -25,7 +25,6 @@ c integer xmass(na)         : atomic masses of different atoms
 c *******************************************************************
 
       use fdf
-      use units, only: Ang
 
       implicit          none
       integer           na
@@ -158,7 +157,7 @@ c   Coord. option = 3 => Multiply by lattice vectors
       if (iscale .eq. 1) then
         do ia = 1,na
           do ix = 1,3
-            xa(ix,ia) = xa(ix,ia) * Ang
+            xa(ix,ia) = 1.d0 / 0.529177d0 * xa(ix,ia)
           enddo
         enddo
       elseif (iscale .eq. 2) then

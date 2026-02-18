@@ -9,7 +9,7 @@ module m_matel_registry
   !
   ! This module provides a general interface to the
   ! functions needed by (new_)matel
-  !
+  ! 
   ! Sketch of usage (see examples in the code):
   !
   ! Each type of function is "registered", and a global
@@ -18,7 +18,7 @@ module m_matel_registry
   ! example appropriate for the orbitals, KB projectors, and Vna
   ! in Siesta, and routine "overlap").
   !
-  ! Once registered, a function can be evaluated, its cutoff and
+  ! Once registered, a function can be evaluated, its cutoff and 
   ! angular momentum obtained, etc.  So far only the functions
   ! needed by (new_)matel are implemented: rcut, lcut, evaluate (former phiatm).
   !
@@ -37,7 +37,7 @@ module m_matel_registry
   private
 
   type id_t
-     character(len=15) :: func_type = "null"
+     character(len=10) :: func_type = "null"
      integer           :: n_indexes = 0
      integer           :: indexes(4) = (/-1,-1,-1,-1/)
   end type id_t
@@ -83,17 +83,6 @@ module m_matel_registry
   public :: evaluate, rcut, lcut
   public :: evaluate_x, evaluate_y, evaluate_z
   public :: show_pool
-  public :: get_nfuncs
-  !
-  public :: peek_at_registered_radfunc
-  public :: is_registered_radfunc
-  public :: cleanup_matel_registry     
-  public :: remove_wannier_projectors_from_registry
-  public :: lock_system_functions, unlock_system_functions
-  public :: is_system_locked        
-
-  logical, private, save :: system_locked = .false.
-  ! True after basic system functions (orbitals, KB, etc) have been registered
 
 CONTAINS
 
@@ -104,39 +93,12 @@ CONTAINS
     ok = (gindex > 0 .AND. gindex <= nfuncs)
   end function valid
 
-  function get_nfuncs( ) result (nf)
-    integer  :: nf
-    nf = nfuncs
-  end function get_nfuncs
-
-  function is_registered_radfunc(index) result (is_radfunc)
-    integer, intent(in) :: index
-    logical :: is_radfunc
-
-    is_radfunc = associated(matel_pool(index)%rf)
-
-  end function is_registered_radfunc
-
-  subroutine peek_at_registered_radfunc(index,rfunc,l,m)
-    integer, intent(in)    :: index
-    type(rad_func), pointer :: rfunc
-    integer, intent(out)   :: l, m
-
-    if (.not. is_registered_radfunc(index)) &
-         call die("registry object does not contain a radfunc")
-
-    rfunc => matel_pool(index)%rf%func
-    l =  matel_pool(index)%rf%l
-    m =  matel_pool(index)%rf%m
-
-  end subroutine peek_at_registered_radfunc
-
   !> Extends the size of the pool if needed
   subroutine check_size_of_pool(nfuncs)
     integer, intent(in) :: nfuncs
 
     type(registered_function_t), dimension(:), allocatable :: tmp_pool
-
+    
     if (nfuncs > nmax_funcs) then
        if (.not. allocated(matel_pool)) then
           allocate(matel_pool(initial_size))
@@ -148,7 +110,7 @@ CONTAINS
           ! Each element (derived type) involves just two scalars
           ! and two pointers, so the copy overhead is small.
           ! Note that we do not use the F2003 "move_alloc" idiom.
-
+          
           tmp_pool(1:nmax_funcs) = matel_pool(1:nmax_funcs)
           deallocate(matel_pool)
           allocate(matel_pool(nmax_funcs + delta_size))
@@ -156,22 +118,22 @@ CONTAINS
           nmax_funcs = nmax_funcs + delta_size
 
           deallocate(tmp_pool)
-
+          
        endif
     endif
   end subroutine check_size_of_pool
-
+               
   !
   !   This is the main entry to the registry for simple radial functions
   !
   subroutine register_in_rf_pool(func,l,m,func_type,indexes,gindex)
     type(rad_func), pointer :: func             ! function data
-    integer, intent(in)     :: l, m
+    integer, intent(in)     :: l, m           
     character(len=*), intent(in) :: func_type   ! mnemonic kind
     integer, intent(in)          :: indexes(:)  ! legacy indexes
     integer, intent(out)    :: gindex           ! global index
 
-    integer :: n_indexes
+    integer :: n_indexes 
     type(ext_radfunc_t), pointer :: rf
 
     n_indexes = size(indexes)
@@ -222,32 +184,15 @@ CONTAINS
   end subroutine register_in_tf_pool
 
 !--------------------------------------------------------------
-  subroutine show_pool(first, last)
+  subroutine show_pool()
     use trialorbitalclass, only: print_trialorb
 
-    integer, intent(in), optional :: first
-    integer, intent(in), optional :: last
+    integer :: gindex
 
-    integer :: istart, iend, gindex
-
-    if (present(first)) then
-       istart = first
-    else
-       istart = 1
-    endif
-
-    if (present(last)) then
-       iend = last
-    else
-       iend = nfuncs
-    endif
-
-    do gindex = istart, iend
+    do gindex = 1, nfuncs
        if (associated(matel_pool(gindex)%rf)) then
-          write(*,advance="no",fmt="(i6)") gindex
           call print_rf(matel_pool(gindex)%rf)
        else if (associated(matel_pool(gindex)%tf)) then
-          write(*,advance="no",fmt="(i6,a)") gindex, " trial_orbital:"
           call print_trialorb(matel_pool(gindex)%tf)
        endif
     enddo
@@ -421,114 +366,8 @@ CONTAINS
 
   subroutine print_rf(rf)
     type(ext_radfunc_t), intent(in) :: rf
-    print "(a15,i3,i3,f8.4)", trim(rf%id%func_type), rf%l, rf%m, rf%func%cutoff
+    print "(a,i2,i2,f8.4)", trim(rf%id%func_type), rf%l, rf%m, rf%func%cutoff
   end subroutine print_rf
 
-  !------------- Cleanup
-
-  subroutine cleanup_pool_entry(entry)
-    !! Helper routine to clean up a single matel_pool entry
-    !! Only deallocates registry-owned data structures and nullifies 
-    !! pointers to external data
-    type(registered_function_t), intent(inout) :: entry
-
-    if (associated(entry%rf)) then
-      ! For radfuncs, just nullify the function pointer
-      ! since the data is owned elsewhere
-      if (associated(entry%rf%func)) then
-         nullify(entry%rf%func)
-      endif
-      deallocate(entry%rf)  ! deallocate ancillary data
-      nullify(entry%rf)
-    endif
-    if (associated(entry%tf)) then
-      deallocate(entry%tf)
-      nullify(entry%tf)
-    endif
-    
-  end subroutine cleanup_pool_entry
-
-  subroutine cleanup_matel_registry()
-    !! Cleans up the matel registry by deallocating memory and resetting counters
-    implicit none
-    
-    integer :: i
-
-    ! First clean up any existing registered functions
-    if (allocated(matel_pool)) then
-      do i = 1, nfuncs
-        call cleanup_pool_entry(matel_pool(i))
-      enddo
-      deallocate(matel_pool)
-    endif
-
-    ! Reset counters and sizes
-    nfuncs = 0
-    nmax_funcs = 0
-
-    call unlock_system_functions()
-    
-  end subroutine cleanup_matel_registry
-
-  subroutine remove_wannier_projectors_from_registry()
-    !! Removes Wannier trial functions from the registry by cleaning up their entries
-    !! and adjusting the total number of functions. Handles both trial orbital
-    !! Wanniers and radial function based Wanniers (identified by "wann_" prefix
-    !! in their func_type)
-    implicit none
-    
-    integer :: i
-    logical :: is_wannier
-    character(len=5), parameter :: wann_prefix = "wann_"
-    
-    if (.not. allocated(matel_pool)) return
-
-    ! Process functions from the end, removing Wannier functions 
-    ! which are guaranteed to be at the end of the registry
-    do i = nfuncs, 1, -1
-      is_wannier = .false.
-      
-      ! Check if it's a trial orbital
-      if (associated(matel_pool(i)%tf)) then
-        is_wannier = .true.
-      ! Check if it's a radial function with wann_ prefix
-      else if (associated(matel_pool(i)%rf)) then
-        if (matel_pool(i)%rf%id%func_type(1:5) == wann_prefix) then
-          is_wannier = .true.
-        endif
-      endif
-
-      if (is_wannier) then
-        call cleanup_pool_entry(matel_pool(i))
-        nfuncs = nfuncs - 1
-      else
-        ! Found first non-Wannier function, we're done
-        exit
-      endif
-    enddo
-
-  end subroutine remove_wannier_projectors_from_registry
-
-  subroutine lock_system_functions()
-    !! Marks that the basic functions have been registered.
-    !! Can only be called once. 
-    use sys, only: die
-    
-    if (system_locked) then
-      call die("matel registry: Basic functions are already registered")
-    endif
-    system_locked = .true.
-  end subroutine lock_system_functions
-
-  subroutine unlock_system_functions()
-    !! Unlocks the system functions state, allowing re-registration
-    system_locked = .false.
-  end subroutine unlock_system_functions
-  
-  logical function is_system_locked()
-    !! Returns whether the basic system functions have been registered
-    is_system_locked = system_locked
-  end function is_system_locked
-
 end module m_matel_registry
-
+  

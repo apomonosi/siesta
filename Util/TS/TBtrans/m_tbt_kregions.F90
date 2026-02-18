@@ -476,10 +476,11 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_AllReduce, MPI_Sum, MPI_Integer
 #endif
-
+    use m_spin, only: spin
     use ts_electrode_m
     use m_ts_cctype
     use m_ts_electrode, only: calc_next_GS_Elec
+    use m_ts_electrode_spinor, only: calc_next_GS_Elec_spinor
       
     integer, intent(in) :: ispin
     type(ts_c_idx), intent(in) :: cE
@@ -534,8 +535,13 @@ contains
        ! This routine will automatically check
        ! (and SET) the k-point for the electrode.
        ! This is necessary for the expansion to work.
-       call calc_next_GS_Elec(Elecs(i),ispin,bkpt,c%e, &
-            nzwork, zwork)
+       if ( spin%none .or. spin%Col ) then
+          call calc_next_GS_Elec(Elecs(i),ispin,bkpt,c%e, &
+              nzwork, zwork)
+       else
+          call calc_next_GS_Elec_spinor(Elecs(i),bkpt,c%e, &
+                nzwork, zwork)
+       end if
     end do
 
   end subroutine calc_GS_k

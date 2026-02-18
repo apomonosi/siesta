@@ -1,17 +1,11 @@
-This directory provides examples of different, realistic, systems to
-showcase what can be done and achieved with SIESTA.
 
-To run each of the examples, head into the corresponding folder and
-execute SIESTA as usual:
+Here you can find example fdf and pseudopotential files.
 
-/PATH/TO/SIESTA/siesta < input.fdf > output.out
+There are also pseudopotential-generation input files.  You don't need
+to generate your pseudos to run these examples, but it is very
+advisable to know how to generate and test pseudopotentials. See the
+Pseudo directory at the top level.
 
-Some examples might need additional steps, for example STM requires the
-usage of denchar and stm utilities. See the corresponding READMEs, if
-available.
-
-Finally, under Pseudopotential_Generation you will find pseudopotential
-generation input files.  You don't need to generate your pseudos to run
-these examples, but it is very advisable to know how to generate and
-test pseudopotentials. See the Pseudo directory at the top level.
+Other, ready-to-run examples, can be found in directory Tests in the
+main distribution.
 

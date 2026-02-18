@@ -23,7 +23,7 @@ Module siesta_cmlsubs
       Use fdf,   Only : fdf_boolean, fdf_string
       Use files, only : slabel, label_length
       Use parallel, only : nodes, ionode
-      Use siesta_version_info
+      Use version_info
       use m_uuid, only: generate_uuid
       Use m_timestamp, only: datestring
 
@@ -59,11 +59,10 @@ Module siesta_cmlsubs
 
          Call cmlStartMetadataList(mainXML)
          Call cmlAddMetadata(mainXML, name='siesta:Program', content='Siesta')
-         Call cmlAddMetadata(mainXML, name='siesta:Version', content=siesta_version_str)
+         Call cmlAddMetadata(mainXML, name='siesta:Version', content=version_str)
          Call cmlAddMetadata(mainXML, name='siesta:Arch',    content=siesta_arch)
-         Call cmlAddMetadata(mainXML, name='siesta:Flags',   content=siesta_fflags)
-         Call cmlAddMetadata(mainXML, name='siesta:PPFlags',   content=siesta_fppflags)
-         Call cmlAddMetadata(mainXML, name='siesta:Libs',   content=siesta_libs)
+         Call cmlAddMetadata(mainXML, name='siesta:Flags',   content=fflags)
+         Call cmlAddMetadata(mainXML, name='siesta:PPFlags',   content=fppflags)
          Call cmlAddMetadata(mainXML, name='siesta:StartTime',content=datestring())
          !
          ! Generate the uuid at some Siesta top-level and pass it here

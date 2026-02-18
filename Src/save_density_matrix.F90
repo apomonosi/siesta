@@ -91,12 +91,16 @@ contains
     
 #ifdef NCDF_4
     if ( write_cdf .and. do_write ) then
-
-       dic_save = ('Ef'.kv.1)//('DM'.kv.1)//('EDM'.kv.1)
-       call cdf_save_state(trim(slabel)//'.nc',dic_save)
-
-       call delete(dic_save)
-
+      
+      if ( (idyn == 0 .and. nmove == 0) .or. &
+          (idyn == 6 .and. istp == 1 ) ) then
+        
+        dic_save = ('Ef'.kv.1)//('DM'.kv.1)//('EDM'.kv.1)
+        call cdf_save_state(trim(slabel)//'.nc',dic_save)
+        
+        call delete(dic_save)
+      end if
+      
     end if
 #endif
 #endif

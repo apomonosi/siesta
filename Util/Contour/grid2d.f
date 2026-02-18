@@ -39,8 +39,6 @@ c
 c Written by Emilio Artacho, November 1998
 c****************************************************************************
 
-      use units, only: Ang
-
       implicit none
 
       logical           outsid, ucell, rawinp
@@ -63,10 +61,11 @@ c****************************************************************************
      .                  cell(3,3), celli(3,3), celmod(3), barati,
      .                  avmod, bvmod, bcomp, poin, x, y, rhoxy, bvm,
      .                  rho000, rho100, rho010, rho001, rho110, 
-     .                  rho101, rho011, rho111, xincr, yincr, eps
+     .                  rho101, rho011, rho111, xincr, yincr, Ang, eps
 
       data              ucell  /.false./
      .                  rawinp /.false./
+     .                  Ang    /0.529177d0/
      .                  eps    /1.d-6/
 
 c ---------------------------------------------------------------------------
@@ -233,7 +232,7 @@ c read function from the 3D grid --------------------------------------------
 
       do i = 1, 3
          do n = 1, 3
-            cell(i,n) = cell(i,n) / Ang
+            cell(i,n) = cell(i,n) * Ang
          enddo
       enddo
 

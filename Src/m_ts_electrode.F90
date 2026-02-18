@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-#include "mpi_macros.f"
-
 module m_ts_electrode
 !
 ! Routines that are used for Electrodes GFs calculations
@@ -19,6 +17,9 @@ module m_ts_electrode
 
   public :: create_Green
   public :: calc_next_GS_Elec
+  public :: SSR_sGreen_DOS
+  public :: SSR_sGreen_NoDOS
+  public :: print_Elec_Green
 
   private
 
@@ -46,7 +47,7 @@ contains
   subroutine SSR_sGreen_DOS(no,ZE,H00,S00,H01,S01,accu, GS, &
        DOS, T, &
        nwork, zwork, &
-       iterations, final_invert)
+       iterations, final_invert, non_col)
        
 ! ***************** INPUT **********************************************
 ! integer     no      : Number of orbitals in the electrode
@@ -79,6 +80,7 @@ contains
     integer, intent(in) :: nwork
 
     logical, intent(in), optional :: final_invert
+    logical, intent(in), optional :: non_col
 
 ! ***********************
 ! * OUTPUT variables    *
@@ -97,6 +99,7 @@ contains
     integer :: ierr             !error in inversion
     integer :: i,j,ic,ic2
     logical :: as_first
+    logical :: non_col_
 
     real(dp) :: ro
     complex(dp) :: zij, zji
@@ -112,6 +115,9 @@ contains
 
     ! Initialize counter
     if ( present(iterations) ) iterations = 0
+    
+    non_col_ = .false.
+    if ( present(non_col) ) non_col_ = non_col
 
 !    call timer('ts_GS',1)
 
@@ -371,22 +377,46 @@ contains
     ! unnessary elements (for large systems this should
     ! speed it up!) For small systems this has little
     ! overhead
-    i = 1
-    do j = 1 , no
-       
-      ! Calculate for the bulk
-      ro = aimag(zdotu(no,GB(i),1,S00(i),1))
-      ! For the left self-energy
-      ro = ro+aimag(zdotc(no,S01(i),1,rh(i),1))
-      ! For the right self-energy
-      ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
+    
+    if ( non_col_ ) then
+      ! This is a non_collinear spin calculation
+      ! total DOS = (Gf.S)^{uu}+(Gf.S)^{dd}
+      i = 1
+      do j = 1 , no
+        
+        ! Calculate for the bulk
+        ro = aimag(zdotu(no,GB(i),1,S00(i),1))
+        ! For the left self-energy
+        ro = ro+aimag(zdotc(no,S01(i),1,rh(i),1))
+        ! For the right self-energy
+        ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
 
-      ! Calculate the total DOS
-      DOS(j) = DOS(j) - ro / Pi
-       
-      i = i + no
-       
-    end do
+        ! Calculate the total DOS
+        DOS((j+1)/2) = DOS((j+1)/2) - ro / Pi
+        
+        i = i + no
+        
+      end do
+    else
+      ! This is a collinear spin or spin less calculation
+      ! total DOS = (Gf.S)
+      i = 1
+      do j = 1 , no
+        
+        ! Calculate for the bulk
+        ro = aimag(zdotu(no,GB(i),1,S00(i),1))
+        ! For the left self-energy
+        ro = ro+aimag(zdotc(no,S01(i),1,rh(i),1))
+        ! For the right self-energy
+        ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
+
+        ! Calculate the total DOS
+        DOS(j) = DOS(j) - ro / Pi
+        
+        i = i + no
+        
+      end do
+    end if
 
 !    call timer('ts_GS',2)
 
@@ -715,7 +745,11 @@ contains
     use parallel  , only : Node, Nodes, IONode
     use sys ,       only : die
 #ifdef MPI
-    use mpi_siesta
+    use mpi_siesta, only : MPI_Comm_World
+    use mpi_siesta, only : MPI_Sum, MPI_Max, MPI_integer
+    use mpi_siesta, only : MPI_Wait,MPI_Status_Size
+    use mpi_siesta, only : MPI_double_complex
+    use mpi_siesta, only : MPI_double_precision
 #endif
     use ts_electrode_m
     use m_mat_invert
@@ -790,9 +824,8 @@ contains
 
 #ifdef MPI
     integer :: MPIerror, curNode
-    MPI_STATUS_TYPE :: Status
-    MPI_REQUEST_TYPE :: req
-    MPI_REQUEST_TYPE, allocatable :: reqs(:)
+    integer :: req, status(MPI_Status_Size)
+    integer, allocatable :: reqs(:)
 #endif
     
 #ifdef TRANSIESTA_DEBUG
@@ -848,7 +881,7 @@ contains
 
     ! Print information on file-size and electrode type.
     call print_Elec_Green(El, NEn, nkpnt)
-    
+
     ! Initialize Green function and Hamiltonian arrays
     nullify(GS)
     if ( nS /= nuS ) then

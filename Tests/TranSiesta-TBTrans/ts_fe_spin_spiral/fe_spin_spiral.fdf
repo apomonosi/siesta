@@ -1,0 +1,169 @@
+
+SystemName         fe_spin_spiral
+SystemLabel        fe_spin_spiral
+
+==================================================
+==================================================
+# SPECIES AND BASIS
+
+# Number of species 
+NumberOfSpecies   1
+%block ChemicalSpeciesLabel
+  1  26  Fe
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize    SZP
+PAO.BasisType split
+%block PAO.Basis
+Fe                    2
+ n=4   0   1
+   6.800
+   1.000
+ n=3   2   1
+   5.300
+   1.000
+%endblock PAO.Basis
+
+==================================================
+==================================================
+# K-points
+
+%block kgrid.MonkhorstPack
+  1  0   0 0.
+  0  1   0 0.
+  0  0  12 0.
+%endblock kgrid.MonkhorstPack
+
+==================================================
+==================================================
+# UNIT CELL
+LatticeConstant    3.644 Bohr
+%block LatticeVectors
+ 12.000   0.000   0.000
+  0.000  12.000   0.000
+  0.000   0.000  12.000
+%endblock LatticeVectors
+
+NumberofAtoms 12
+AtomicCoordinatesFormat  ScaledCartesian
+%block AtomicCoordinatesAndAtomicSpecies
+  0.000   0.000   0.500  1    #  1
+  0.000   0.000   1.500  1    #  2
+  0.000   0.000   2.500  1    #  3
+  0.000   0.000   3.500  1    #  4
+  0.000   0.000   4.500  1    #  5
+  0.000   0.000   5.500  1    #  6
+  0.000   0.000   6.500  1    #  7
+  0.000   0.000   7.500  1    #  8
+  0.000   0.000   8.500  1    #  9
+  0.000   0.000   9.500  1    # 10
+  0.000   0.000  10.500  1    # 11
+  0.000   0.000  11.500  1    # 12
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+# Format: atom, spin, theta, phi
+# ==============================
+#  spin : Magnitude of spin moment
+# theta : Polar angle (angle between the z-axis and spin direction)
+#   phi : Azimuthal angle 
+%block DM.InitSpin
+ 1  +2.22     0.   0.  # L
+ 2  +2.22    90.   0.  # L
+ 3  +2.22   180.   0.  # L
+ 4  +2.22   270.   0.  # L
+ 5  +2.22     0.   0.  # D
+ 6  +2.22    90.   0.  # D
+ 7  +2.22   180.   0.  # D
+ 8  +2.22   270.   0.  # D
+ 9  +2.22     0.   0.  # R
+10  +2.22    90.   0.  # R
+11  +2.22   180.   0.  # R
+12  +2.22   270.   0.  # R
+%endblock DM.InitSpin
+
+==================================================
+==================================================
+# General variables
+
+ElectronicTemperature   40 meV
+MeshCutoff            200. Ry
+XC.functional     GGA
+XC.authors        PBE
+Spin              spin-orbit
+SolutionMethod Transiesta 
+TS.SolutionMethod full
+
+==================================================
+==================================================
+# SCF variables
+
+SCF.Mix                 Hamiltonian  # (default) Hamiltonian
+SCF.Mix.First           T            # (default) true
+SCF.Mixer.Method        Pulay        # (default) Pulay
+SCF.Mixer.Weight        0.040        # (default) 0.25
+SCF.Mixer.History       7            # (default) 2
+SCF.Mixer.Kick          40           # (default) 0
+SCF.DM.Converge         T            # (default) true
+SCF.DM.Tolerance        2.0d-4       # (default) 1.0d-4
+SCF.H.Converge          F           # (default) true
+
+==================================================
+==================================================
+# MD variables
+
+UseSaveData true
+
+==================================================
+==================================================
+# Output variables
+
+WriteMullikenPop 1
+WriteOrbMom      true
+
+==================================================
+==================================================
+# Transiesta information
+
+TS.Elecs.Gf.Reuse      true
+TS.Voltage 0 eV
+%block TS.ChemPots
+  Fermi
+%endblock TS.ChemPots
+%block TS.ChemPot.Fermi
+  mu 0. eV
+  contour.eq
+    begin
+      C-Fermi
+      T-Fermi
+    end
+%endblock
+TS.Contours.Eq.Pole 2.5 eV
+%block TS.Contour.C-Fermi
+  part circle
+   from -10. eV to -10 kT
+     points 20
+      method g-legendre
+%endblock
+%block TS.Contour.T-Fermi
+  part tail
+   from prev to inf
+     points 10
+      method g-fermi
+%endblock
+
+
+%block TS.Elecs
+  Left
+  Right
+%endblock TS.Elecs
+%block TS.Elec.Left
+  HS ./elec_fe_spin_spiral.TSHS
+  semi-inf-direction -a3
+  electrode-position 1
+%endblock TS.Elec.Left
+%block TS.Elec.Right
+  HS ./elec_fe_spin_spiral.TSHS
+  semi-inf-direction +a3
+  electrode-position end -1
+%endblock TS.Elec.Right
+

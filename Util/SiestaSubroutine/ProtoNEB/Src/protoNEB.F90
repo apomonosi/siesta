@@ -17,7 +17,16 @@ program protoNEB
   use fsiesta, only: siesta_quit   ! Finish siesta process
   use fsiesta, only: siesta_units  ! Set physical units
 #ifdef MPI
-  use mpi
+  use mpi_interfaces, only: MPI_AllReduce
+  use mpi_interfaces, only: MPI_Bcast
+  use mpi_interfaces, only: MPI_Comm_World
+  use mpi_interfaces, only: MPI_Comm_Rank
+  use mpi_interfaces, only: MPI_Comm_Size
+  use mpi_interfaces, only: MPI_Comm_Split
+  use mpi_interfaces, only: MPI_Double_Precision
+  use mpi_interfaces, only: MPI_Finalize
+  use mpi_interfaces, only: MPI_Init
+  use mpi_interfaces, only: MPI_Min
 #endif
 
   implicit none
@@ -27,13 +36,16 @@ program protoNEB
   integer,parameter:: na = 4             ! number of atoms
   integer,parameter:: np = 3             ! number of points (nudges)
   integer:: ia, ih, ip, ix, maxLen, MPIerror, myNode, myPoint, &
-            mySiestaNode, nNodes, nSiestaNodes, numLen
-  integer :: mySiestaComm
+            mySiestaComm, mySiestaNode, nNodes, nSiestaNodes, numLen
   real(dp):: cell(3,3), cellSize, energy(np), fa(3,na,np), &
              phi, pi, rNH, theta, thetaMax, thetaMin, xa(3,na,np)
   real(dp):: recvBuff(3*na*np), sendBuff(3*na*np)
   character(len=20):: numName, nodeString
   character(len=12):: myLabel
+
+! Open output file
+  close(unit=6)
+  open(unit=6, file='protoNEB.out')
 
 ! Set internal parameters
   pi = acos(-1._dp)
@@ -58,7 +70,7 @@ program protoNEB
     cell(ix,ix) = cellSize
   enddo
 
-! Initialize MPI 
+! Initialize MPI and set siesta communicators
 #ifdef MPI
   call MPI_Init( MPIerror )
   call MPI_Comm_Rank( MPI_Comm_World, myNode, MPIerror )
@@ -67,13 +79,13 @@ program protoNEB
     stop 'protoNEB ERROR: #Cores must be a multiple of #Geometries'
   nSiestaNodes = nNodes/np
   myPoint = myNode/nSiestaNodes+1
+  call MPI_Comm_Split( MPI_Comm_World, myPoint, 0, mySiestaComm, MPIerror )
+  call MPI_Comm_Rank( mySiestaComm, mySiestaNode, MPIerror )
 #else
   stop 'protoNEB ERROR: this version must run with MPI'
 #endif
 
 ! Set siesta system labels
-! This can be used to define appriate sub-communicators
-
   do ip = 1,np
     ! Find name of this node's number, and its name length
     write(numName,*) myPoint
@@ -90,21 +102,9 @@ program protoNEB
     
 ! Start siesta processes and set the physical units
   if (myNode==0) write(6,*) 'protoNEB: calling siesta_launch'
-  !
-  ! We could create our own communicators
-  ! Note that we have already set different labels for different
-  ! groups, so that we do not need to use a 'comm_id' argument.
-  !
-  ! call MPI_Comm_Split( MPI_Comm_World, myPoint, 0, mySiestaComm, MPIerror )
-  ! call MPI_Comm_Rank( mySiestaComm, mySiestaNode, MPIerror )
-  ! call siesta_launch( myLabel, comm_int=mySiestaComm )
-  !
-  ! Alternatively, to let siesta create its communicators:
-  ! call siesta_launch( myLabel, nSiestaNodes )
-  !
-  ! Alternatively, let the library create communicators based on labels
-  call siesta_launch( myLabel )
-  !
+  call siesta_launch( myLabel, mpi_comm=mySiestaComm )
+  ! alternatively, to let siesta create its communicators:
+  ! call siesta_launch( myLabel, nSiestaNodes ) 
   call siesta_units( 'Ang', 'eV' )
 
 ! Find energy and forces with my geometry
@@ -137,10 +137,11 @@ program protoNEB
 ! Stop siesta processes
   call siesta_quit( myLabel )
 
-! Finalize MPI
+! Finalize MPI and close output file
 #ifdef MPI
   call MPI_Finalize( MPIerror )
 #endif
+  close(unit=6)
 
 end program protoNEB
 

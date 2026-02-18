@@ -17,6 +17,7 @@
 module m_tbt_hs
 
   use precision, only : dp
+  use m_spin, only : spin
   use class_OrbitalDistribution
   use class_Sparsity
   use class_dSpData1D
@@ -66,9 +67,9 @@ module m_tbt_hs
 
   ! The Hamiltonians are associated with 
   ! a spin-component.
-  ! However, we can easily imagine that we split the two calculations
-  ! by doing : 1st node == ispin == 1
-  !            2nd node == ispin == 2
+  ! However, for nspin == 2 we can easily imagine that we split the two
+  ! calculations by doing : 1st node == ispin == 1
+  !                         2nd node == ispin == 2
   integer :: spin_idx
 
   ! The voltage we are working at
@@ -85,13 +86,12 @@ contains
     use fdf
     use files, only : slabel
     use units, only : eV
-    use m_os, only: file_exist
     use m_interpolate
     use spin_subs_m, only: init_spin
 
-    use ts_io_hs_m, only: ts_read_HS_opt
+    use m_ts_io, only: ts_read_TSHS_opt
     use m_ts_io_ctype, only : ts_c_bphysical, ts_c_bisphysical
-
+    
     integer :: iHS, nspin
     ! For reading in the TSHS file block
     type(block_fdf) :: bfdf
@@ -208,18 +208,7 @@ contains
        N_HS = 1
        allocate(tHS(1))
 
-       ! Figure out which of the files exists, in order:
-       !  1. TS.HSX
-       !  2. TSHS
-       !  3. HSX
-       if ( file_exist(trim(slabel) // ".TS.HSX") ) then
-          tHS(1)%HSfile = fdf_get('TBT.HS',trim(slabel)//".TS.HSX")
-       else if ( file_exist(trim(slabel) // ".TSHS") ) then
-          tHS(1)%HSfile = fdf_get('TBT.HS',trim(slabel)//".TSHS")
-       else
-          tHS(1)%HSfile = fdf_get('TBT.HS',trim(slabel)//'.HSX')
-       end if
-
+       tHS(1)%HSfile = fdf_get('TBT.HS',trim(slabel)//'.TSHS')
        tHS(1)%Volt = Volt
 
      end if
@@ -228,7 +217,7 @@ contains
      ! read the default from the HS file.
      ! This is important for TB calculations where
      ! one need not specify "Spin polarized"
-     call ts_read_HS_opt(tHS(1)%HSfile, nspin=nspin)
+     call ts_read_TSHS_opt(tHS(1)%HSfile, nspin=nspin)
 
      ! Now we can read the spin-configuration using fdf-flags
      call init_spin( default_nspin=nspin )
@@ -242,7 +231,7 @@ contains
       ! we do not read in the option.
       spin_idx = 0
     else if ( nspin > 2 ) then
-      call die("TBtrans is currently not implemented for non-collinear or spin-orbit")
+      spin_idx = 0
     else
       spin_idx = fdf_get('TBT.Spin',0)
       if ( spin_idx > nspin ) then
@@ -266,7 +255,7 @@ contains
 
     use parallel, only : IONode
     use units, only : eV
-    use ts_io_hs_m, only: ts_read_HS
+    use m_ts_io
     use m_sparsity_handling
     use m_handle_sparse, only : reduce_spin_size
 
@@ -404,15 +393,15 @@ contains
       integer :: kscell(3,3), istep, ia1
       real(dp) :: kdispl(3), Qtot, Temp, Ef
       logical :: onlyS, Gamma, TSGamma
-
+      
       ! The easy case is when they have the same number
-      call ts_read_HS(tHS%HSfile, Gamma, &
+      call ts_read_TSHS(tHS%HSfile, onlyS, Gamma, TSGamma, &
            file%cell, file%nsc, file%na_u, file%no_u, file%nspin, &
            kscell, kdispl, &
            file%xa, file%lasto, &
            file%sp, file%H_2D, file%S_1D, file%isc_off, &
            Ef, Qtot, Temp, &
-           Bcast = .true. )
+           istep, ia1, Bcast = .true. )
 
       call reduce_spin_size(ispin,file%H_2D,file%S_1D,Ef)
 
@@ -438,9 +427,9 @@ contains
       other%sp = def%sp
 
     end subroutine set_vars_HS
-
+    
   end subroutine prep_next_HS
-
+  
   subroutine clean_HS()
     call delete(TSHS%dit)
     call delete(TSHS%sp)

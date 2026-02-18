@@ -45,7 +45,7 @@ contains
     use m_os, only: file_exist
     use units, only: Ang
     use m_iodm, only: read_DM
-    use ts_io_hs_m, only: ts_read_TSHS
+    use m_ts_io, only: ts_read_TSHS
 
     ! The input parameters that govern the simulation
     integer, intent(in) :: na_u, lasto(0:na_u)
@@ -499,6 +499,9 @@ contains
     
     use class_Sparsity
     use class_dSpData2D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     ! output D2 sparse pattern
     type(dSpData2D), intent(inout) :: d2_out
@@ -615,6 +618,9 @@ contains
     
     use class_Sparsity
     use class_dSpData1D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     ! output D1 sparse pattern
     type(dSpData1D), intent(inout) :: d1_out
@@ -751,6 +757,9 @@ contains
     use class_OrbitalDistribution
     use class_dSpData2D
     use class_dData2D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     !> Input supercell sparsity pattern (this will contain periodic connections)
     type(Sparsity), intent(inout) :: sp_sc
@@ -842,6 +851,9 @@ contains
     use class_OrbitalDistribution
     use class_dSpData2D
     use class_dData2D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     !> Input sparsity pattern (no auxiliary supercell)
     type(Sparsity), intent(inout) :: sp_uc
@@ -961,6 +973,9 @@ contains
 
     use class_Sparsity
     use class_dSpData2D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     !> A sparse-matrix object, containing a sparse pattern
     type(dSpData2D), intent(inout) :: D2
@@ -1067,6 +1082,9 @@ contains
 
     use class_Sparsity
     use class_dSpData1D
+#ifdef MPI
+    use mpi_siesta
+#endif
 
     type(dSpData1D), intent(inout) :: D1
     integer, intent(in) :: nsc_old(3)
@@ -1285,7 +1303,7 @@ contains
 !        H_orig(:,1) = H_orig(:,1) - Ef * S_orig(:)
         call daxpy(size(H_orig,1),-Ef,S_orig(1),1,H_orig(1,1),1)
       end if
-    else
+    else if ( size(H_orig,dim=dim_spin) == 2 ) then
 
       ! The sparsity pattern associated with the Hamiltonian
       dit => dist(H_2D)
@@ -1301,7 +1319,12 @@ contains
       ! Copy/delete/clean to the old array
       H_2D = tmp
       call delete(tmp)
+    else
 
+      if ( present(Ef) .and. present(S_1D) ) then
+        call daxpy(size(H_orig,1),-Ef,S_orig(1),1,H_orig(1,1),1)
+        call daxpy(size(H_orig,1),-Ef,S_orig(1),1,H_orig(1,2),1)
+      end if
     end if
 
   end subroutine reduce_spin_size

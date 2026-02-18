@@ -8,8 +8,6 @@
 !     Use of this software constitutes agreement with the full conditions
 !     given in the SIESTA license, as signed by all legitimate users.
 !     
-#include "mpi_macros.f"
-
       module m_matio
 
       implicit none
@@ -53,8 +51,7 @@ CONTAINS
     integer :: base_l, nnzs_bl, nnzs_bg
     integer :: i, j, ptr, nnzsi
 #ifdef MPI
-    integer  :: MPIerror
-    MPI_STATUS_TYPE :: stat 
+    integer  :: MPIerror, stat(MPI_STATUS_SIZE)
     real(dp), dimension(:), pointer :: buffer => null()
     integer,  dimension(:), pointer :: ibuffer => null()
     integer, dimension(:), pointer  :: numdg => null()
@@ -69,16 +66,10 @@ CONTAINS
 
     ! Serial mode.
        call io_assign(lun)
-       if (.not. present(userfile)) then
-          filename = "SPMAT"
-       else
-          filename = userfile
-       endif
-
        open( lun, file=trim(filename), form="unformatted", status='unknown' )
        rewind(lun)
        no_u = no_l
-       write(lun) no_u, nspin
+       write(lun) no_u, nspin       
        write(lun) (numd(m),m=1,no_u)
        do i = 1, no_u
           write(lun) (listd(j),j=listdptr(i)+1,listdptr(i)+numd(i))

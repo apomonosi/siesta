@@ -10,12 +10,11 @@ module subs
 use precision
 
 public :: ival, manual, manual_dm_creator, orbital, txt2wrd
-public :: nwrd_in_txt
 public :: manual_spin_texture
 
 private
 
-CONTAINS
+CONTAINS     
 
 
       function ival(txt)
@@ -39,31 +38,13 @@ CONTAINS
 
       end function ival
 
-      subroutine nwrd_in_txt(txt, nw)
-      implicit none
-
-      character(len=*), intent(in)   :: txt
-      integer, intent(out) :: nw
-
-      character(len=len(txt)+1) taux
-      integer  ::  i1, i2
-
-      taux=txt // " "
-      nw=0
-      do while (len_trim(taux).ne.0)
-        nw=nw+1
-        i1=verify(taux,' ')
-        i2=index(taux(i1+1:),' ')+i1
-        taux(i1:i2-1)=repeat(' ',i2-i1)
-      enddo
-      end subroutine nwrd_in_txt
-
-      subroutine txt2wrd (txt, wrd, nw)
+      subroutine txt2wrd (txt, wrd, nw, pepe)
       implicit none
 
       character(len=*), intent(in)   :: txt
       character(len=20), intent(out) :: wrd(:)
       integer, intent(out) :: nw
+      integer, intent(in) :: pepe
 
       character(len=len(txt)+1) taux
       integer  ::  i1, i2, nmaxwords
@@ -93,7 +74,7 @@ CONTAINS
 
       logical :: non_nl_string
       integer :: stat, nprin
-
+      
       atx=txt
       ntx=txt
       lng=len_trim(txt)
@@ -115,7 +96,7 @@ CONTAINS
       ! The use of 'back' above will account for specs of
       ! the form:
       ! Si_surf_3s
-      !
+      ! 
       ! Now we need to account for specs of the form:
       ! Si_surf
       ! We check that 'surf' is not a valid 'nl' spec
@@ -141,7 +122,7 @@ CONTAINS
          ! Behave as if we did not find any '_'
          i_ = 0
       endif
-
+      
       i0=i_-1
       if (i_.eq.0) i0=lng
       ntx=txt(1:i0)//repeat(' ',20-i0)
@@ -251,11 +232,10 @@ CONTAINS
       write(6,*)
       write(6,"('* INPUT FILES')")
       write(6,"('    [output files from SIESTA >=  2.4.1]')")
-      write(6,"('    SLabel.fullBZ.WFSX and SLabel.HSX (new format)')")
-      write(6,"('    (Will use SLabel.WFSX if SLabel.fullBZ.WFSX is not found)')")
+      write(6,"('    SLabel.WFSX and SLabel.HSX (new format)')")
       write(6,*)
       write(6,"('* OUTPUT FORMAT')")
-      write(6,*)
+      write(6,*) 
       write(6,*) " SLabel.alldos  :  full-range approximate DOS curve"
       write(6,*) " SLabel.ados    :  specified-range approximate DOS curve"
       write(6,*) " SLabel.intdos  :  full-range integrated-DOS curve"
@@ -311,7 +291,7 @@ CONTAINS
       write(6,"('    SLabel.WFSX and SLabel.HSX (new format)')")
       write(6,*)
       write(6,"('* OUTPUT FORMAT')")
-      write(6,*)
+      write(6,*) 
       write(6,*) " DMOUT    :  Partial DM"
       write(6,*) " DM.nc (optional)  :  Partial DM in netcdf form"
       write(6,"('    [A control .stt file will always be generated]')")
@@ -343,7 +323,7 @@ CONTAINS
       write(6,"('    SLabel.WFSX and SLabel.HSX (new format)')")
       write(6,*)
       write(6,"('* OUTPUT FORMAT')")
-      write(6,*)
+      write(6,*) 
       write(6,"(a)") 'spin-texture information in standard output'
       write(6,"('    [A .stt file with basis and k-point info will also be generated]')")
       write(6,*)
@@ -353,4 +333,4 @@ CONTAINS
 
 
 end module subs
-
+     

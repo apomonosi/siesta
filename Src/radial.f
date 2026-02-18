@@ -17,8 +17,7 @@
       public :: rad_alloc, rad_get, rad_setup_d2, rad_zero
       public :: radial_read_ascii, radial_dump_ascii
       public :: radial_dump_xml, reset_rad_func
-      public :: radial_rescale_radfunc
-      
+
       public :: rad_func
 
       type   :: rad_func
@@ -107,21 +106,7 @@
       enddo
       end function rad_rvals
 
-      subroutine radial_rescale_radfunc(func_src,func_new,scale)
-      type(rad_func), intent(in)  :: func_src
-      type(rad_func), intent(out) :: func_new
-      real(dp), intent(in)        :: scale
 
-      call rad_alloc(func_new, func_src%n)
-
-      func_new%n = func_src%n
-      func_new%delta = func_src%delta
-      func_new%cutoff = func_src%cutoff
-      func_new%f(:) = scale * func_src%f(:)
-      func_new%d2(:) = scale * func_src%d2(:)
-
-      end subroutine radial_rescale_radfunc
-      
       subroutine radial_read_ascii(op,lun,yp1,ypn)
       type(rad_func)    :: op 
       real(dp), intent(in)          :: yp1, ypn

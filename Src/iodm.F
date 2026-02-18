@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
       subroutine iodm( task, maxnd, nbasis, nspin, numd, 
      .                 listdptr, listd, dm, found )
 C *******************************************************************
@@ -64,9 +62,7 @@ C Internal variables
       integer   nbasistot, ml, ndmaxg
       integer, pointer :: numdg(:) => null()
 #ifdef MPI
-      integer   MPIerror
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer   MPIerror, Request, Status(MPI_Status_Size)
       integer   BNode
       real(dp), pointer :: buffer(:) => null()
       integer,  pointer :: ibuffer(:) => null()

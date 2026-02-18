@@ -15,8 +15,8 @@ module m_target_stress
 
   implicit none
 
-  real(dp), public, save :: target_stress(3,3)
-  logical, public, save :: constant_volume
+  real(dp), private, save :: target_stress(3,3)
+  logical, private, save :: constant_volume
 
   public :: set_target_stress
   public :: subtract_target_stress

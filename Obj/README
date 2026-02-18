@@ -1,0 +1,88 @@
+This directory is the default Siesta build directory, that is, the default
+place from where Siesta is compiled. At the end of the compilation, the build
+directory will contain the siesta binary as well as the object files and any
+other by-products of the building process.
+
+If you are interested in multiple concurrent compilations of Siesta (e.g., with
+different compilers or optimization levels), see the section on Advanced
+Compilation below.
+
+=== Basic Compilation ===
+
+If you just want to compile the program, follow the following steps:
+
+1) From within this build directory (Obj), issue the command:
+
+       $ sh ../Src/obj_setup.sh
+
+   in order to populate it with with the minimal scaffolding of makefiles.
+
+2) Ensure that an 'arch.make' file is present in the build directory.
+
+It is suggested to start by taking a look at the sample files in
+Config/mk-build/sample-arch-makes
+
+3) Then, again from the build directory, execute
+
+       $ make
+
+The executable should work for any job. (This is not exactly true, since some
+of the parameters in the atomic routines are still hardwired, see
+Src/atmparams.f, but those would seldom need to be changed.)
+
+Please note that, unless you really know what you are doing, the Src directory
+(including its sub-directories) must be preserved without any changes,
+especially without any object or module files. Otherwise, the VPATH mechanism
+used by make to compile Siesta from the build directory will get confused, and
+the compilation may fail or produce an invalid siesta binary.
+
+To compile utility programs (those living in the Util directory of the main
+distribution), you can simply use the provided makefiles: go to the Util
+sub-directory containing the relevant utility source code, and execute "make"
+as appropriate. The resulting utility executable (and utility object files)
+will be created in that very same utility sub-directory from where "make" was
+invoked.
+
+=== Advanced Compilation ===
+
+It is possible to build Siesta from any build directory of your choice (instead
+of Obj). You will need to follow the same three steps as described above, the
+main difference being that the first command will need to use a correct path
+(absolute or relative) to the obj_setup.sh script, i.e., from your chosen build
+directory you will need to execute
+
+       $ sh <path/to/Src>/obj_setup.sh
+
+Note also that your arch.make file needs to be in that chosen build directory
+before you can execute make.
+
+Since compilations done in separate build directories are independent, one can
+compile as many different version of the siesta executable as needed (e.g.,
+with different compilers, levels of optimization, serial/parallel, debug, etc.)
+by appropriately defining different arch.make files in each build directory.
+
+If Siesta is not compiled from the default Obj directory, when you compile your
+utility programs you will need to specify the correct OBJDIR option:
+
+       $ make OBJDIR=ObjName
+
+where ObjName is the path to the Siesta build directory of your choice
+*relative* to the Siesta top directory (the directory where you have Src, Obj,
+Util, etc.). E.g., if you already compiled Siesta from the build directory
+Obj/intel/parallel/2021.2, and you want to compile Denchar, you need to
+
+       $ cd Util/Denchar/Src
+       $ make OBJDIR=Obj/intel/parallel/2021.2
+
+Note that, irrespective of the value of the OBJDIR parameter, the resulting
+utility executable and object files will be created in the utility
+sub-directory from where "make" is invoked (Util/Denchar/Src in the example
+above), and that they will be overwritten if a different OBJDIR is later used.
+There is currently no support for having different coexisting compiled versions
+of a given utility program. Before attempting to recompile a utility program,
+please remember to execute
+
+       $ make clean
+
+from the corresponding utility sub-directory (and with the appropriate OBJDIR
+option, if needed).

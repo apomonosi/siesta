@@ -125,8 +125,7 @@
          1, 1, eigvec%iaux1, work, lwork, zrwork, lrwork, info )
         deallocate(zrwork)
         deallocate(work)
-        call m_add(eigvec,'n',C,cmplx(1.0_dp,0.0_dp,dp),&
-                   cmplx(0.0_dp,0.0_dp,dp),'lap')
+        call m_add(eigvec,'n',C,1.0_dp,0.0_dp,'lap')
         call m_deallocate(eigvec)
         if(info.ne.0) stop 'Error calculatesqrtS'
 #else

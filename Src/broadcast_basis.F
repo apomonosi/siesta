@@ -56,15 +56,16 @@
          ! Allocate the chemical_list type in chemical.f
          ! This exposes the generic routines used for
          ! determining the type of basis orbital.
-         allocate(chemical_list(nspecies))
+         chemical_list%no_of_species = nspecies
+         nullify(chemical_list%spec_label,chemical_list%z)
+         allocate(chemical_list%spec_label(nspecies))
+         allocate(chemical_list%z(nspecies))
       end if
 
       do is=1,nspecies
-        call MPI_Bcast(chemical_list(is)%spec_label,20,MPI_character,
+        call MPI_Bcast(chemical_list%spec_label(is),20,MPI_character,
      $        0,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(chemical_list(is)%ps_file_spec,256,MPI_character,
-     $        0,MPI_Comm_World,MPIerror)
-        call MPI_Bcast(chemical_list(is)%z,1,MPI_Integer,
+        call MPI_Bcast(chemical_list%z(is),1,MPI_Integer,
      $        0,MPI_Comm_World,MPIerror)
 
          

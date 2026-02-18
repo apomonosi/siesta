@@ -1,7 +1,0 @@
-%include ../base_graph.fdf
-SystemLabel     vdw_drsll
-
-xc.functional   VDW
-xc.authors      DRSLL
-
-ReparametrizePseudos T

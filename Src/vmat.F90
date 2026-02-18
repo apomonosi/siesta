@@ -54,9 +54,8 @@ contains
     use t_spin,        only: tSpin
     use listsc_module, only: LISTSC
     use mesh,          only: dxa, nsp, xdop, xdsp, meshLim
-    use meshdscf,      only: matrixMtoO, needdscfl, listdl, numdl, &
-                             nrowsdscfl, listdlptr
-
+    use meshdscf,      only: matrixMtoO
+    use meshdscf,      only: needdscfl, listdl, numdl, nrowsdscfl, listdlptr
     use meshphi,       only: directphi, endpht, lstpht, listp2, phi
     use parallel,      only: Nodes, Node
     use alloc,         only: re_alloc, de_alloc

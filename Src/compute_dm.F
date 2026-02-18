@@ -20,7 +20,7 @@
       use class_dSpData1D, only : val
       use sparse_matrices
       use siesta_geom
-      use atomlist, only: qa, lasto, no_u, no_s, indxuo,
+      use atomlist, only: qa, lasto, no_u, no_s, indxuo, 
      &                    qtot, Qtots, no_l
       use sys, only: die, bye
       use kpoint_scf_m, only: kpoint_scf, gamma_scf
@@ -37,9 +37,6 @@
       use m_pexsi_solver,  only: pexsi_solver
 #endif
       use io_hsx_m, only      : write_hs_formatted
-#ifdef SIESTA__ELSI
-      use m_elsi_interface,  only: elsi_getdm
-#endif
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -56,9 +53,9 @@
 #endif
       use m_ts_global_vars, only : TSmode, TSinit, TSrun
       use m_transiesta,     only : transiesta
-
+      
       implicit none
-
+      
 !     Input variables
       integer, intent(in) :: iscf
 
@@ -76,22 +73,15 @@
 
       if (SIESTA_worker) call timer( 'compute_dm', 1 )
 
-#ifdef _TRACE_
-      call Extrae_shutdown( )
-#endif
-
 #ifdef MPI
-      call MPI_Bcast(isolve,1,MPI_integer,0,MPI_Comm_DFT,mpierr)
-#endif
+      call MPI_Bcast(isolve,1,MPI_integer,0,true_MPI_Comm_World,mpierr)
+#endif     
 
-      scf_eigenvalues_available = .false.
       if (SIESTA_worker) then
         ! Save present density matrix
         call dcopy(size(Dscf), Dscf(1,1), 1, Dold(1,1), 1)
         if ( converge_EDM ) then
           call dcopy(size(Escf), Escf(1,1), 1, Eold(1,1), 1)
-            ! Not all solvers handle Escf during the SCF cycle
-            ! For those, converge_EDM should be disabled
         end if
       end if
 
@@ -133,27 +123,6 @@
       endif
       if (.not. SIESTA_worker) RETURN
 #endif
-#ifdef SIESTA__ELSI
-      if (isolve .eq. SOLVE_ELSI) then
-        ! This test done in node 0 since NonCol and SpOrb
-        ! are not set for ELSI-solver-only processes
-         if (ionode) then
-            if (spin%NCol .or. spin%SO) call die(
-     $               "The ELSI solver does not implement "//
-     $               "non-coll spins or Spin-orbit yet")
-         endif
-         call elsi_getdm(iscf, no_s, spin%spinor, 
-     &              no_l, no_u, maxnh, nnz_g,
-     &              numh, listhptr, listh,
-     &              H, S, qtot, temp, 
-     &              xijo,
-     &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
-     &              Dscf, ef, Entropy,
-     &              occtol, neigwanted, Get_EDM_Only=.false.)
-         Ecorrec = 0.0_dp
-      endif
-      if (.not. SIESTA_worker) RETURN
-#endif
       ! Here we decide if we want to calculate one or more SCF steps by
       ! diagonalization before proceeding with the OMM routine
       CallDiagon=.false.
@@ -170,23 +139,23 @@
       if (isolve .eq. SOLVE_DUMMY) then
          !
          ! Return a slightly perturbed DM
-         Dscf(:,:) = Dold(:,:)
+         Dscf = Dold
          call random_number(Escf)
-         Dscf(:,:) = Dscf(:,:) + (Escf - 0.5_dp) / (2 ** iscf * 3000)
+         Dscf = Dscf + 0.01 * (Escf - 0.5_dp)
          call dm_norm(qsol)
          ! Normalize Tr(DM*S) to total number of electrons
          ! Normalize Tr(EDM*S) to band-structure energy
-         Dscf(:,:) = Dscf(:,:) * (qtot/qsol)
-         Escf(:,:) = Dscf(:,:) * (Ebs/qtot)
-
+         Dscf = Dscf * (qtot/qsol)
+         Escf = Dscf * (Ebs/qtot)
+         
       else if (isolve .eq. MATRIX_WRITE) then
 !             write(indexstr,'(I15)') iscf
-!             write(filename,fnameform) 'H_', trim(adjustl(indexstr)),
+!             write(filename,fnameform) 'H_', trim(adjustl(indexstr)), 
 !      &                                '.matrix'
 !             call write_global_matrix( no_s, no_l, maxnh, numh, listh,
 !      &           H(1:maxnh,1), filename )
-!
-!             write(filename,fnameform) 'S_', trim(adjustl(indexstr)),
+!  
+!             write(filename,fnameform) 'S_', trim(adjustl(indexstr)), 
 !      &                                '.matrix'
 
 !        Note: only one-shot for now
@@ -194,25 +163,24 @@
      $        maxnh, numh, listhptr, listh, H, S)
          call bye("End of run after writing H.matrix and S.matrix")
 
-c$$$        call write_global_matrix_singlenodewrite(
-c$$$     &           no_u, no_s, maxnh, numh, listhptr, listh,
+c$$$        call write_global_matrix_singlenodewrite( 
+c$$$     &           no_u, no_s, maxnh, numh, listhptr, listh, 
 c$$$     &           H(:,1), 'H.matrix')
 c$$$
-c$$$        call write_global_matrix_singlenodewrite(
-c$$$     &           no_u, no_s, maxnh, numh, listhptr, listh,
+c$$$        call write_global_matrix_singlenodewrite( 
+c$$$     &           no_u, no_s, maxnh, numh, listhptr, listh, 
 c$$$     &           S, 'S.matrix')
 
       elseif ((isolve .eq. SOLVE_DIAGON) .or. (CallDiagon)) then
-        call diagon(no_s, spin%spinor,
+        call diagon(no_s, spin%spinor, 
      &              no_l, maxnh, maxnh, no_u,
-     &              numh, listhptr, listh, numh, listhptr, listh,
+     &              numh, listhptr, listh, numh, listhptr, listh, 
      &              H, S, qtot, fixspin, qtots, temp, e1, e2,
      $              xijo, indxuo, gamma_SCF,
      &              kpoint_scf%N, kpoint_scf%k, kpoint_scf%w,
      &              eo, qo, Dscf, Escf, ef, efs, Entropy, no_u,
      &              occtol, iscf, neigwanted,
      &              dealloc_psi=.not. CallDiagon)
-        scf_eigenvalues_available = .true.
         Ecorrec = 0.0_dp
         PreviousCallDiagon=.true.
       elseif (isolve .eq. SOLVE_ORDERN) then
@@ -226,7 +194,7 @@ c$$$     &           S, 'S.matrix')
      &               beta, pmax, Dscf, Escf, Ecorrec, spin%H, qtots )
         Entropy = 0.0_dp
       elseif (isolve .eq. SOLVE_MINIM) then
-        if ( spin%NCol .or. spin%SO )
+        if ( spin%NCol .or. spin%SO ) 
      &      call die('ERROR: Non-collinear spin calculations
      &                       not yet implemented with OMM!')
         H_kin => val(H_kin_1D)
@@ -234,7 +202,7 @@ c$$$     &           S, 'S.matrix')
         ! Decide which version of OMM to use.
         ! Test based on use of auxiliary supercell
         ! It might still be possible to avoid the complex version
-
+        
         if ( no_u == no_s ) then    ! Not using an auxiliary supercell
           call dminim(.false., PreviousCallDiagon, iscf, istp, no_l,
      &                 spin%H, no_u, maxnh, numh, listhptr, listh, Dscf,
@@ -254,21 +222,19 @@ c$$$     &           S, 'S.matrix')
 #ifdef SIESTA__CHESS
       elseif (isolve .eq. SOLVE_CHESS) then
         ! FOE solver from the CheSS library
-        if (gamma_SCF) then
-           call CheSS_wrapper(.false., PreviousCallDiagon,
+        if (gamma) then
+          call CheSS_wrapper(.false., PreviousCallDiagon, 
      &         iscf, istp, no_l,
-     &         spin%spinor, no_u, maxnh, numh, listhptr, listh,
-     &         qtots, h, s,
+     &         spin%spinor, no_u, maxnh, numh, listhptr, listh, 
+     &         qs, h, s,
      &         Dscf, Escf, Ef)
-        else
-           call die("Cannot use CheSS with k-points.")
         end if
         Ecorrec = 0.0_dp
         Entropy = 0.0_dp
         PreviousCallDiagon=.false.
 #endif
       elseif (TSmode .and. TSinit) then
-        call diagon(no_s, spin%spinor,
+        call diagon(no_s, spin%spinor, 
      &              no_l, maxnh, maxnh, no_u,
      &              numh, listhptr, listh, numh, listhptr, listh,
      &              H, S, qtot, fixspin, qtots, temp, e1, e2,
@@ -288,7 +254,7 @@ c$$$     &           S, 'S.matrix')
 
          Ecorrec = 0._dp
          Entropy = 0.0_dp
-
+         
       else
         !call die('siesta: ERROR: wrong solution method')
       endif
@@ -311,10 +277,6 @@ c$$$     &           S, 'S.matrix')
       call timer( 'compute_dm', 2 )
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after compute_DM")
-#endif
-
-#ifdef _TRACE_
-      call Extrae_Restart( )
 #endif
 
 !-----------------------------------------------------------------------END

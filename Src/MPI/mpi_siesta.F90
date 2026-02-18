@@ -1,12 +1,10 @@
 ! ---
-! Copyright (C) 1996-2025	The SIESTA group
+! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-#include "mpi_macros.f"
-
 MODULE MPI_SIESTA
 !
 ! This module embodies three different things:
@@ -16,16 +14,7 @@ MODULE MPI_SIESTA
 !    inside the code.
 !  - Time-profiling of a few key MPI routines
 !
-
-#ifdef MPI_INTERFACE_F08
-  use mpi_f08, true_MPI_Comm_World => MPI_Comm_World
-#endif
-#ifdef MPI_INTERFACE_NONE
-  use mpi, true_MPI_Comm_World => MPI_Comm_World
-#endif
-
-
-#ifdef MPI_INTERFACE_LEGACY
+#ifndef NO_MPI_INTERFACES
 !
 ! This is an interface to supplant some MPI routines called by siesta,
 ! in order to time-profile them. J.M.Soler. May.2009
@@ -41,39 +30,25 @@ MODULE MPI_SIESTA
     trueMPI_WAITALL    => MPI_WAITALL,    &
     true_MPI_Comm_World => MPI_Comm_World      ! Note
 
-#endif /* MPI_INTERFACE_LEGACY */
+#else /* NO_MPI_INTERFACES */
+! Removed interfaces and timing versions of the MPI routines.
+  USE MPI__INCLUDE, true_MPI_Comm_World => MPI_Comm_World
+#endif /* NO_MPI_INTERFACES */
 
-  ! The reason to define true_MPI_Comm_World as a pointer to the
-  ! (inmutable) MPI_Comm_World parameter in the MPI module is to keep
-  ! it as reference.  The MPI_Comm_World *variable* defined below can
-  ! be redefined at will.  This practice is needed because most Siesta
-  ! routines have hard-wired references to MPI_Comm_World as their
-  ! communicator. Instead of generalizing the interfaces and pass the
-  ! communicator as an argument (work in progress), we use the kludge
-  ! of re-defining MPI_Comm_World.
-  
 ! The following construction allows to supplant MPI_Comm_World within SIESTA,
 ! and to use it as a subroutine with its own internal MPI communicator.
 
-  ! Siesta-instances should refer to MPI_Comm_DFT
-  ! This is the case, for example, when a driver program splits the
-  ! global communicator to dispatch several simultaneous Siesta instances
-  ! Typically, comm_world = comm_dft, but not for calculations (PEXSI, ELSI)
-  ! for which only a subset of processors carry out the core Siesta operations
-  ! that have hard-wired references to mpi_comm_world
-  
-  MPI_COMM_TYPE, public :: MPI_Comm_World = true_MPI_Comm_World
-  MPI_COMM_TYPE, public :: MPI_Comm_DFT = true_MPI_Comm_World
+  integer, public :: MPI_Comm_World = true_MPI_Comm_World
 
-  public    :: true_MPI_Comm_World
+  public :: true_MPI_Comm_World
 
 
 #ifdef GRID_SP
-        MPI_DATA_TYPE :: MPI_grid_real   = MPI_real
+        integer, parameter :: MPI_grid_real   = MPI_real
 #elif defined(GRID_DP)
-        MPI_DATA_TYPE :: MPI_grid_real   = MPI_double_precision
+        integer, parameter :: MPI_grid_real   = MPI_double_precision
 #else
-        MPI_DATA_TYPE :: MPI_grid_real   = MPI_double_precision
+        integer, parameter :: MPI_grid_real   = MPI_double_precision
 #endif
 
 !
@@ -96,20 +71,9 @@ MODULE MPI_SIESTA
         public :: mpi_group_null, mpi_comm_null, mpi_proc_null
 !        public :: mpi_thread_single
         public :: mpi_thread_funneled
-        public :: mpi_thread_serialized
 
-  interface
-     subroutine timer_mpi_interf( prog, iOpt )
-       character(len=*),intent(in):: prog   ! Name of program to time
-       integer,         intent(in):: iOpt   ! Action option
-     end subroutine timer_mpi_interf
-  end interface
 
-  procedure(timer_mpi_interf), pointer :: timer_mpi => dummy_timer_mpi
-  public :: set_mpi_timer_handler
-
-#ifdef MPI_INTERFACE_LEGACY
-  
+#ifndef NO_MPI_INTERFACES
   PUBLIC :: MPI_BARRIER
   INTERFACE MPI_BARRIER
     MODULE PROCEDURE myMPI_BARRIER
@@ -150,22 +114,8 @@ MODULE MPI_SIESTA
     MODULE PROCEDURE myMPI_WAITALL
   END INTERFACE
 
-#endif
-  
 CONTAINS
 
-  subroutine set_mpi_timer_handler(func)
-    procedure(timer_mpi_interf) :: func
-    timer_mpi => func
-  end subroutine set_mpi_timer_handler
-    
-  subroutine dummy_timer_mpi( prog, iOpt )
-    character(len=*),intent(in):: prog   ! Name of program to time
-    integer,         intent(in):: iOpt   ! Action option
-    ! do nothing
-  end subroutine dummy_timer_mpi
-
-#ifdef MPI_INTERFACE_LEGACY
   SUBROUTINE myMPI_BARRIER(COMM, IERROR) 
     INTEGER, INTENT(IN)  :: COMM
     INTEGER, INTENT(OUT) :: IERROR 
@@ -251,18 +201,5 @@ CONTAINS
     call timer_mpi('MPI_WAITALL',2)
   END SUBROUTINE myMPI_WAITALL
           
-#endif /* ! MPI_INTERFACE_LEGACY */
+#endif /* ! NO_MPI_INTERFACES */
 END MODULE MPI_SIESTA
-
-!
-! external version
-!
-SUBROUTINE timer_mpi( name, opt )
-  use mpi_siesta, timer_mpi_module => timer_mpi
-  character(len=*), intent(in):: name
-  integer,          intent(in):: opt
-
-  call timer_mpi_module( name, opt )
-
-END SUBROUTINE timer_mpi
-

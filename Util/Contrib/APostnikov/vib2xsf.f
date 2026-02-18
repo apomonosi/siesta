@@ -1,6 +1,6 @@
 C
 C   vib2xsf,  a script to transform phonon eigenvectors 
-C             provided by "vibra"
+C             provided by "vibrator"
 C             either in XBS file with arrows,
 C             or into animated AXBS file vizualizing vibration modes,
 C             to be further worked on with XCrySDen
@@ -73,7 +73,7 @@ C     inpfil = syslab(1:len_trim(syslab))//'.vectors'
       inpfil = trim(syslab)//'.vectors'
       open (ii2,file=inpfil,form='formatted',status='old',err=801)
       write (6,703) nat*3
-  703 format(' select first and last modes (out of ',i9,
+  703 format(' select first and last modes (out of ',i5,
      .       ' ) for analysis.'/' A separate XSF/AXSF file',
      .       ' will be created for each mode.')
   101 write (6,704,advance="no") 

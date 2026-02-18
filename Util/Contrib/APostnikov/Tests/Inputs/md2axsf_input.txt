@@ -1,4 +1,0 @@
-diamond
-ANI
-1 62 1
-N

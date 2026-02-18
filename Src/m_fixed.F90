@@ -39,7 +39,7 @@ module m_fixed
      ! direction of fixation
      ! Note that this is a single value for all
      ! If more atoms belong to one fixation 
-     ! we remove all forces along that direction
+     ! we fix them all to move along that direction
      real(dp) :: fix(3) = 0._dp
   end type tFix
 
@@ -1154,15 +1154,12 @@ contains
           if ( ia == fixs(if)%a(i) ) then
 
              if ( fixs(if)%type == 'pos' ) then
-               fi(:) = .true.
-             end if
-             if ( fixs(if)%fix(1) == 1._dp ) then
-               fi(1) = .true.
-             end if
-             if ( fixs(if)%fix(2) == 1._dp ) then
-               fi(2) = .true.
-             end if
-             if ( fixs(if)%fix(3) == 1._dp ) then
+                fi(:) = .true.
+             else if ( fixs(if)%fix(1) == 1._dp ) then
+                fi(1) = .true.
+             else if ( fixs(if)%fix(2) == 1._dp ) then
+                fi(2) = .true.
+             else if ( fixs(if)%fix(3) == 1._dp ) then
                 fi(3) = .true.
              end if
 

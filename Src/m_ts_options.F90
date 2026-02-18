@@ -42,7 +42,6 @@ module m_ts_options
 
   ! Controls to save the TSHS file
   logical :: TS_HS_save = .true.
-  logical :: write_tshs_history = .false.
   logical :: TS_DE_save = .false.
   ! whether we will use the bias-contour
   logical :: IsVolt = .false.
@@ -106,7 +105,7 @@ contains
     use fdf, only : fdf_get, leqi
     use intrinsic_missing, only : VNORM
 
-    use siesta_options, only : dDtol, dHtol, savehs, idyn
+    use siesta_options, only : dDtol, dHtol
 
     use m_ts_global_vars, only: TSmode, onlyS
     use m_ts_method, only: TS_FULL, TS_BTD, TS_MUMPS, ts_method
@@ -142,8 +141,6 @@ contains
     TS_HS_save = fdf_get('TS.HS.Save',.false.)
     TS_DE_save = fdf_get('TS.DE.Save',.false.)
 #endif
-    write_tshs_history = fdf_get('Write.TSHS.History', &
-       TS_HS_save .and. idyn == 6)
     onlyS = fdf_get('TS.onlyS',.false.)
     onlyS = fdf_get('TS.S.Save',onlyS)
 
@@ -152,10 +149,8 @@ contains
     ! are needed.
     if ( onlyS .or. .not. TSmode ) return
 
-    ! When running TSmode we FORCE SaveHS and TS.DE.Save
-    ! Note the TSHS file is now deprecated, can still be used,
-    ! but the same information is present in the HSX file-format!
-    savehs = .true.
+    ! When running TSmode we FORCE TS.HS.Save and TS.DE.Save
+    TS_HS_save = .true.
     TS_DE_save = .true.
 
     ! Force the run of a biased TranSiesta run
@@ -167,7 +162,7 @@ contains
     if ( .not. associated(ts_scf_mixs) ) then
        ts_scf_mixs => scf_mixs
     end if
-
+    
     ! Read in the mixing for the transiesta cycles
     ts_Dtol = fdf_get('TS.SCF.DM.Tolerance',dDTol)
     ts_Htol = fdf_get('TS.SCF.H.Tolerance',dHTol)
@@ -881,12 +876,12 @@ contains
     write(*,*)
     write(*,f11) repeat('*', 62)
 
-    write(*,f1) 'Save H and S matrices', TS_HS_save
-    write(*,f1) 'Save TSHS files in MD/FC simulation', write_tshs_history
-    write(*,f1) 'Save DM and EDM matrices', TS_DE_save
-    write(*,f1) 'Only save the overlap matrix S', onlyS
-
     if ( onlyS .or. .not. TSmode ) then
+       
+       write(*,f1) 'Save H and S matrices', TS_HS_save
+       write(*,f1) 'Save DM and EDM matrices', TS_DE_save
+       write(*,f1) 'Only save the overlap matrix S', onlyS
+
        write(*,f11) repeat('*', 62)
        write(*,*)
 
@@ -1144,7 +1139,7 @@ contains
     end if
 
     if ( ts_tidx < 1 .and. len_trim(Hartree_fname) == 0 .and. IsVolt ) then
-       write(*,'(a)') 'Hartree potential correction is the box solution &
+       write(*,'(a)') 'Hartree potiental correction is the box solution &
             &which is not advised. Please supply your own Poisson solution.'
     end if
 

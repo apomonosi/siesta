@@ -13,14 +13,14 @@ program mprop
   use subs, only: manual
   use orbital_set, only: get_orbital_set
   use io_hs, only: read_hs_file
-  use read_curves, only: read_curve_information, mask_to_arrays, read_n_curves
+  use read_curves, only: read_curve_information, mask_to_arrays
 
   implicit none
 
   logical :: gamma_wfsx, got_qcos, non_coll
   integer :: ii1, ii2, ind, ind_red, no1, no2, n_int, nnz
   integer :: imin, imax, wfs_spin_flag, nspin_blocks
-
+  
   complex(DP), dimension(2)    :: spinor_1, spinor_2, H_c2
   complex(DP), dimension(2,2)  :: H
   complex(DP) :: c_c1_c2, c_c1_H_c2
@@ -39,10 +39,7 @@ program mprop
   logical, allocatable   :: mask2(:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
 
-  logical  :: enough_electrons
-
-  logical  :: file_exists
-  character(len=100) :: wfsxnm
+  logical  :: enough_electrons 
 
   integer  :: nwfmx, nwfmin
   integer  :: min_band = -huge(1)
@@ -132,29 +129,18 @@ program mprop
 
   dos=(trim(what).eq.'DOS')
   coop=(trim(what).eq.'COOP')
+  
   !==================================================
   ! Read WFSX file
-  write(6,"(a)") "Reading wave-function file (WFSX)."
+
+  write(6,"(a)") "Reading wave-function file: " // trim(sflnm) // ".WFSX..."
   write(6,"(a)") "Energy units are eV"
 
-  wfsxnm      = trim(sflnm) // ".fullBZ.WFSX"
-  file_exists = .false.
-  inquire(file=wfsxnm,exist=file_exists)
-  if (.not. file_exists) then
-     wfsxnm = trim(sflnm) // ".WFSX"
-     inquire(file=wfsxnm,exist=file_exists)
-     if (.not. file_exists) then
-        write(6,"(a)") "Cannot find WFSX file."
-        STOP
-     endif
-  endif
-  write(6,"(a)") "Reading wf file: " // trim(wfsxnm)
-
-  open(wfs_u,file=trim(wfsxnm),status='old',form='unformatted')
+  open(wfs_u,file=trim(sflnm)//'.WFSX',status='old',form='unformatted')
   read(wfs_u) nkp, gamma_wfsx
   allocate (wk(nkp), pk(3,nkp))
 
-  read(wfs_u) wfs_spin_flag   !  1, 2, or 4
+  read(wfs_u) wfs_spin_flag   !  1, 2, or 4 
   non_coll = (wfs_spin_flag >= 4)
   read(wfs_u) nao
   read(wfs_u)        !! Symbols, etc
@@ -192,7 +178,7 @@ program mprop
            read(wfs_u) eigval
            min_eigval = min(min_eigval,eigval)
            max_eigval = max(max_eigval,eigval)
-           !
+           ! 
            !
            if ((iw>=min_band).and.(iw<=max_band)) then
               min_eigval_in_band_set = min(min_eigval_in_band_set,eigval)
@@ -285,10 +271,10 @@ program mprop
 
   rewind(wfs_u)
 
-  read(wfs_u)
-  read(wfs_u)
-  read(wfs_u)
-  read(wfs_u)
+  read(wfs_u) 
+  read(wfs_u) 
+  read(wfs_u) 
+  read(wfs_u) 
 
   do ik=1,nkp
      do is=1,nspin_blocks
@@ -296,7 +282,7 @@ program mprop
         read(wfs_u)
         read(wfs_u)  number_of_wfns
         do iw=1,number_of_wfns
-           read(wfs_u)
+           read(wfs_u) 
            read(wfs_u) eigval
            if ( (iw>=min_band) .and. (iw<=max_band)) then
               do i = 1, npts_energy
@@ -311,7 +297,7 @@ program mprop
      enddo
   enddo
 
-  ! Write "LARGE-SCALE DOS"
+  ! Write "LARGE-SCALE DOS"  
   call write_curve_to_file(trim(sflnm)//".alldos",ados)
 
   ! Read HSX file
@@ -345,8 +331,8 @@ program mprop
      dos_value = sum(ados(i,:))
      if (wfs_spin_flag == 1) dos_value = 2*dos_value
 
-     intdos(i) = intdos(i-1) + dos_value * e_step
-     intebs(i) = intebs(i-1) + energy*dos_value * e_step
+     intdos(i) = intdos(i-1) + dos_value * e_step 
+     intebs(i) = intebs(i-1) + energy*dos_value * e_step 
      write(intdos_u,*) energy, intdos(i), intebs(i)
   enddo
   call io_close(intdos_u)
@@ -387,7 +373,7 @@ program mprop
   do ia=1,na_u
      it = isa(ia)
      io = 0
-     do
+     do 
         io = io + 1
         if (io > no(it)) exit
         lorb = lquant(it,io)
@@ -410,18 +396,10 @@ program mprop
 !
 ! Process orbital sets
 !
-  call read_n_curves(coop, mpr_u, no_u, ncb)
-  allocate( orb_mask(no_u,2,ncb) )
-  allocate( koc(ncb,2,no_u) )
-  allocate( noc(ncb,2), dtc(ncb,2), tit(ncb) )
-
-  ! Need to rewind file and do a dummy read.
-  rewind(mpr_u)
-  read(mpr_u,*) sflnm
-  read(mpr_u,*) what
-
+  allocate(orb_mask(no_u,2,ncbmx))
+  allocate (koc(ncbmx,2,no_u))
   call read_curve_information(dos,coop,  &
-                                    mpr_u,no_u,ncb,ncb,tit,orb_mask,dtc)
+                                    mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
   if (dos) then
      orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
   endif
@@ -438,7 +416,7 @@ program mprop
   do it=1,nspecies
      write(stt_u,"(5x,a20)") trim(label(it))
      io = 0
-     do
+     do 
         io = io + 1
         if (io > no(it)) exit
         write(stt_u,"(3(2x,i2))") nquant(it,io), lquant(it,io), zeta(it,io)
@@ -527,7 +505,7 @@ program mprop
 
 
   !=====================
-
+ 
  if (coop) then
     allocate (coop_vals(npts_energy,nspin_blocks,ncb))
     allocate (cohp_vals(npts_energy,nspin_blocks,ncb))
@@ -547,7 +525,7 @@ program mprop
 
      ! The first dimension is the number of real numbers per orbital
      ! 1 for real wfs, 2 for complex, and four for the two spinor components
-
+  
      if (non_coll) then
         allocate(wf_single(4,1:no_u))
         allocate(wf(4,1:no_u))
@@ -602,7 +580,7 @@ program mprop
         do i1=2,no1
            ptr(i1)=ptr(i1-1)+num_red(i1-1)
         enddo
-        nnz = sum(num_red(1:no1))
+        nnz = sum(num_red(1:no1))  
 
         write(*,"(a,3x,a,2x,a,i6,1x,i12)") 'Curve ', trim(tit(ic)),  &
                                       'Base orbitals and interactions: ', &
@@ -643,11 +621,11 @@ program mprop
 
         rewind(wfs_u)
 
-        read(wfs_u)
-        read(wfs_u)
-        read(wfs_u)
-        read(wfs_u)
-
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+     
         if (debug) print *, "Number of k-points, spins: ", nkp, nsp
         do ik=1,nkp
            if (debug) print *, "k-point: ", ik
@@ -658,7 +636,7 @@ program mprop
               if (debug) print *, "  Number of wfns: ", number_of_wfns
               do iw=1,number_of_wfns
                  if (debug) print *, "     wfn: ", iw
-                 read(wfs_u)
+                 read(wfs_u) 
                  read(wfs_u) eigval
 
                  ! Early termination of iteration if outside range
@@ -684,7 +662,7 @@ program mprop
                        ww(i) = delta(energy-eigval)
                        ados(i,is) = ados(i,is) + wk(ik) * ww(i)
                     enddo
-                    !
+                    ! 
                     ! Find the interesting energy region for this state
                     !
                     imin = npts_energy
@@ -741,19 +719,19 @@ program mprop
                                    ! The kind returned is "the highest" of the arguments. In this case,
                                    ! it will be 'dp' if the 'spinor_X' variables are 'dp'.
                                    c_c1_c2 = dot_product(spinor_1,spinor_2)
-                                   qcos= real(c_c1_c2, dp)
-                                   qsin= aimag(c_c1_c2)
-
+                                   qcos= real(c_c1_c2, dp) 
+                                   qsin= aimag(c_c1_c2)   
+                                   
                                    ! For COHP, insert non-trivial H matrix
                                    H_c2 = matmul( H, spinor_2 )
                                    c_c1_H_c2  = dot_product( spinor_1, H_c2 )
-                                   qcos_H= real(c_c1_H_c2, dp)
+                                   qcos_H= real(c_c1_H_c2, dp) 
                                    qsin_H= aimag(c_c1_H_c2)
 
                                 else
                                    ! These have explicit spin quantum numbers (is)
                                    if (gamma_wfsx) then
-                                      qcos = wf(1,io1)*wf(1,io2)
+                                      qcos = wf(1,io1)*wf(1,io2) 
                                       qsin = 0.0_dp
                                       qcos_H = qcos * Hamilt(ind,is)
                                       qsin_H = 0.0_dp
@@ -797,7 +775,7 @@ program mprop
                  enddo   ! iwf
               enddo      ! is
            enddo         ! ik
-
+           
            deallocate (num_red)
            deallocate (ptr)
            deallocate (list_io2)
@@ -815,7 +793,7 @@ program mprop
               call write_curve_to_file(trim(mflnm)// "." // trim(tit(ic)) // '.cohp', &
                                        cohp_vals(:,:,ic))
            endif
-
+           
         enddo    ! ic
 
 !--------------------------------------------------------
@@ -823,10 +801,9 @@ program mprop
      !
      !      Simple DOS output
      !
-     ! Divide by the number of curves
+     ! Divide by the number of curves        
      call write_curve_to_file(trim(sflnm)//".ados",ados/ncb)
 
-     deallocate( orb_mask, koc, noc, dtc, tit )
 
 CONTAINS
 
@@ -836,9 +813,9 @@ CONTAINS
 
     integer  :: i
     real(dp) :: energy
-
+    
     ! tab_u, low_e, e_step, npts_energy by host association
-
+    
     open(tab_u,file=trim(filename))
     !
     ! Header
@@ -855,18 +832,18 @@ CONTAINS
        write(tab_u,"(a1,12x,'ENERGY',14x,a)") '#', 'total'
     end select
     !
-    ! Values
+    ! Values   
     !
     do i=1, npts_energy
        energy = low_e + e_step*(i-1)
        select case ( wfs_spin_flag)
        case ( 1 )
           ! Two identical 'spin' columns, and the sum (complete value) in the third column
-          write(tab_u,"(f20.8,3(5x,f13.8))")  &
+          write(tab_u,"(f20.8,3(5x,f13.8))")  &   
                energy, array(i,1), array(i,1), 2*array(i,1)
        case ( 2 )
           ! Two 'spin' columns, and the sum (complete value) in the third column
-          write(tab_u,"(f20.8,3(5x,f13.8))")  &
+          write(tab_u,"(f20.8,3(5x,f13.8))")  &      
                energy, (array(i,is),is=1,nspin_blocks), sum(array(i,:))
        case ( 4 )
           ! A single column with  the complete value
@@ -876,7 +853,7 @@ CONTAINS
     close(tab_u)
 
   end subroutine write_curve_to_file
-
+  
   function delta(x) result(res)
     real(dp), intent(in) :: x
     real(dp)             :: res

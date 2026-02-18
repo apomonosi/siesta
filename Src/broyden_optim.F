@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -8,7 +8,7 @@
       module m_broyden_optim
 !
 !     Broyden geometry optimization
-!
+!      
       implicit none
 
       public :: broyden_optimizer
@@ -20,11 +20,20 @@
 c ***************************************************************************
 c Broyden geometry optimization
 c
+c   Energy minimization including atomic coordinates and unit cell vectors.
+c   It allows an external target stress:
+c              %block MD.TargetStress
+c                  3.5  0.0  0.0  0.0  0.0  0.0
+c              %endblock MD.TargetStress
+c   corresponding to xx, yy, zz, xy, xz, yz.
+c   In units of (-MD.TargetPressure)
+c   Default: hydrostatic pressure: -1, -1, -1, 0, 0, 0
+c
 c   Based on E({xa},stress), with {xa} in fractional coor
 c   The gradient of the energy given by {cfa} forces (fractional!)
 c   The fractional coordinates are multiplied by the initial cell vectors
 c   to get them in Bohr for preconditioning.
-c
+c      
 c Written by Alberto Garcia, December 2005
 
 c ******************************** INPUT ************************************
@@ -36,7 +45,7 @@ c logical varcel        : true if variable cell optimization
 c *************************** INPUT AND OUTPUT ******************************
 c real*8 xa(3,na)       : Atomic coordinates
 c                         input: current step; output: next step
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 stress(3,3)    : Stress tensor components
@@ -53,8 +62,6 @@ C
       use fdf
       use units, only: kBar
       use siesta_options, only: dxmax
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
 !
       use m_broyddj_nocomm, only: broyden_t
       use m_broyddj_nocomm, only: broyden_reset, broyden_step,
@@ -89,10 +96,13 @@ c Internal variables and arrays
 ! Saved internal variables:
 
       logical, save :: frstme = .true.
+      logical, save :: tarstr = .false.
+      logical, save :: constant_volume
       real(dp), save :: initial_volume
 
 
-      real(dp), save :: modcel(3),
+      real(dp), save :: tstres(3,3),
+     .                  modcel(3),
      .                  precon,
      .                  strain(3,3),
      .                  cellin(3,3)
@@ -123,7 +133,7 @@ c ---------------------------------------------------------------------------
      $                            1.0_dp)
 
         if (ionode) then
-          write(6,*)
+          write(6,*) 
           write(6,'(a,i3)')
      $         "Broyden_optim: max_history for broyden: ", maxit
           write(6,'(a,l1)')
@@ -132,7 +142,7 @@ c ---------------------------------------------------------------------------
      $         "Broyden_optim: Variable weight not implemented yet"
           write(6,'(a,f8.4)')
      $         "Broyden_optim: initial inverse jacobian: ", jinv0
-          write(6,*)
+          write(6,*) 
         endif
 
         call broyden_init(br,debug=broyden_debug)
@@ -144,7 +154,7 @@ c ---------------------------------------------------------------------------
 C If first call to optim, check dim and get target stress --------------------
 
       if ( frstme ) then
-
+  
         if ( varcel ) then
           numel = 3*na + 6
         else
@@ -156,9 +166,61 @@ C If first call to optim, check dim and get target stress --------------------
 
         if ( varcel ) then
 
-          call set_target_stress( tp )
 C Check if we want a constant-volume simulation
           constant_volume = fdf_get("MD.ConstantVolume", .false.)
+
+C Look for target stress and read it if found, otherwise generate it --------
+          tarstr = fdf_block('MD.TargetStress',bfdf)
+
+          if (tarstr) then
+            if (ionode) then
+              write(6,'(/a,a)')
+     $             'Broyden_optim: Reading %block MD.TargetStress',
+     .             ' (units of MD.TargetPressure).'
+            endif
+            if (.not. fdf_bline(bfdf,pline))
+     $        call die('broyden_optimizer: ERROR in ' //
+     .                 'MD.TargetStress block')
+            sxx = fdf_bvalues(pline,1)
+            syy = fdf_bvalues(pline,2)
+            szz = fdf_bvalues(pline,3)
+            sxy = fdf_bvalues(pline,4)
+            sxz = fdf_bvalues(pline,5)
+            syz = fdf_bvalues(pline,6)
+            call fdf_bclose(bfdf)
+
+            tstres(1,1) = - sxx * tp
+            tstres(2,2) = - syy * tp
+            tstres(3,3) = - szz * tp
+            tstres(1,2) = - sxy * tp
+            tstres(2,1) = - sxy * tp
+            tstres(1,3) = - sxz * tp
+            tstres(3,1) = - sxz * tp
+            tstres(2,3) = - syz * tp
+            tstres(3,2) = - syz * tp
+          else
+            if (ionode) then
+              write(6,'(/a,a)')
+     $              'Broyden_optim: No target stress found, ',
+     .              'assuming hydrostatic MD.TargetPressure.'
+            endif
+            do i= 1, 3
+              do j= 1, 3
+                tstres(i,j) = 0._dp
+              enddo
+              tstres(i,i) = - tp
+            enddo
+          endif
+
+C Write target stress down --------------------------------------------------
+          if (ionode) then
+            write(6,"(/a)") 'Broyden_optim: Target stress (kBar)'
+            do i = 1, 3
+              write(6,"(a,2x,3f12.3)") 
+     .            'Broyden_optim:', tstres(i,1)/kBar, tstres(i,2)/kBar, 
+     .            tstres(i,3)/kBar
+            enddo
+          endif
 
 C Moduli of original cell vectors for fractional coor scaling back to au ---
 
@@ -170,7 +232,7 @@ C Moduli of original cell vectors for fractional coor scaling back to au ---
              modcel(n) = dsqrt( modcel(n) )
           enddo
 
-C Scale factor for strain variables to share magnitude with coordinates
+C Scale factor for strain variables to share magnitude with coordinates 
 C ---- (a length in Bohrs typical of bond lengths ..) ------------------
 
           precon = fdf_get('MD.PreconditionVariableCell',
@@ -220,9 +282,9 @@ C Inverse of matrix of cell vectors  (transpose of) ------------------------
 
         call reclat( cell, celli, 0 )
 
-C Transform coordinates and forces to fractional
+C Transform coordinates and forces to fractional 
 C but scale them again to Bohr by using the (fixed) moduli of the original
-C lattice vectors (allows using maximum displacement as before)
+C lattice vectors (allows using maximum displacement as before) 
 C convergence is checked here for input forces as compared with ftol
 
         relaxd = .true.
@@ -240,7 +302,7 @@ C convergence is checked here for input forces as compared with ftol
           enddo
         enddo
 
-C Symmetrizing the stress tensor
+C Symmetrizing the stress tensor 
 
         do i = 1, 3
            do j = i+1, 3
@@ -251,7 +313,7 @@ C Symmetrizing the stress tensor
 
 C Subtract target stress
 
-        stress_dif = stress - target_stress
+        stress_dif = stress - tstres
 !
 !       Take 1/3 of the trace out here if constant-volume needed
 !
@@ -262,7 +324,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append excess stress and strain to gxa and gfa ------
+C Append excess stress and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
 
         indi = 3*na
@@ -279,7 +341,7 @@ C Check stress convergence --------------------------------------------------
 
         do i = 1, 3
            do j = 1, 3
-              relaxd = relaxd .and.
+              relaxd = relaxd .and. 
      .          ( abs(stress_dif(i,j)) .lt. abs(strtol) )
            enddo
         enddo
@@ -288,7 +350,7 @@ C Check stress convergence --------------------------------------------------
 
 C Call Broyden step
 
-        if (.not. broyden_is_setup(br))
+        if (.not. broyden_is_setup(br)) 
      $    call broyden_reset(br,numel,maxit,cycle_on_maxit,
      $                       jinv0,0.01_dp,max_step)
 
@@ -339,7 +401,7 @@ C Fixed cell ----------------------------------------------------------------
 
 !!!!!!!           rold = reshape(xa, (/1, 3*na /))
 !!!!!!!           rdiff = reshape(fa, (/1, 3*na /))
-
+           
            call broyden_step(br,rold,rdiff,w=weight,newx=rnew)
            xa(1:3,1:na) = reshape(rnew, (/ 3, na /))
 
@@ -349,7 +411,7 @@ C Transform back if variable cell
 
       if ( varcel ) then
 
-      ! New cell
+      ! New cell 
 
         indi = 3*na
         do i = 1, 3
@@ -366,7 +428,7 @@ C Transform back if variable cell
            cell =  cell * (initial_volume/new_volume)**(1.0_dp/3.0_dp)
         endif
 
-C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
+C Output fractional coordinates to cartesian Bohr, and copy to xa ----------- 
 
         do ia = 1, na
           do i = 1, 3

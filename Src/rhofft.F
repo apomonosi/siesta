@@ -33,10 +33,8 @@ C     Modules
       use precision,   only : dp, grid_p
       use sys,         only : die
       use m_fft,       only : fft     ! 3-D fast Fourier transform
-      use m_fft,       only : fft_init
       use cellsubs,    only : reclat  ! Finds reciprocal lattice vectors
       use cellsubs,    only : volcel  ! Finds unit cell volume
-      use alloc,       only : re_alloc, de_alloc
 
       implicit          none
 
@@ -48,13 +46,13 @@ C     Input/output variables
       real(grid_p)          :: rhog(2,N1*N2*N3,nspin)
 
 C     Local variables
-      integer               :: ispin, ng, sz1, sz2
+      integer               :: ispin, ng
       real(dp)              :: VOLUME, b(3,3)
-      real(grid_p), pointer :: rhogaux(:,:)
 
 #ifdef DEBUG
       call write_debug( '    PRE rhofft' )
 #endif
+
 C     Start time counter
       call timer( 'rhofft', 1 )
 
@@ -66,31 +64,18 @@ C     Find reciprocal lattice vectors
 
       NG = mesh(1) * mesh(2) * mesh(3)
 
-C     Initiallize FFT
-
-      ! Here we need to go back to the x-pencil
-      ! distribution after the transform, since we carry
-      ! out a single forward or backward operation
-
-      call fft_init( Mesh, sz1, sz2, pin_x_distribution=.true. )
-
-C     Allocate auxiliar memory
-      nullify(rhogaux)
-      call re_alloc( rhogaux, 1, 2, 1, sz2, 'rhogaux', 'rhofft' )
-
-
       if (direction == FORWARD) then
          rhog(1,:,:) = RHO(:,:)
          rhog(2,:,:) = 0.0_grid_p
 
          do ispin = 1, nspin
-            call fft( rhog(1,1,ispin), rhogaux, -1 )
+            call fft( rhog(1,1,ispin), Mesh, -1 )
          enddo
          ! Units: electrons per unit cell
          rhog(:,:,:) = rhog(:,:,:) * volume / dble(ng)
       else if (direction == BACKWARD) then
          do ispin = 1, nspin
-            call fft( rhog(1,1,ispin), rhogaux, +1 )
+            call fft( rhog(1,1,ispin), Mesh, +1 )
          enddo
          rho(:,:) = rhog(1,:,:) * ng / volume
          !  print *, "sum(rho)*dvol", sum(rho)*volume/dble(ng)
@@ -98,15 +83,13 @@ C     Allocate auxiliar memory
          call die("wrong fft direction")
       endif
 
-C     Free memory
-      call de_alloc( rhogaux, 'rhogaux', 'rhofft' )
-
 C     Stop time counter
       call timer( 'rhofft', 2 )
 
 #ifdef DEBUG
       call write_debug( '    POS rhofft' )
 #endif
+
       end subroutine rhofft
 
       end module m_rhofft

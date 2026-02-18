@@ -236,7 +236,7 @@ C   (which will determine the reduce space) -
           if (Node.eq.0) then
             write(6,*) 'chempot: ERROR: zero neighbors for orbital ',i
           endif
-          CALL DIE("stopping program")
+          CALL DIE()
         endif
         nu = numh(mu) 
 

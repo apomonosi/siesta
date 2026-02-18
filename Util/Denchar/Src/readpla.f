@@ -23,7 +23,6 @@ C **********************************************************************
 
       use precision
       USE FDF
-      use units, only: Ang
 
       IMPLICIT NONE
 
@@ -297,28 +296,28 @@ C Check if the three points are colinear -------------------------------
 
 C Scale points coordinates
 C   Iscale = 1 => Do nothing
-C   Iscale = 2 => Multiply by Ang (Ang --> Bohr)
+C   Iscale = 2 => Multiply by 1./0.529177 (Ang --> Bohr)
 
       IF( (ISCALE .EQ. 2) .AND. (IOPTION .NE. 4) ) THEN
         DO IX = 1,3
           DO JX = 1,3
-            COORPO(JX,IX) = COORPO(JX,IX) * Ang
+            COORPO(JX,IX) = 1.D0 / 0.529177D0 * COORPO(JX,IX)
           ENDDO
-          ORIGIN(IX)  = ORIGIN(IX) * Ang
-          DIRVER1(IX) = DIRVER1(IX) * Ang
-          DIRVER2(IX) = DIRVER2(IX) * Ang
+          ORIGIN(IX)  = 1.D0 / 0.529177D0 * ORIGIN(IX)
+          DIRVER1(IX) = 1.D0 / 0.529177D0 * DIRVER1(IX)
+          DIRVER2(IX) = 1.D0 / 0.529177D0 * DIRVER2(IX)
         ENDDO
       ENDIF 
 
 C Units of Charge Density
 C   Iunitcd = 1 => Do nothing
-C   Iunitcd = 2 => Multiply by Ang**3 (bohr**3 --> Ang**3)
+C   Iunitcd = 2 => Multiply by (1.d0 / 0.529177d0) **3 (bohr**3 --> Ang**3)
 C   Iunitcd = 3 => Multiply by volume unit cell (in bohrs**3) 
 
       IF (IUNITCD .EQ. 1) THEN
         ARMUNI = 1.D0
       ELSEIF( IUNITCD .EQ. 2 ) THEN
-        ARMUNI = Ang**3 
+        ARMUNI = (1.D0 / 0.529177D0)**3 
       ELSEIF( IUNITCD .EQ. 3 ) THEN
         ARMUNI = VOLUME
       ENDIF

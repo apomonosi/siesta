@@ -53,7 +53,7 @@ module m_iterator
   end type itt5
 
   public :: itt_init, itt_attach, itt_reset
-  public :: itt_last, itt_end
+  public :: itt_first, itt_last, itt_end
   public :: itt_step, fitt_step
   public :: sitt_step
   public :: itt_done
@@ -75,6 +75,12 @@ module m_iterator
      module procedure stepped_itt1, stepped_itt2
      module procedure stepped_itt3, stepped_itt4
      module procedure stepped_itt5
+  end interface
+
+  interface itt_first
+     module procedure first_itt1, first_itt2
+     module procedure first_itt3, first_itt4
+     module procedure first_itt5
   end interface
 
   interface itt_last
@@ -190,6 +196,12 @@ contains
     this%cur = this%start - this%step
   end subroutine reset_itt1
 
+  pure function first_itt1(this) result(first)
+    type(itt1), intent(in) :: this
+    logical :: first
+    first = this%cur == this%start
+  end function first_itt1
+
   pure function last_itt1(this) result(last)
     type(itt1), intent(in) :: this
     logical :: last
@@ -298,6 +310,24 @@ contains
     call itt_reset(this)
   end subroutine init_itt2_of_itt1
 
+  pure function first_itt2(this,i) result(first)
+    type(itt2), intent(in) :: this
+    integer, intent(in), optional :: i
+    logical :: first
+    if ( present(i) ) then
+       if ( i < 1 .or. 2 < i ) then
+          !call die('iterator: index of iterator not existing')
+       end if
+       if ( i == 1 ) then
+          first = itt_first(this%it1)
+       else if ( i == 2 ) then
+          first = itt_first(this%it2)
+       end if
+    else
+       first = itt_first(this%it1) .and. itt_first(this%it2)
+    end if
+  end function first_itt2
+
   function last_itt2(this,i) result(last)
     type(itt2), intent(in) :: this
     integer, intent(in), optional :: i
@@ -363,7 +393,7 @@ contains
        fs = ( this%it1%cur > this%it1%start ) 
     end if
     if ( fs ) call sitt_step(this%it1)
-    ! try to step the outermost loop
+    ! try to step the innermost loop
     call sitt_step(this%it2)
     if ( itt_done(this%it2) ) then
        if ( .not. fs ) &
@@ -381,7 +411,7 @@ contains
 
     if ( itt_done(this) ) then
        ! if we are done after a step
-       ! it must meen that every loop is done
+       ! it must mean that every loop is done
        ! we immediately set everything to the end-value
        ! to ensure that a step will not be caught
        call itt_end(this)
@@ -465,6 +495,26 @@ contains
     call itt_reset(this)
   end subroutine init_itt3_of_itt1
 
+  pure function first_itt3(this,i) result(first)
+    type(itt3), intent(in) :: this
+    integer, intent(in), optional :: i
+    logical :: first
+    if ( present(i) ) then
+       if ( i < 1 .or. 3 < i ) then
+          !call die('iterator: index of iterator not existing')
+       end if
+       if ( i == 1 ) then
+          first = itt_first(this%it1)
+       else if ( i == 2 ) then
+          first = itt_first(this%it2,1)
+       else if ( i == 3 ) then
+          first = itt_first(this%it2,2)
+       end if
+    else
+       first = itt_first(this%it1) .and. itt_first(this%it2)
+    end if
+  end function first_itt3
+
   function last_itt3(this,i) result(last)
     type(itt3), intent(in) :: this
     integer, intent(in), optional :: i
@@ -533,7 +583,7 @@ contains
        fs = ( this%it1%cur > this%it1%start ) 
     end if
     if ( fs ) call sitt_step(this%it1)
-    ! try to step the outermost loop
+    ! try to step the innermost loop
     call sitt_step(this%it2)
     if ( itt_done(this%it2) ) then
        if ( .not. fs ) &
@@ -634,6 +684,28 @@ contains
     call itt_reset(this)
   end subroutine init_itt4_of_itt1
 
+  pure function first_itt4(this,i) result(first)
+    type(itt4), intent(in) :: this
+    integer, intent(in), optional :: i
+    logical :: first
+    if ( present(i) ) then
+       if ( i < 1 .or. 4 < i ) then
+          !call die('iterator: index of iterator not existing')
+       end if
+       if ( i == 1 ) then
+          first = itt_first(this%it1,1)
+       else if ( i == 2 ) then
+          first = itt_first(this%it1,2)
+       else if ( i == 3 ) then
+          first = itt_first(this%it3,1)
+       else if ( i == 4 ) then
+          first = itt_first(this%it3,2)
+       end if
+    else
+       first = itt_first(this%it1) .and. itt_first(this%it3)
+    end if
+  end function first_itt4
+
   function last_itt4(this,i) result(last)
     type(itt4), intent(in) :: this
     integer, intent(in), optional :: i
@@ -707,7 +779,7 @@ contains
        fs = ( this%it1%it1%cur > this%it1%it1%start ) 
     end if
     if ( fs ) call sitt_step(this%it1)
-    ! try to step the outermost loop
+    ! try to step the innermost loop
     call sitt_step(this%it3)
     if ( itt_done(this%it3) ) then
        if ( .not. fs ) &
@@ -815,6 +887,30 @@ contains
     call itt_reset(this)
   end subroutine init_itt5_of_itt1
 
+  pure function first_itt5(this,i) result(first)
+    type(itt5), intent(in) :: this
+    integer, intent(in), optional :: i
+    logical :: first
+    if ( present(i) ) then
+       if ( i < 1 .or. 5 < i ) then
+          !call die('iterator: index of iterator not existing')
+       end if
+       if ( i == 1 ) then
+          first = itt_first(this%it1,1)
+       else if ( i == 2 ) then
+          first = itt_first(this%it1,2)
+       else if ( i == 3 ) then
+          first = itt_first(this%it3,1)
+       else if ( i == 4 ) then
+          first = itt_first(this%it3,2)
+       else if ( i == 5 ) then
+          first = itt_first(this%it3,3)
+       end if
+    else
+       first = itt_first(this%it1) .and. itt_first(this%it3)
+    end if
+   end function first_itt5
+
   function last_itt5(this,i) result(last)
     type(itt5), intent(in) :: this
     integer, intent(in), optional :: i
@@ -892,7 +988,7 @@ contains
        fs = ( this%it1%it1%cur > this%it1%it1%start ) 
     end if
     if ( fs ) call sitt_step(this%it1)
-    ! try to step the outermost loop
+    ! try to step the innermost loop
     call sitt_step(this%it3)
     if ( itt_done(this%it3) ) then
        if ( .not. fs ) &

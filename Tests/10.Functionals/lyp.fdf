@@ -1,6 +1,0 @@
-%include ../base_graph.fdf
-SystemLabel     lyp
-
-xc.functional   GGA
-xc.authors      LYP
-

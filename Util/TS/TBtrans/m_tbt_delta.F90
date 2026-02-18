@@ -36,7 +36,6 @@
 
 ! Regardless of the delta (dH or dSE) this module also
 ! implements the additive routines to the trimat classes.
-#include "mpi_macros.f"
 
 module m_tbt_delta
 
@@ -123,7 +122,8 @@ contains
 #endif
     
 #ifdef MPI
-    use mpi_siesta
+    use mpi_siesta, only : MPI_Bcast, MPI_Comm_World
+    use mpi_siesta, only : MPI_Integer, MPI_Double_Precision
 #endif
 
     ! Option name used (dH or dSE)
@@ -408,7 +408,7 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
 
 #ifdef MPI
-    use mpi_siesta
+    use mpi_siesta, only : MPI_Comm_Self
 #endif
 
     use ncdf_io_m, only : cdf_r_Sp
@@ -470,7 +470,8 @@ contains
     use parallel, only : IONode, Node, Nodes
 
 #ifdef MPI
-    use mpi_siesta
+    use mpi_siesta, only : MPI_Gather
+    use mpi_siesta, only : MPI_Comm_World, MPI_Integer
 #endif
 
     use units, only: eV
@@ -638,7 +639,10 @@ contains
       use ncdf_io_m, only : cdf_r_Sp
 
 #ifdef MPI
-      use mpi_siesta
+      use mpi_siesta, only : MPI_Send, MPI_Recv
+      use mpi_siesta, only : MPI_Comm_World, MPI_Comm_Self, MPI_Status_Size
+      use mpi_siesta, only : MPI_Integer
+      use mpi_siesta, only : MPI_Double_Precision, MPI_Double_Complex
 #endif
 
       type(tDelta), intent(inout) :: delta
@@ -661,8 +665,7 @@ contains
 #ifdef MPI
       ! We must figure out which level each node
       ! lives on
-      integer :: MPIerror
-      MPI_STATUS_TYPE :: status
+      integer :: MPIerror, status(Mpi_status_size)
 #endif
 
       ! At this point we know which levels we should read

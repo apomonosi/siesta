@@ -7,6 +7,9 @@
 !
 ! This code segment has been fully created by:
 ! Nick Papior Andersen, 2013, nickpapior@gmail.com
+! Please conctact the author, prior to re-using this code.
+! * It has been heavily inspired by the original authors of the 
+!   Transiesta code (hence the references here are still remaining) *
 
 module m_ts_fullk
 
@@ -55,6 +58,16 @@ contains
 ! ## has been greatly reduced.                                    ##
 ! ##                                                              ##
 ! ##################################################################
+!
+!
+! Tight-binding density-matrix/transport program for the SIESTA
+! package.
+! Copyright by Mads Brandbyge, 1999, 2000, 2001, 2002.
+! Copyright by Nick Papior Andersen, 2013.
+! The use of this program is allowed for not-for-profit research only.
+! Copy or disemination of all or part of this package is not
+! permitted without prior and explicit authorization by the authors.
+!
   
   subroutine ts_fullk(N_Elec,Elecs, &
        nq,uGF, &

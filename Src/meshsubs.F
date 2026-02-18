@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -6,7 +6,7 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 !-------------------------------------------------------------
-!
+!     
       module meshsubs
 
       implicit none
@@ -21,19 +21,19 @@
       public :: PhiOnMesh     ! Orbital values on the mesh
       public :: setupExtMesh  ! Sets up extended mesh
       public :: distriPhiOnMesh  ! Sets up data distribution
-      public :: meshsubs_reset ! Dallocates mesh arrays.
 
       private
 
       CONTAINS
 
       subroutine InitMesh( na, cell, norb, iaorb, iphorb, isa,
-     &                     rmax, G2max, G2mesh, nsc, nmpl,
+     &                     rmax, G2max, G2mesh, nsc, nmpl, 
      &                     nm, nml, ntm, ntml, ntpl, dvol)
 
 !  Modules
       use precision,     only : dp, i8b
       use parallel,      only : Node, Nodes
+      use parallelsubs,  only : HowManyMeshPerNode, GlobalToLocalMesh
       use moreMeshSubs,  only : initMeshDistr, setMeshDistr
       use moreMeshSubs,  only : UNIFORM
       use alloc,         only : re_alloc, de_alloc
@@ -122,7 +122,6 @@ C     Functions
 #ifdef DEBUG
       call write_debug( '      PRE InitMesh' )
 #endif
-      call timer( "InitMesh", 1 )
 
 ! ----------------------------------------------------------------------
 ! Mesh initialization
@@ -130,7 +129,7 @@ C     Functions
       ! determines ntm
       call get_mesh_sizes(cell,G2max,nsm,ntm,G2mesh)
 
-! Save some numbers
+! Save some numbers 
 !     nmeshg in module array
       nm(:) = ntm(:) / nsm
       nmsc(:) = nm(:) * nsc(:)
@@ -207,7 +206,7 @@ C     Find reciprocal mesh-cell vectors (not multiplied by 2*pi)
 ! For an atom at x=0, ne=rmax/pldist is the last mesh point within rmax.
 ! But an atom at mesh cell ix=0 can be almost at x=dx. Therefore we have
 ! to go up to ne+1. And subpoints in mesh cell ix=-ne-1 can be almost at
-! x=-ne*dx. Therefore we have to go up to -ne-1 to the left. Thus, we
+! x=-ne*dx. Therefore we have to go up to -ne-1 to the left. Thus, we 
 ! just increase ne and forget about these two effects from now on.
       ne(:) = ne(:) + 1
 
@@ -233,14 +232,14 @@ C     Find sub-points
 ! Find number of points within rmax (orbital points)
 !$OMP single ! Only used for OpenMP
       mop = 0
-!$OMP end single
+!$OMP end single 
 !$OMP do private(dxp,within,dx,r), reduction(+:mop)
       do i3 = -ne(3), ne(3)    ! Loop over neighbor (super) points
         do i2 = -ne(2), ne(2)
           do i1 = -ne(1), ne(1)
             dxp(:) = cmesh(:,1) * i1 +  ! (Super) point coordinates
      .               cmesh(:,2) * i2 +
-     .               cmesh(:,3) * i3
+     .               cmesh(:,3) * i3 
             ! Find if any subpoint can be within rmax of an atom that
             ! is in the origin's mesh cell
             within = .false.
@@ -264,8 +263,6 @@ C     Find sub-points
 C     Create extended mesh arrays for the first data distribution
       call setupExtMesh( UNIFORM, rmax )
 
-      call timer( "InitMesh", 2 )
-
 #ifdef DEBUG
       call write_debug( '      POS InitMesh' )
 #endif
@@ -274,7 +271,7 @@ C     Create extended mesh arrays for the first data distribution
 !------------------------------------
 
       subroutine get_mesh_sizes(cell,G2max,nsm,ntm,RealCutoff)
-      ! Computes the mesh dimensions ntm for a given cell
+      ! Computes the mesh dimensions ntm for a given cell 
       ! and mesh cutoff, making them multiples of the big-point
       ! sampling size nsm.
 
@@ -291,7 +288,7 @@ C     Create extended mesh arrays for the first data distribution
       real(dp), intent(out) :: RealCutoff
       integer, intent(in)   :: nsm
       integer, intent(out)  :: ntm(3)
-
+      
       real(dp)  :: rcell(3,3), vecmod
       integer   :: i, itmp
       real(dp), parameter     :: k0(3) = (/ 0.d0, 0.d0, 0.d0 /)
@@ -345,7 +342,7 @@ C     Create extended mesh arrays for the first data distribution
 !                to nfft (allowed integers). I don't know if this should
 !                forced or not?
       if ( fdf_block('Mesh.Sizes',bfdf) ) then
-
+        
         if ( fdf_bline(bfdf, pline) ) then
            ntm(1) = fdf_bintegers(pline,1)
            ntm(2) = fdf_bintegers(pline,2)
@@ -354,7 +351,7 @@ C     Create extended mesh arrays for the first data distribution
            call die('initmesh: ERROR in Mesh.Sizes block')
         endif
         call fdf_bclose(bfdf)
-
+        
         ! Calculate the actual meshcutoff from the grid
         RealCutoff = huge(1.0_dp)
         call chkgmx( k0, rcell, ntm, RealCutoff )
@@ -371,7 +368,7 @@ C     Create extended mesh arrays for the first data distribution
         ! Calculate the actual meshcutoff from the grid
         RealCutoff = huge(1.0_dp)
         call chkgmx( k0, rcell, ntm, RealCutoff )
-
+        
       end if
 
 !     Issue a warning if the mesh sizes are smaller than
@@ -539,7 +536,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
       real(dp),      intent(in) :: xa(3,na)  ! Atomic coordinates
       integer,       intent(in) :: distr     ! Used data distribution
 !     Local variables
-      character(len=*),parameter:: myName = 'InitAtomMesh'
+      character(len=*),parameter:: myName = 'InitAtomMesh '
       integer,             save :: lastna = 0  ! Number of atoms on last call
       integer                   :: ia, ixa(3), jsc(3), jxa(3), nem(3),
      &                             j1, j2, j3, myBox(2,3), myExtBox(2,3)
@@ -553,13 +550,13 @@ C     If cell has changed then it is necessary to reinitialise coordinates
       call allocIpaDistr( distr, na )
       if (na.ne.lastna) then
         call re_alloc( dxa, 1,3, 1,na, 'dxa', myName )
-        call re_alloc( iatfold, 1,3, 1,na, 'iatfold', myName )
+        call re_alloc( iatfold, 1,3, 1,na, myName//'iatfold' )
       endif
       lastna = na
 
       myBox(:,:) = meshLim(:,:) - 1
 
-!     Add 'wings extensions' to myBox of mesh points, containing all points
+!     Add 'wings extensions' to myBox of mesh points, containing all points 
 !     within the orbital spheres that may intersect myBox. Thus, wings must
 !     be one diameter wide.
       myExtBox(1,:) = myBox(1,:) - 2*ne(:)
@@ -590,7 +587,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 !       (periodic) atomic sphere (of width ne) can intersect myBox.
 !       Otherwise, make ipa=0. nem is the width of myExtBox.
 !       nmsc is the width of the supercell.
-!       Notice that, even if several periodic images of the same
+!       Notice that, even if several periodic images of the same 
 !       atom may fit within myExtBox, only one must be considered,
 !       since the points within its sphere, once folded into myBox,
 !       will be equivalent to those of any other periodic image.
@@ -600,7 +597,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
             do j1 = -1,1
               jsc(:) = (/j1,j2,j3/)
               jxa(:) = ixa(:) + jsc(:)*nmsc(:)
-              if ( all(jxa(:)>=myBox(1,:)-ne(:)) .and.
+              if ( all(jxa(:)>=myBox(1,:)-ne(:)) .and. 
      &             all(jxa(:)<=myBox(2,:)+ne(:)) ) then
                 jxa(:) = jxa(:) - myExtBox(1,:)
                 ipa(ia) = 1 + jxa(1) + nem(1)*jxa(2)
@@ -609,7 +606,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
                 iatfold(1,ia) = iatfold(1,ia) + j1
                 iatfold(2,ia) = iatfold(2,ia) + j2
                 iatfold(3,ia) = iatfold(3,ia) + j3
-
+                
                 exit sc
               end if
             end do    ! j1
@@ -622,8 +619,8 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 #endif
       end subroutine InitAtomMesh
 
-      subroutine PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua,
-     &                              nsd, dvol, volume, Vscf, Vaux,
+      subroutine PartialCoreOnMesh( na, isa, ntpl, rhopcc, indxua, 
+     &                              nsd, dvol, volume, Vscf, Vaux, 
      &                              fal, stressl, Forces, Stress )
 C
 C Finds the partial-core-correction energy density on the mesh
@@ -712,7 +709,7 @@ C                   Calculate gradients of PCC
                       do i = 1,3
                         dfa(i) = dvol * vxc * grrho(i) / nsd
                         if (Forces) fal(i,iua) = fal(i,iua) + dfa(i)
-                        if (Stress) stressl(1:3,i) = stressl(1:3,i) +
+                        if (Stress) stressl(1:3,i) = stressl(1:3,i) + 
      &                    dx(1:3)*dfa(i)/volume
                       enddo
                     enddo
@@ -845,7 +842,7 @@ C integer ntpl          : Number of mesh Total Points in unit cell
 C                       : (including subpoints) locally
 C integer indxua        : Index of equivalent atom in unit cell
 C ----------------------------------------------------------------------
-C Output :
+C Output : 
 C ----------------------------------------------------------------------
 C real    Chlocal(ntpl)     : Sum of diffuse ionic charge densities
 C ----------------------------------------------------------------------
@@ -865,9 +862,9 @@ C     Internal variables
 #ifdef DEBUG
       call write_debug( '      PRE LocalChargeOnMesh' )
 #endif
-C     Initialise array to zero
+C     Initialise array to zero 
       Chlocal(1:ntpl) = 0.0_grid_p
-
+ 
       do ia = 1,na
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
@@ -921,7 +918,6 @@ C ----------------------------------------------------------------------
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       use fdf
       use parallel, only: ionode
-      use units, only : Pi
 
       implicit none
 
@@ -940,7 +936,7 @@ C
 
       real(dp) dx(3), ra, charge_ratio, r
       real(dp) core_charge
-
+      real(dp), parameter :: pi = 3.141592653589793_dp
         ! We want a total core charge of (Z-Zval), localized in a
         ! region of around 1.0 bohr.
         ! Note that we put 1 electron (extra!) for Hydrogen atoms,
@@ -948,14 +944,14 @@ C
         ! file for Bader analysis. For H, the radius is 0.6 bohr
        real(dp) :: radius_standard, radius_h
 
-        ! The model function is N*f(r/ra), where
+        ! The model function is N*f(r/ra), where 
         !  f(x) = exp( - (sinh(2.0_dp*x)/sinh(1.0_dp))**2 )
         !  f(1) is zero to within 10^-5
         ! For normalization, we need \int_{0,1} { x*x*f(x) }, which is:
         real(dp), parameter :: Integral = 0.0411548_dp
 
         ! so that N above is Q/(4*pi*Integral*ra**3)
-
+        
         ! Note that this is quite a small confinement region, so
         ! you might need a high cutoff (of the order of 300-500 Ry)
         ! to represent it on the grid. It might be better to use
@@ -965,18 +961,18 @@ C
 
       ! Initialise array to zero
       ModelCore(1:ntpl) = 0.0_grid_p
-
+        
       radius_standard = fdf_get("bader-core-radius-standard",
      $                      1.0_dp,"Bohr")
       radius_h = fdf_get("bader-core-radius-hydrogen",
      $                      0.6_dp,"Bohr")
-
+      
       if (ionode) then
          write(6,"(a,2f6.3)") "Bader Analysis core-charge setup. " //
      $                        "Radii (standard, H): ",
      $                        radius_standard, radius_h
       endif
-
+      
       do ia = 1,na
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersect my Box
         is = isa(ia)
@@ -1017,10 +1013,10 @@ C Loop over sub-points
       function model(x)
       real(dp), intent(in) :: x
       real(dp)             :: model
-
+      
       model = exp( - (sinh(2.0_dp*x)/sinh(1.0_dp))**2 )
       end function model
-
+      
       end subroutine ModelCoreChargeOnMesh
 !
       subroutine PhiOnMesh( nmpl, norb, iaorb, iphorb, isa, numphi )
@@ -1220,9 +1216,9 @@ C     Find indexes and values of atomic orbitals at mesh points
       use mesh,      only : xdsp     ! Vector to mesh sub-points
       use mesh,      only : indexp   ! ranslation from extended to
                                      ! normal mesh index
-      use mesh,      only : idop     ! Mesh-index span of points
+      use mesh,      only : idop     ! Mesh-index span of points 
                                      ! within an atomic sphere
-      use mesh,      only : xdop     ! Coordinates of (super)points
+      use mesh,      only : xdop     ! Coordinates of (super)points 
                                      ! within an atomic sphere
       use moreMeshSubs, only : allocExtMeshDistr
 
@@ -1242,7 +1238,7 @@ C     Functions
       ! Correspondence between JMS and RG box descriptors
       myBox(:,:) = meshLim(:,:) - 1
 
-! Add 'wings extensions' to myBox of mesh points, containing all points
+! Add 'wings extensions' to myBox of mesh points, containing all points 
 ! within the orbital spheres that may intersect myBox. Thus, wings must
 ! be one diameter wide.
       myExtBox(1,:) = myBox(1,:) - 2*ne(:)
@@ -1312,10 +1308,10 @@ C     Functions
           do i1 = -ne(1), ne(1)
             dxp(:) = cmesh(:,1) * i1 +
      &               cmesh(:,2) * i2 +
-     &               cmesh(:,3) * i3
+     &               cmesh(:,3) * i3 
             within = .false.
             do isp = 1,nsp
-              dx(1:3) = dxp(1:3) + xdsp(1:3,isp)
+              dx(1:3) = dxp(1:3) + xdsp(1:3,isp) 
               r = dismin( cmesh, dx )
               if ( r .lt. rmax ) within = .true.
             enddo
@@ -1348,7 +1344,7 @@ C integer norb          : Total number of basis orbitals in supercell
 C integer iaorb(norb)   : Atom to which each orbital belongs
 C integer iphorb(norb)  : Orbital index (within atom) of each orbital
 C integer isa(na)       : Species index of all atoms in supercell
-C logical need_gradients_in_xc :
+C logical need_gradients_in_xc : 
 C OUTPUT:
 C The output values are in the module moreMeshSubs (New limits of the mesh
 C and the information needed to transfer data between data
@@ -1389,7 +1385,7 @@ C ==================================================================
       use moreMeshSubs, only: allocASynBuffer
       use moreMeshSubs, only: UNIFORM, QUADRATIC, LINEAR
       use alloc,        only: re_alloc, de_alloc
-
+      
       implicit none
 C     Passed arguments
       integer, intent(in)  :: nm(3), nmpl, norb, iaorb(norb),
@@ -1471,15 +1467,5 @@ C       It does nothing if we use synchronous communications.
 #endif
 !--------------------------------------------------------------------------- END
       end subroutine distriPhiOnMesh
-
-      subroutine meshsubs_reset()
-        use alloc, only: de_alloc
-        use mesh , only: dxa, iatfold
-        !! Deallocates some arrays available in the mesh module
-        implicit none
-
-        call de_alloc( dxa    , 'dxa'    , 'InitAtomMesh' )
-        call de_alloc( iatfold, 'iatfold', 'InitAtomMesh' )
-      end subroutine meshsubs_reset
 
       end module meshsubs

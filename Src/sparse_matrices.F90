@@ -19,7 +19,7 @@ module sparse_matrices
   use class_Fstack_Pair_Geometry_dSpData2D
 
   implicit none
-
+  
   private
   save
 
@@ -72,7 +72,7 @@ module sparse_matrices
   !   2. type(Sparsity) hosted in sparse_pattern.
   !
   ! The old arrays are *actually* pointing to the arrays in the variable
-  ! sparse_pattern.
+  ! sparse_pattern.  
   !
   ! A specific handling of the sparse matrices in Siesta is that the column
   ! index is *also* an index for the supercell picture of the auxiliary supercell.
@@ -109,11 +109,9 @@ module sparse_matrices
 
   !> Global sparse pattern used for H/DM/EDM/S matrices, see [sparse pattern](|page|/datastructures/2-sparse.html) for details
   type(Sparsity), public :: sparse_pattern
-
+  
   !> Number of non-zero elements in the sparse matrix (local to MPI Node)
-  integer, public :: maxnh = 0       ! a.k.a.  nnz_l
-  !> Number of non-zero elements in the sparse matrix (global)
-  integer, public :: nnz_g = 0
+  integer, public :: maxnh = 0
   !> Column indices in the CSR matrix (local to MPI Node)
   integer, public, pointer :: listh(:) => null()
   !> Index pointer to `listh` for each row in the CSR matrix, 0-based (local to MPI Node)
@@ -145,14 +143,12 @@ module sparse_matrices
   real(dp), public, pointer :: xijo(:,:) => null()
   !> Inter-orbital [vector](|page|/implementation/1-auxiliary-supercell.html)
   type(dSpData2D), public :: xij_2D
-
+      
   ! Pieces of H that do not depend on the SCF density matrix
   ! Formerly there was a single array H0 for this
   type(dSpData1D), public :: H_vkb_1D, H_kin_1D
   ! DFT+U Hamiltonian
   type(dSpData2D), public :: H_dftu_2D
-  ! Rigid shift of the Hamiltonian matrix elements associated with a Wannier
-  type(dSpData2D), public :: H_chempotwann_2D
   ! LDA+U Hamiltonian + SO
   type(zSpData2D), public :: H_dftu_so_2D
   ! Spin-orbit (on-site) Hamiltonian
@@ -162,7 +158,6 @@ module sparse_matrices
 
   !> Geometry density matrix history, see [here](|page|/implementation/1-auxiliary-supercell.html)
   type(Fstack_Pair_Geometry_dSpData2D), public :: DM_history
-      type(dSpData2D), public :: tight_binding_param_2D
 
   !> MPI block distribution of the orbitals in the [sparse matrices](|page|/datastructures/2-sparse.html)
   type(OrbitalDistribution), public :: block_dist
@@ -170,7 +165,6 @@ module sparse_matrices
   type(OrbitalDistribution), public :: single_dist
 
   public :: resetSparseMatrices
-  public :: resetOrbitalDistributions
 
 contains
 
@@ -187,7 +181,6 @@ contains
     call delete( H_kin_1D )
     call delete( H_vkb_1D )
     call delete( H_dftu_2D )
-    call delete( H_chempotwann_2D )
     call delete( H_dftu_so_2D )
     call delete( H_so_on_2D )
     call delete( H_so_off_2D )
@@ -215,9 +208,4 @@ contains
 
   end subroutine resetSparseMatrices
 
-  subroutine resetOrbitalDistributions
-    implicit none
-    call delete( block_dist )
-    call delete( single_dist )
-  end subroutine resetOrbitalDistributions
 end module sparse_matrices

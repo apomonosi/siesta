@@ -54,7 +54,7 @@ contains
   subroutine siesta_write_yaml()
 
     use m_energies
-    use siesta_version_info
+    use version_info
 
     implicit none
 
@@ -62,28 +62,28 @@ contains
     integer :: ierr, yaml_fd
 
     ! Open YAML document
-    open(newunit=yaml_fd, file='OUTVARS.yml', action='write', iostat=ierr)
+    call io_assign(yaml_fd)
+    open(unit=yaml_fd, file='OUTVARS.yml', status='new', action='write', &
+&     access='sequential', form='formatted', iostat=ierr)
     ! FIXME: Find out why the system sometines reports a failure while things
     !        have gone perfectly well.
-    if ( ierr .ne. 0 ) then 
-       call die('could not open OUTVARS.yml')
-    end if
+    !if ( ierr .ne. 0 ) call die('could not open OUTVARS.yml')
     write(unit=yaml_fd, fmt='(A)') YAML_HEADER
 
     ! Dump SIESTA information
     write(unit=yaml_fd, fmt='(A)') "siesta:"
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "version", &
-&     CH34, trim(adjustl(siesta_version_str)), CH34
+&     CH34, trim(adjustl(version_str)), CH34
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "arch", &
 &     CH34, trim(adjustl(siesta_arch)), CH34
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "compiler", &
-&     CH34, trim(adjustl(siesta_compiler_version)), CH34
+&     CH34, trim(adjustl(compiler_version)), CH34
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "fflags", &
-&     CH34, trim(adjustl(siesta_fflags)), CH34
+&     CH34, trim(adjustl(fflags)), CH34
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "fppflags", &
-&     CH34, trim(adjustl(siesta_fppflags)), CH34
+&     CH34, trim(adjustl(fppflags)), CH34
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "libs", &
-&     CH34, trim(adjustl(siesta_libs)), CH34
+&     CH34, trim(adjustl(libs)), CH34
 #ifdef MPI
     write(unit=yaml_fd, fmt='(2X,A,":",1X,3(A))') "build", &
 &     CH34, "mpi", CH34
@@ -186,7 +186,7 @@ contains
 
     ! Close YAML document
     write(unit=yaml_fd, fmt='(A)') YAML_FOOTER
-    close(yaml_fd)
+    call io_close(yaml_fd)
 
   end subroutine siesta_write_yaml
 

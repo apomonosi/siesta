@@ -24,7 +24,7 @@ doc: $(doc).tex
 # Always try to update the SIESTA version file:
 SIESTA_VERSION_FILE:=../SIESTA.version
 $(SIESTA_VERSION_FILE): FORCE
-	-@(cd ../ && ./Tools/version_generate.sh)
+	@(cd ../ && ./SIESTA_vgen.sh)
 
 # Currently there are two manuals
 %.pdf: %.tex $(SIESTA_VERSION_FILE) FORCE

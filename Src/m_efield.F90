@@ -89,7 +89,7 @@ contains
 
     real(dp) :: eb1, eb2, eb3, b1xb2(3), bcell(3,3)
     integer :: ix
-    character(len=10) :: shape
+    character(len=8) :: shape
 
     real(dp), external :: ddot
 

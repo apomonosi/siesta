@@ -191,19 +191,17 @@ C
       
       IF((ABS(Z1-ZVAL1).GT.CHERR).OR.
      .     (ABS(Z2-ZVAL2).GT.CHERR)) THEN 
-
-         q2cut= q2cut * q_factor
-
          if (debug_elec_corr) then
             WRITE(6,*) 'CH_OVERLAP: THE CUTOFF',
      .           ' MUST BE INCREASED'
             WRITE(6,*) 'CH_OVERLAP: Z1=',Z1,' ZVAL1=',ZVAL1
             WRITE(6,*) 'CH_OVERLAP: Z2=',Z2,' ZVAL2=',ZVAL2
-            WRITE(6,'(a,f10.2)') 'CH_OVERLAP: New q2cut (Ry) =', q2cut
          endif
          
          deallocate(CH,V)
-        
+         q2cut= q2cut * q_factor
+         WRITE(6,'(a,f10.2)') 'CH_OVERLAP: New q2cut (Ry) =', q2cut
+         
          cycle q_loop  ! Another pass
          
       ELSE

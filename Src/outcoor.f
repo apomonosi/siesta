@@ -71,7 +71,7 @@ c   Coord. option Ang        => Multiply by 0.529177 (Bohr --> Ang)
 c   Coord. option Scaled     => Divide by lattice constant
 c   Coord. option Fractional => Multiply by inverse of lattice vectors
 
-        alat = fdf_physical('LatticeConstant',Ang,'Bohr')
+        alat = fdf_physical('LatticeConstant',0._dp,'Bohr')
         if (alat.eq.0._dp .and. leqi(acfout,'ScaledCartesian')) then
            write(6,"(/,2a)") 'outcoor: WARNING: Explicit lattice ',
      .         'constant is needed for ScaledCartesian output.'

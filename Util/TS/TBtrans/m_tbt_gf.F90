@@ -37,9 +37,11 @@ contains
     use mpi_siesta, only : MPI_Bcast, MPI_Integer, MPI_Logical
 #endif
     use m_os, only : file_exist
+    use m_spin, only : spin
     use m_ts_cctype
     use ts_electrode_m
     use m_ts_electrode, only : create_Green
+    use m_ts_electrode_spinor, only : create_Green_spinor
 
     use m_tbt_contour
 
@@ -125,9 +127,15 @@ contains
     ! We return if we should not calculate it
     if ( .not. cReUseGF ) then
 
-      call create_Green(El, &
-          ucell,nkpnt,kpoint,kweight, &
-          NEn,ce)
+      if ( spin%none .or. spin%Col ) then
+        call create_Green(El, &
+            ucell,nkpnt,kpoint,kweight, &
+            NEn,ce)
+      else
+        call create_Green_spinor(El, &
+            ucell,nkpnt,kpoint,kweight, &
+            NEn,ce)
+      end if
 
     else
       

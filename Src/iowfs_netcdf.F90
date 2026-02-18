@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
 module iowfs_netcdf
 
 #ifdef CDF
@@ -84,8 +82,7 @@ real(dp), intent(in)  :: eigvals(nvectors)    ! wave-functions stored in this no
 
 #ifdef MPI
       real(dp), dimension(:,:), pointer  ::  psi_buf  => null()
-      integer  :: MPIerror, count, BNode, tag, ivec_local
-      MPI_STATUS_TYPE :: stat
+      integer  :: MPIerror, stat(MPI_STATUS_SIZE), count, BNode, tag, ivec_local
 #endif
 
       integer  :: ivec

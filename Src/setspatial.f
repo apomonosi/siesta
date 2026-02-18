@@ -52,7 +52,6 @@ C
      .                     , spmin, spcell, nspcell
      .                     , maxspcell, maxspcellat
       use alloc,      only : re_alloc, de_alloc
-      use units,      only : Ang
       implicit none
 C
 C  Passed variables
@@ -248,7 +247,7 @@ C
       if (ldebug) then
         write(6,'(/,''  Spatial decomposition data : '',/)')
         write(6,'(''  Cutoff = '',f8.4,'' Angstroms'',/)') 
-     .    rcut/Ang
+     .    rcut*0.529177d0
         write(6,'(''  Spatial decomposition cells (containing atoms) :''
      .    ,/)')
         write(6,'(6x,''Ncells'',4x,''Cell min'',4x,''Cell length'')')

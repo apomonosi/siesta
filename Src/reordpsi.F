@@ -33,16 +33,17 @@ C k vectors in reciprocal atomic units.
 C Energies in Rydbergs.
 C *********************************************************************
       use precision, only: dp
-      use m_switch_local_projection, only : isexcluded
+      use m_siesta2wannier90, only : isexcluded
 #ifdef MPI
       use alloc,              only : re_alloc, de_alloc
       use parallel,           only : Node, Nodes, BlockSize
       use parallelsubs,       only : GetNodeOrbs, LocalToGlobalOrb
       use parallelsubs,       only : GlobalToLocalOrb
       use mpi_siesta
+      use m_orderbands,       only : index_included_band
       use m_orderbands,       only : node_included_band
       use m_orderbands,       only : band_index_in_node
-      use m_orderbands,       only : sequential_index_included_bands
+      use m_orderbands,       only : which_band_in_node
 #endif
 
       implicit none
@@ -72,16 +73,12 @@ C**** Internal variables ***********************************************
 ! of orbitals when using the block-cyclic distribution.
 
       call GetNodeOrbs(nocc,0,Nodes,noccloc)
-!!     For debugging
-!      write(6,'(a,4i7)') 
-!     .  ' reordpsi: Node, Nodes, nocc, noccloc = ',
-!     .    Node, Nodes, nocc, noccloc 
-!!     End debugging
 
       nullify( psitmp )
       call re_alloc( psitmp, 1, 2, 1, nuotot, 1, noccloc,
      &                 name='psitmp', routine='reordpsi' )
 
+      jband = 0
       do n = 0, Nodes-1
 
 !       Broadcast copy of psi on node n to all other nodes
@@ -98,12 +95,6 @@ C**** Internal variables ***********************************************
 !       Save local part of psisave
         do iuo = 1, noccloc
           call LocalToGlobalOrb(iuo,n,Nodes,iuog)
-!!         For debugging
-!          write(6,'(a,7i5)') 
-!     .      'reordpsi: Nodes, Node, n, noccloc, iuo, iuog, sequential=', 
-!     .                 Nodes, Node, n, noccloc, iuo, iuog, 
-!     .                 sequential_index_included_bands(iuog)
-!!         End debugging
 
 !         Select here if the local occupied band is included or not.
 !         If it is included, then a new index (jband) that ranges
@@ -113,7 +104,7 @@ C**** Internal variables ***********************************************
 !         can be re-used
 
           if( .not.  isexcluded(iuog) ) then
-            jband    = sequential_index_included_bands(iuog)
+            jband    = jband + 1
 !           The coefficients of the included band will be stored
 !           in Node (node_included_band(jband)),
 !           and will be the band_index_in_node(jband)-th band
@@ -124,13 +115,6 @@ C**** Internal variables ***********************************************
                 psisave(juo,jbandloc) =
      $             cmplx(psitmp(1,juo,iuo),psitmp(2,juo,iuo),kind=dp)
               enddo ! atomic orbitals
-!!             For debugging
-!              write(6,'(a,8i5)') 
-!     $          'reordpsi: Nodes, Node, n,  iuo, iuog, jband, jbandloc,  
-!     $           node_included_band = ',
-!     $           Nodes, Node, n,  iuo, iuog, jband, jbandloc, 
-!     $           node_included_band(jband) 
-!!             End debugging
             endif   ! If the local Node is the same where the included
                     !    band should be stored
           endif     ! Is the band included for wannierization?

@@ -29,7 +29,6 @@
 !     w_L^k = \Delta_L^2(k)
 !     w_R^k = \Delta_R^2(k)
 !   this will actually save us more memory, as we don't need the full sum of the k-points.
-#include "mpi_macros.f"
 
 module m_ts_weight
 
@@ -210,7 +209,7 @@ contains
 
 #ifdef MPI
     integer :: MPIerror
-    MPI_STATUS_TYPE :: Status
+    integer :: status(MPI_STATUS_SIZE)
 #endif
 
 #ifdef TRANSIESTA_DEBUG

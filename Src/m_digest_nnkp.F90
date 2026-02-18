@@ -17,6 +17,7 @@ module m_digest_nnkp
 CONTAINS
 ! subroutine read_nnkp
 ! subroutine scan_file_to
+! function   vectorproduct
 ! subroutine chosing_b_vectors
 ! subroutine set_excluded_bands
 ! function   getdelkmatgenhandle
@@ -118,7 +119,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
      if( .not. have_nnkp ) then
        write(6,'(/,a)')  &
  &       'read_nnkp: Could not find the file '//trim(seedname)//'.nnkp'
-       call die("stopping program")
+       call die()
      endif
 
      call io_assign( iu )
@@ -150,7 +151,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
            if(abs(latvec(i,j)-ucell(i,j))>eps4) then
              write(6,*)  'read_nnkp: Something wrong with the real lattice! '
              write(6,*)  ' latvec(i,j) =',latvec(i,j),' ucell(i,j)=',ucell(i,j)
-             call die("stopping program")
+             call die()
            endif
          enddo
        enddo
@@ -178,7 +179,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
              write(6,*)'read_nnkp: Something wrong with the reciprocal lattice!'
              write(6,*)' reclatvec(i,j)=',reclatvec(i,j), &
  &                     ' rcell(i,j)=',rcell(i,j)
-             call die("stopping program")
+             call die()
            endif
          enddo 
        enddo 
@@ -216,8 +217,6 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
 
 !
 ! Projections
-! The broadcast of the information about the projection functions
-! is done within m_switch_local_proj
 !
   numproj = 0
   if (IOnode) then  ! Read nnkp file on ionode only
@@ -225,6 +224,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
     call scan_file_to('projections')
     read(iun_nnkp,*) numproj
   endif ! IOnode
+  call broadcast( numproj )
 
   if( numproj .ne. 0 ) then
     if (IOnode) then   ! read from ionode only
@@ -238,7 +238,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
  &                       (xaxis(i), i = 1, 3), & 
  &                        zovera
 
-!       Check that the xaxis and the zaxis are orthogonal to each other
+!       Check that the xaxis and the yaxis are orthogonal to each other
         xnorm = sqrt(xaxis(1)*xaxis(1) + xaxis(2)*xaxis(2) + xaxis(3)*xaxis(3))
         if (xnorm < eps6) call die('read_nnkp: |xaxis| < eps ')
         znorm = sqrt(zaxis(1)*zaxis(1) + zaxis(2)*zaxis(2) + zaxis(3)*zaxis(3))
@@ -262,8 +262,8 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
 
         projections(iw)%zaxis  = zaxis
         projections(iw)%xaxis  = xaxis
-        ! Compute the y-axis
-        call cross(zaxis, xaxis, projections(iw)%yaxis)
+!       Compute the y-axis
+        projections(iw)%yaxis = vectorproduct(zaxis,xaxis)
         projections(iw)%yaxis = projections(iw)%yaxis /     &
  &         sqrt(dot_product(projections(iw)%yaxis,projections(iw)%yaxis))
 
@@ -301,6 +301,8 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
       enddo
     endif ! IOnode
 
+!   Broadcast the information about the projection functions
+    call broadcast_projections( )
 
   endif ! numproj ne 0
  
@@ -431,6 +433,20 @@ end subroutine scan_file_to
 
 !
 !-----------------------------------------------------------------------
+function vectorproduct(a,b)
+!
+! This function computes the vector product of two vectors a and b
+!
+  real(dp),intent(in),dimension(3) :: a,b
+  real(dp),dimension(3)            :: vectorproduct
+  vectorproduct(1) = a(2) * b(3) - a(3) * b(2)
+  vectorproduct(2) = a(3) * b(1) - a(1) * b(3)
+  vectorproduct(3) = a(1) * b(2) - a(2) * b(1)
+end function vectorproduct
+!-----------------------------------------------------------------------
+
+!
+!-----------------------------------------------------------------------
 subroutine chosing_b_vectors( kpointsfrac, nncount, nnlist, nnfolding, &
                               bvectorsfrac )
 !
@@ -472,12 +488,11 @@ subroutine chosing_b_vectors( kpointsfrac, nncount, nnlist, nnfolding, &
 
   implicit none
 
-  integer, intent(in)           :: nncount
-  integer, intent(in)           :: nnlist(:,:)
-  integer, intent(in)           :: nnfolding(:,:,:)
-  real(dp), intent(in)          :: kpointsfrac(:,:)
-
-  real(dp), pointer :: bvectorsfrac(:,:)
+  integer,  intent(in)           :: nncount
+  integer,  pointer  :: nnlist(:,:)
+  integer,  pointer  :: nnfolding(:,:,:)
+  real(dp), pointer  :: kpointsfrac(:,:)
+  real(dp), pointer  :: bvectorsfrac(:,:)
 
 !
 ! Internal variables

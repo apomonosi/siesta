@@ -34,52 +34,47 @@ subroutine Mmn( ispin )
 !
 
   use precision,          only: dp           ! Real double precision type
-  use m_switch_local_projection, only: numkpoints 
-                                             ! Total number of k-points
+  use m_siesta2wannier90, only: numkpoints   ! Total number of k-points
                                              !   for which the overlap of the
                                              !   periodic part of the wavefunct
                                              !   with a neighbour k-point will
                                              !   be computed
-  use m_switch_local_projection, only: kpointsfrac
-                                             ! List of k points relative to the 
+  use m_siesta2wannier90, only: kpointsfrac  ! List of k points relative to the 
                                              !   reciprocal lattice vectors.
                                              !   First  index: component
                                              !   Second index: k-point index 
                                              !      in the list
-  use m_switch_local_projection, only: nncount  
-                                             ! Number of nearest k-pnt neighbors
-  use m_switch_local_projection, only: nnlist_neig  
-                                             ! nnlist_neig(ikp,inn) is the index
-                                             !   of the inn-neighbour of 
-                                             !   ikp-point
+  use m_siesta2wannier90, only: nncount      ! Number of nearest k-pnt neighbors
+  use m_siesta2wannier90, only: nnlist       ! nnlist(ikp,inn) is the index of
+                                             !   the inn-neighbour of ikp-point
                                              !   in the Monkhorst-Pack grid 
                                              !   folded to first Brillouin zone
-  use m_switch_local_projection, only: nnfolding    
-                                             ! nnfolding(i,ikp,inn) is the 
+  use m_siesta2wannier90, only: nnfolding    ! nnfolding(i,ikp,inn) is the 
                                              !   i-component of the reciprocal 
                                              !   lattice vector 
                                              !   (in reduced units) that brings
                                              !   the inn-neighbour specified 
-                                             !   in nnlist_neig
+                                             !   in nnlist
                                              !   (which is in the first BZ) to 
                                              !   the actual \vec{k} + \vec{b} 
                                              !   that we need.
-  use m_switch_local_projection, only: numincbands  
-                                             ! Number of bands for wannierizatio
+  use m_siesta2wannier90, only: numbands     ! Number of bands for wannierizatio
+                                             !   before excluding bands         
+  use m_siesta2wannier90, only: numincbands  ! Number of bands for wannierizatio
                                              !   after excluding bands         
-  use m_switch_local_projection, only: nincbands_loc
-                                             ! Number of bands for wannierizatio
+  use m_siesta2wannier90, only: nincbands_loc! Number of bands for wannierizatio
                                              !   after excluding bands         
                                              !   in the local node
-  use m_switch_local_projection, only: bvectorsfrac ! Vectors that connect each 
+  use m_siesta2wannier90, only: numproj      ! Total number of projectors
+  use m_siesta2wannier90, only: bvectorsfrac ! Vectors that connect each 
                                              !   mesh k-point to its 
                                              !   nearest neighbours.
-  use m_switch_local_projection, only: coeffs! Coefficients of the
+  use m_siesta2wannier90, only: coeffs       ! Coefficients of the
                                              !   wavefunctions.
                                              !   First  index: orbital
                                              !   Second index: band
                                              !   Third  index: k-point
-  use m_switch_local_projection, only: Mmnkb ! Matrix of the overlaps of 
+  use m_siesta2wannier90, only: Mmnkb        ! Matrix of the overlaps of 
                                              !   periodic parts of Bloch waves.
                                              !   <u_{n,k}|u_{m,k+b}>
   use atomlist,           only: no_s         ! Number of orbitals in supercell
@@ -104,6 +99,8 @@ subroutine Mmn( ispin )
   use alloc,              only: de_alloc     ! Deallocation routines
   use parallel,           only: IOnode       ! Input/output node
   use m_digest_nnkp,      only: getdelkmatgenhandle
+  use m_noccbands,        only: noccupied    ! Number of occupied bands for a 
+                                             !   given spin direction
   use m_planewavematrixvar, only: delkmat    ! Matrix elements of a plane wave
                                              !   Only for one \vec{b} vector
   use m_planewavematrixvar, only: delkmatgen ! Matrix elements of a plane wave
@@ -143,7 +140,7 @@ subroutine Mmn( ispin )
                              !   wave functions will be computed
   real(dp) :: kvectorneig(3) ! Wave vector of the neighbor k-point
   real(dp) :: gfold(3)       ! Reciprocal lattice vector that brings
-                             !   the inn-neighbour specified in nnlist_neig
+                             !   the inn-neighbour specified in nnlist
                              !   (which is in the first BZ) to the
                              !   actual \vec{k} + \vec{b} that we need.
   real(dp) :: bvectoraux(3)  ! Auxiliary vector
@@ -207,7 +204,7 @@ kneighbour:                      &
     do inn = 1, nncount
 
 !     Get the coordinates of the neighbor k-point.
-      indexneig = nnlist_neig(ik,inn)
+      indexneig = nnlist(ik,inn)
       call getkvector( kpointsfrac(:,indexneig), kvectorneig )
 !!     For debugging
 !      if( IOnode ) then
@@ -222,7 +219,7 @@ kneighbour:                      &
 !     in the local node (nincbands_loc)
       coeffs2(:,:) = coeffs(:,:,indexneig)
 
-!     The neighbour k-point, as specified in the nnlist_neig, 
+!     The neighbour k-point, as specified in the nnlist, 
 !     is always in the first Brillouin zone.
 !     To find the actual k-point, we might have to add a vector of the
 !     reciprocal lattice, as specified in the nnfolding matrix
@@ -240,7 +237,7 @@ kneighbour:                      &
         foldfrac(:) = nnfolding(:,ik,inn) * 1.0_dp
         call getkvector( foldfrac, gfold )  
 !!       For debugging
-!        if ( IOnode ) then
+!        if ( IOnode )
 !          write(6,'(a,i5,3i5,3f12.5)')         &
 ! &          'mmn: inn, gfold = ', inn, nnfolding(:,ik,inn), gfold
 !        endif
@@ -277,12 +274,12 @@ kneighbour:                      &
 !     Now we have to determine the position in the delkmatgen array,
 !     where exp^(i \vec{b} \cdot \vec{r}) is stored,
 !     where \vec{b} is the vector connecting kvector and kvectorneig.
-      bvectoraux(:) = kpointsfrac(:,nnlist_neig(ik,inn)) +               &
- &                     nnFolding(:,ik,inn) - kpointsfrac(:,ik)
+      bvectoraux(:) = kpointsfrac(:,nnlist(ik,inn)) +               &
+ &                     nnFolding(:,ik,inn) - kPointsFrac(:,ik)
       handle = getdelkmatgenhandle( bvectoraux, nncount, bvectorsfrac )
       call getkvector( bvectoraux, bvector )
 
-      delkmat(:) = delkmatgen(:,handle)
+      delkmat(1:maxnh) = delkmatgen(handle,1:maxnh)
 
 !! For debugging
 !      if ( IOnode ) then
@@ -290,10 +287,10 @@ kneighbour:                      &
 ! &        'mmn: inn, handle  = ', inn, handle
 !        write(6,'(a,i5,3f12.5)')   &
 ! &        'mmn: inn, bvector = ', inn, bvector
-!        do io = 1, maxnh
-!          write(6,'(a,i5,2f12.5)')         &
-! &          'mmn: io, delkmat  = ', io, delkmat(io)
-!        enddo
+!!        do io = 1, maxnh
+!!          write(6,'(a,i5,2f12.5)')         &
+!! &          'mmn: io, delkmat  = ', io, delkmat(io)
+!!        enddo
 !      endif 
 !! End debugging
 

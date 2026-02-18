@@ -42,8 +42,6 @@ C                          in the current process.
 C   integer dd_lnb      :: Local boundary nodes. Orbitals that belongs to
 C                          current process but needed by other processes.
 C   
-#include "mpi_macros.f"
-
       module domain_decom
       use alloc,         only : re_alloc, de_alloc
       use parallel,      only : Node, Nodes
@@ -119,13 +117,14 @@ C Finally, process 0 send the new data distribution and the new
 C scheduling to all the other processes.
 C
 C ==================================================================
+#ifdef MPI
+      use mpi_siesta
+#endif
       implicit none
 C     Input variables
       integer          :: nuotot, nuo, nnz
       integer          :: MPIerror
       logical,    save :: firsttime = .true.
-
-      call timer( 'DomainDe', 1 )
 
       if (firsttime) then
         firsttime = .false.
@@ -172,7 +171,6 @@ C       Set orbitals to partitions
         call de_alloc( gperm, 'gperm', 'domainDecom' )
 
       endif
-      call timer( 'DomainDe', 2 )
 
       end subroutine domainDecom
 
@@ -219,8 +217,7 @@ C     Local variables
      &                                 nnzG, nnzL
       integer,              pointer :: nuos(:)
 #ifdef MPI
-      integer                       :: MPIerror
-      MPI_STATUS_TYPE               :: Status
+      integer                       :: MPIerror, Status(MPI_Status_Size)
 #endif
 
       if (node.eq.0) then
@@ -732,8 +729,7 @@ C       reschedule the communications in order to minimize the time
       integer,     pointer :: linvp(:), lbinvp(:), lbsize(:), iia(:),
      &                        jja(:)
 #ifdef MPI
-      integer              :: MPIerror
-      MPI_STATUS_TYPE      :: Status
+      integer              :: MPIerror, Status(MPI_Status_Size)
 #endif
 
       nullify(dd_nnode)
@@ -1008,8 +1004,7 @@ C       Receive Data from process 0
       integer,     pointer :: ja(:), ia(:), jndx(:)
       real(dp),    pointer :: M(:), an(:)
 #ifdef MPI
-      integer              :: MPIerror
-      MPI_STATUS_TYPE      :: Status
+      integer              :: MPIerror, Status(MPI_Status_Size)
 #endif
       integer              :: ival(1)
       complex              :: cval(1)

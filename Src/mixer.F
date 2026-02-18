@@ -14,9 +14,8 @@
       subroutine mixer( iscf )
 
       use precision,        only: dp
-      use option_charges_m, only: OPT_CHARGE_SCF_AFTER_MIX
       use siesta_options,   only: mixH, mix_scf_first
-      use siesta_options,   only: orbmoms, option_charges
+      use siesta_options,   only: mullipop, muldeb, orbmoms
       ! Spin mixing options
       use m_mixing_scf, only: MIX_SPIN_ALL, MIX_SPIN_SPINOR
       use m_mixing_scf, only: MIX_SPIN_SUM, MIX_SPIN_SUM_DIFF
@@ -27,8 +26,6 @@
       use siesta_geom,      only: na_u, isa
       use atomlist,         only: iaorb, iphorb, lasto, no_u, no_l
       use atomlist,         only: indxuo
-      
-      use dm_charge_m, only: dm_charge
 
       use m_mixing_scf, only: scf_mix
       use m_mixing, only: mixing
@@ -184,42 +181,24 @@
       ! entirely correct. It should be moved to the top,
       ! or done somewhere else.
 
-      if ( .not. MixH ) then
-
-         if ( option_charges
-     &        %spin%run(OPT_CHARGE_SCF_AFTER_MIX) ) then
-            block
-               ! it does not matter the size, we won't use it.
-               real(dp) :: qspin(spin%grid)
-               call dm_charge(spin, no_l, numh, listhptr,
-     &               S, Dscf, qspin)
-               call print_spin(qspin)
-            end block
-
-         end if
-
-         if ( option_charges 
-     &        %mulliken%run(OPT_CHARGE_SCF_AFTER_MIX) ) then
-
-         if (ionode) write (6,"(/a)") 'Using DM_mix for analysis:'
+      if (muldeb .and. (.not. MixH) ) then 
+         if (IONode) write (6,"(/a)") 'Using DM after mixing:'
          if ( spin%SO .and. orbmoms) then
             call moments( 1, na_u, no_u, maxnh, numh, listhptr,
      .           listh, S, Dscf, isa, lasto, iaorb, iphorb,
      .           indxuo )
-         end if
-
-         call mulliken( option_charges%mulliken%format,
-     &          na_u, no_u, maxnh,
+         endif
+         ! Call this unconditionally
+         call mulliken( mullipop, na_u, no_u, maxnh,
      &          numh, listhptr, listh, S, Dscf, isa,
      &          lasto, iaorb, iphorb )
-         end if
       endif
 
       call timer( 'MIXER', 2 )
 
 !-------------------------------------------------------- END
       END subroutine mixer
- 
+
       End MODULE m_mixer
 
 

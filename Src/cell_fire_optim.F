@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -8,7 +8,7 @@
       module m_cell_fire_optim
 !
 !     Fire geometry optimization
-!
+!      
       use precision, only : dp
       use sys, only: die
       use alloc
@@ -16,8 +16,6 @@
 
       use m_fire
       use siesta_options, only: dt
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
 
       use memory_log, only: memory, mem_stat
       use parallel, only : ionode
@@ -40,7 +38,7 @@ c na                    : number of atoms (will need to keep fractional coords)
 c real*8 tp             : Target pressure
 c logical varcel        : true if variable cell optimization
 c *************************** INPUT AND OUTPUT ******************************
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 xa(3,na)       : atomic coordinates
@@ -80,10 +78,12 @@ c Internal variables and arrays
 ! Saved internal variables:
 
       logical, save :: frstme = .true.
+      logical, save :: constant_volume
       real(dp), save :: initial_volume
 
 
-      real(dp), save :: precon,
+      real(dp), save :: target_stress(3,3),
+     .                  precon,
      .                  strain(3,3),
      .                  cellin(3,3)
 
@@ -117,7 +117,7 @@ c ---------------------------------------------------------------------------
          fire_dt = fdf_get("MD.FIRE.TimeStep", dt)
          fire_debug = fdf_get("MD.FIRE.Debug", .false.)
 
-
+         
          if (varcel ) then
             numel =  6
          else
@@ -138,10 +138,13 @@ c ---------------------------------------------------------------------------
         if ( varcel ) then
 
 C Check if we want a constant-volume simulation
-          call set_target_stress(tp)
+          constant_volume = fdf_get("MD.ConstantVolume", .false.)
+
+          call get_target_stress(tp,target_stress)
+          if (constant_volume) target_stress = 0.0_dp
 
 
-C Scale factor for strain variables to share magnitude with coordinates
+C Scale factor for strain variables to share magnitude with coordinates 
 C ---- (a length in Bohrs typical of bond lengths ..) ------------------
 
           precon = fdf_get('MD.PreconditionVariableCell',
@@ -176,7 +179,7 @@ C Variable cell -------------------------------------------------------------
 
         relaxd = .true.
 
-C Symmetrizing the stress tensor
+C Symmetrizing the stress tensor 
 
         do i = 1, 3
            do j = i+1, 3
@@ -198,7 +201,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append excess stress and strain to gxa and gfa ------
+C Append excess stress and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
 
         indi = 0
@@ -215,7 +218,7 @@ C Check stress convergence --------------------------------------------------
 
         do i = 1, 3
            do j = 1, 3
-              relaxd = relaxd .and.
+              relaxd = relaxd .and. 
      .          ( abs(stress_dif(i,j)) .lt. abs(strtol) )
            enddo
         enddo
@@ -232,7 +235,7 @@ C Transform back if variable cell
 
       if ( varcel ) then
 
-      ! New cell
+      ! New cell 
 
         indi = 0
         do i = 1, 3
@@ -295,7 +298,7 @@ C Transform back if variable cell
         !     in each molecule,
         !     plus any cartesian block,
         !     and recompute the cartesian coordinate array
-        !
+        !     
            do imol = 1, nZmol
               ifirst = nZmolStartAtom(imol)
               r(1:3) = Zmat(3*(ifirst-1)+1:3*(ifirst-1)+3)
@@ -313,14 +316,14 @@ C Transform back if variable cell
               enddo
            enddo
            call Zmat_to_Cartesian(xa)
-        else
+        else  
            ! No Zmatrix
            ! Rescale coordinates for all atoms
            do i = 1, na
               xa(:,i) = matmul(transpose(celli_oldcell),xa(:,i))
               xa(:,i) = matmul(new_cell,xa(:,i))
            enddo
-
+           
         endif
 
       end subroutine rescale_coordinates

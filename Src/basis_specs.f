@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -6,14 +6,14 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
       module basis_specs
-!
+! 
 ! Alberto Garcia, August 2000, based on 'classic' redbasis.
-!
+! 
 ! Processes the basis information in an fdf file and populates
 ! the "basis specifications" data structures.
-!
+! 
 ! Here is a guide to the behavior of the main routine "read_basis_specs":
-!
+! 
 ! * Find out the number of species
 ! * Allocate storage for the data structures
 ! * Determine any "global" basis specification parameters:
@@ -27,29 +27,29 @@
 ! * Set up the information about the ground state of the atom.
 ! * Read information about the valence charge density in the
 !   pseudopotential file and determine whether there are semicore
-!   states.
+!   states. 
 !   (A further semicore analysis is in 'autobasis')
 ! * Read the optional fdf blocks:
 !   AtomicMass  (routine remass)
 !   PAO.BasisSize - Overrides the default 'basis_size' on a per-species basis.
 !   PAO.PolarizationScheme - Whether to use the standard perturbative approach
-!                            for polarization orbitals, or to promote the shell
+!                            for polarization orbitals, or to promote the shell             
 !                            to a stand-alone status.
 !   PAO.Basis - This is the most complex block, very flexible but in
 !               need  of spelling-out the specific restrictions. Line by
 !               line, these are:
-!
-!   1st:   Species_label number_of_l_shells [basis_type] [ionic_charge]
-!
+! 
+!   1st:   Species_label number_of_l_shells [basis_type] [ionic_charge] 
+! 
 !   For each l_shell:
 !     [n= n] l nzeta [P [ nzeta_pol]] [E vcte rinn] [Q qcoe [qyuk [qwid]]] [F cutoff]
 !   where 'n= n' is *mandatory* if the species has any semicore states,
-!   and the 'P' (polarization), E (soft confinement potential),
+!   and the 'P' (polarization), E (soft confinement potential), 
 !   'Q' (charge confinement), and 'F' (filteret) sections are optional and can appear
-!   in any order after nzeta.
-!
-!          rc_1  rc_2 .... rc_nzeta
-!
+!   in any order after nzeta. 
+! 
+!          rc_1  rc_2 .... rc_nzeta  
+! 
 !   are the cutoff radii in bohrs. This line is mandatory
 !   If the number of rc's for a given shell is less than the number of
 !   'zetas', the program will assign the last rc value to the remaining
@@ -57,62 +57,62 @@
 !   useful for Bessel suites of orbitals.
 !   A line containing contraction (scale) factors is optional, but if it
 !   appears, the values *must be* real numbers. The same extension feature
-!   as for the rc values works here.
+!   as for the rc values works here.      
 !   --------------------------------------------------------------------
-!
+! 
 !   After processing PAO.Basis (if it exists), whatever PAO information
-!   which is not already available is determined in routine 'autobasis',
+!   which is not already available is determined in routine 'autobasis', 
 !   using the following defaults:
-!
+! 
 !   (There is a first check to make sure that species
-!   with Bessel floating orbitals  have been included in
+!   with Bessel floating orbitals  have been included in 
 !   the PAO.Basis block)
-!
+!   
 !   The maximum angular momentum for the basis (lmxo) (excluding any
 !   polarization orbitals) is set to that of the ground state, as returned by
 !   routine 'lmxofz' from Z. If there are any semicore states with a
 !   higher l, lmxo is set to the maximum l needed.
-!
+! 
 !   Each l-shell contains just one shell of PAOS, with n set
 !   to the appropriate ground state value, except in the case
-!   of semicore states, which add further lower-lying shells.
-!
+!   of semicore states, which add further lower-lying shells.      
+! 
 !   Nzeta is determined by the first two characters of the 'basis_size'
 !   string: 1 for 'sz' and  2 for 'dz'. Lower-lying semicore states
 !   get nzeta=1. Nzeta will be zero (for the top-most shell) if the
-!   ground-state valence shell for this l is empty.
-!
+!   ground-state valence shell for this l is empty.      
+!      
 !   There are no 'per l-shell' polarization orbitals, except if the
 !   third character of 'basis_size' is 'p' (as in 'dzp'), in which
-!   case polarization orbitals are defined so they have the minimum
-!   angular momentum l such that there are no occupied orbitals
-!   with the same l in the valence shell of the ground-state
+!   case polarization orbitals are defined so they have the minimum      
+!   angular momentum l such that there are no occupied orbitals 
+!   with the same l in the valence shell of the ground-state 
 !   atomic configuration. They polarize the corresponding l-1 shell.
 !   (See above for generation scheme)
 !
 !   The Soft-Confinement parameters 'rinn' and 'vcte' are set to 0.0
-!   The Charge-Confinement parameters 'qcoe', 'qyuk' and 'qwid'
+!   The Charge-Confinement parameters 'qcoe', 'qyuk' and 'qwid' 
 !   are set to 0.0, 0.0 and 0.01
-!
+! 
 !   rc(1:nzeta) is set to 0.0
 !   lambda(1:nzeta) is set to 1.0  (this is a change from old practice)
 !
 !  ----------------------------------
-!
+!  
 !   Next come the blocks associated to the KB projectors:
-!
+! 
 !   Block PS.lmax (routine relmxkb) assigns a per-species maximum l for
 !   the KB projectors. Internally, it sets the 'lmxb_requested'
 !   component of the data structure, which by default is -1.
-!
+!  
 !   Block PS.KBprojectors (optional) sets the number of KB projectors
 !   per angular momentum. The same routine which reads this block
 !   (readkb) also sets any appropriate defaults:
-!
-!
+! 
+! 
 !   If the species does not appear in the  PS.KBprojectors block, then
 !       Setting of lmxkb:
-!       If lmxkb is set in PS.lmax,
+!       If lmxkb is set in PS.lmax, 
 !          set it to that
 !       else
 !          Use PAO information: (routine set_default_lmxkb)
@@ -125,8 +125,8 @@
 !       contains semilocal components up to lmax_pseudo, lmxkb is
 !       set to this number.
 !       (Note that this is appropriate for the new behavior of using
-!       just Vlocal for any channels for which there is no V_l(r).)
-
+!       just Vlocal for any channels for which there is no V_l(r).)      
+      
 !       The  number of KB projectors per l is set to the number of
 !       n-shells in the corresponding PAO shell with the same l. For l
 !       greater than lmxo, it is set to 1. The reference energies are
@@ -141,12 +141,12 @@
 !       Even later, support for "semicore" orbitals was added. A new ('nsm') index was
 !       used to distinguish the different orbitals in a l-shell. Polarization orbitals
 !       were not brought into this classification.
-!       In this version, 'lmxo' takes into account any polarization orbitals.
-!
+!       In this version, 'lmxo' takes into account any polarization orbitals.      
+! 
 !       Future work should probably remove the separate treatment of polarization orbitals.
 !       (Note that if *all* orbitals are specified in a PAO.Basis block, in effect turning
 !       perturbative polarization orbitals into 'normal' orbitals, this problem is not present.)
-!
+!     
 ! =======================================================================
 !
       use precision
@@ -189,10 +189,9 @@
       logical, parameter        :: restricted_grid_default = .true.
 
       real(dp), save, public    :: rmax_radial_grid
-
+      
       public :: read_basis_specs
       public :: label2species
-      public :: basis_specs_reset
 
       private
 
@@ -214,17 +213,17 @@
 
       type(ground_state_t), pointer :: gs
 
-      integer nns, noccs, i, ns_synth, ns_custom, l
+      integer nns, noccs, i, ns_read, l
       logical synthetic_atoms, found, reparametrize_pseudos
       real(dp) :: new_a, new_b, new_rmax
 
 !------------------------------------------------------------------------
       reparametrize_pseudos =
-     $   fdf_boolean( 'ReparametrizePseudos', .true. )
+     $   fdf_boolean('ReparametrizePseudos',.false.)
 !
 !        r(i) = b * ( exp(a*(i-1)) - 1 )
 !        spacing near zero: delta = a*b
-!        If the desired spacing at r=R is delta*(1+beta),
+!        If the desired spacing at r=R is delta*(1+beta), 
 !        then:
 !               a = beta*delta/R
 !               b = R/beta
@@ -241,7 +240,7 @@
 
 !
 !     Whether or not to restrict integration grids to an odd number
-!     of points (and hence to shift rcs accordingly)
+!     of points (and hence to shift rcs accordingly)     
 !
       restricted_grid =
      $     fdf_boolean("Restricted.Radial.Grid",
@@ -264,14 +263,14 @@
 
 C Read information about defaults for soft confinement
 
-      lsoft  = fdf_boolean( 'PAO.SoftDefault'    , .true.  )
-      softRc = fdf_double(  'PAO.SoftInnerRadius', 0.9_dp  )
-      softPt = fdf_double(  'PAO.SoftPotential'  , 40.0_dp )
+      lsoft  = fdf_boolean('PAO.SoftDefault',.false.)
+      softRc = fdf_double('PAO.SoftInnerRadius',0.9d0)
+      softPt = fdf_double('PAO.SoftPotential',40.0d0)
 
 C Sanity checks on values
 
-      softRc = max(softRc,0.00_dp)
-      softRc = min(softRc,0.99_dp)
+      softRc = max(softRc,0.00d0)
+      softRc = min(softRc,0.99d0)
       softPt = abs(softPt)
 !
 !     Read defaults for split_norm parameter
@@ -293,7 +292,6 @@ C Sanity checks on values
         basp=>basis_parameters(isp)
 
         basp%label = species_label(isp)
-        basp%ps_file_spec = ps_file_spec(isp)
         basp%z = atomic_number(isp)
         basp%floating = is_floating(isp)
         basp%bessel = is_bessel(isp)
@@ -310,11 +308,30 @@ C Sanity checks on values
           basp%mass = atmass(abs(int(basp%z)))
         endif
 
-        if (basp%synthetic) then
-           synthetic_atoms = .true.
+        write(6,"(/,a)") " ---- Processing specs for species: " //
+     $                    trim(basp%label)
+        if (basp%bessel) then
+          ! Initialize a constant pseudo
+          call pseudo_init_constant(basp%pseudopotential)
+        else if (basp%synthetic) then
+          synthetic_atoms = .true.
+          ! Will set gs later
+          call pseudo_read(basp%label,basp%pseudopotential,
+     $         basp%psml_handle,basp%has_psml_ps,
+     $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
+     $         rmax=new_rmax,
+     $         debugging_enabled=write_ion_plot_files)
         else
-           call ground_state(abs(int(basp%z)),basp%ground_state)
+          call ground_state(abs(int(basp%z)),basp%ground_state)
+          call pseudo_read(basp%label,basp%pseudopotential,
+     $         basp%psml_handle,basp%has_psml_ps,
+     $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
+     $         rmax=new_rmax,
+     $         debugging_enabled=write_ion_plot_files)
         endif
+!        if (reparametrize_pseudos.and. .not. basp%bessel)
+!     .    call pseudo_reparametrize(p=basp%pseudopotential,
+!     .                             a=new_a, b=new_b,label=basp%label)
 
       enddo
 
@@ -326,24 +343,16 @@ C Sanity checks on values
          if (synthetic_atoms)
      .          call die("Block SyntheticAtoms does not exist.")
       else
-        ns_synth = 0
-        ns_custom = 0
+        ns_read = 0
         do while(fdf_bline(bfdf, pline))
 
+          ns_read = ns_read + 1
           if (.not. fdf_bmatch(pline,'i'))
      .      call die("Wrong format in SyntheticAtoms")
           isp = fdf_bintegers(pline,1)
           if (isp .gt. nsp .or. isp .lt. 1)
      .      call die("Wrong specnum in SyntheticAtoms")
           basp => basis_parameters(isp)
-
-          if (.not. basp%synthetic) then
-             ! The information is for a normal species, whose
-             ! valence information needs to be changed
-             basp%custom_valence_config = .true.
-             basp%ground_state_tables = basp%ground_state
-          endif
-
           gs   => basp%ground_state
           if (.not. fdf_bline(bfdf, pline)) call die("No n info")
           nns = fdf_bnintegers(pline)
@@ -356,7 +365,7 @@ C Sanity checks on values
             gs%n(i-1) = fdf_bintegers(pline,i)
           enddo
           if (.not. fdf_bline(bfdf, pline))
-     .      call die("No occupation info in SyntheticAtoms block")
+     .      call die("No occupation info in Synthetic block")
           noccs = fdf_bnvalues(pline)
           if (noccs .lt. nns) call die("Need more occupations")
           gs%occupation(:) = 0.0_dp
@@ -373,62 +382,28 @@ C Sanity checks on values
           gs%occupied(0:4) = (gs%occupation .gt. 0.0_dp)
           gs%occupied(4) = .false.
           gs%z_valence = sum(gs%occupation(0:noccs-1))
-
-          if (basp%synthetic) then
-             write(6,'(a,i2)',advance='no')
-     .            trim(basp%label) //
-     .            'Ground state valence configuration (synthetic): '
-             ns_synth = ns_synth + 1
-          else
-             write(6,'(a,i2)',advance='no')
-     .            trim(basp%label) //
-     $            ': Ground state valence configuration (custom): '
-             ns_custom = ns_custom + 1
-          endif
+          write(6,'(a,i2)',advance='no')
+     .         'Ground state valence configuration (synthetic): '
           do l=0,3
-             write(6,'(2x,i1,a1,f8.5)',advance='no')
-     .            gs%n(l),sym(l), gs%occupation(l)
+            if (gs%occupied(l))
+     .        write(6,'(2x,i1,a1,f8.5)',advance='no')
+     .          gs%n(l),sym(l), gs%occupation(l)
           enddo
           write(6,'(a)') ''
 
         enddo
-        if (ns_synth > 0) then
-           write(6,"(a,i2)") "Number of synthetic species: ", ns_synth
-        endif
-        if (ns_custom > 0) then
-           write(6,"(a,i2)")
-     $          "Number of species with custom GS valence config: ",
-     $          ns_custom
-        endif
+        write(6,"(a,i2)") "Number of synthetic species: ", ns_read
       endif
-
+!
+!  Defer this here in case there are synthetic atoms
       do isp=1,nsp
         basp=>basis_parameters(isp)
-
-        if (.not.basp%bessel) then
-          write(6,"(/,a)") "---- Processing specs for species: " //
-     $        trim(basp%label)
-        endif
-
-        if (basp%bessel) then
-          ! Initialize a constant pseudo
-          call pseudo_init_constant(basp%pseudopotential)
-        else
-          call pseudo_read(basp%ps_file_spec,basp%pseudopotential,
-     $         basp%psml_handle,basp%has_psml_ps,
-     $         new_grid=reparametrize_pseudos,a=new_a,b=new_b,
-     $         rmax=new_rmax,
-     $         debugging_enabled=write_ion_plot_files)
-        endif
-
         if (basp%synthetic) then
           gs => basp%ground_state
           if (gs%z_valence .lt. 0.001)
      .      call die("Synthetic species not detailed")
         endif
-
         call semicore_check(isp)
-
       enddo
 
       call remass()
@@ -480,11 +455,12 @@ C Sanity checks on values
       call cnfig(z,gs%n(0:4))
 
       write(6,'(a,i2)',advance='no')
-     .     'Ground state valence configuration (from tables): '
+     .     'Ground state valence configuration: '
       gs%occupied(4) = .false.         !! always
       do l=0,3
         gs%occupied(l) =  (gs%occupation(l).gt.0.1d0)
-        write(6,'(2x,i1,a1,i2.2)',advance='no')
+        if (gs%occupied(l))
+     .    write(6,'(2x,i1,a1,i2.2)',advance='no')
      .       gs%n(l),sym(l),nint(gs%occupation(l))
       enddo
       write(6,'(a)') ''
@@ -503,7 +479,7 @@ C Sanity checks on values
       lpol = 0
 
       if (fdf_block('PS.KBprojectors',bfdf) ) then
-
+ 
 ! First pass to find out about lmxkb and set any defaults.
 
         do while(fdf_bline(bfdf, pline))    !! over species
@@ -514,7 +490,7 @@ C Sanity checks on values
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PS.KBprojectors:",
      .        trim(fdf_bnames(pline,1))
-            call die("stopping program")
+            call die()
           endif
           basp => basis_parameters(isp)
           basp%nkbshells = fdf_bintegers(pline,1)
@@ -557,7 +533,7 @@ C Sanity checks on values
 !      Fix defaults and allocate kbshells
 !
         basp=>basis_parameters(isp)
-        if (basp%lmxkb .eq. -1) then ! not set in KBprojectors
+        if (basp%lmxkb .eq. -1) then ! not set in KBprojectors 
           if (basp%lmxkb_requested.eq.-1) then ! not set in PS.lmax
             basp%lmxkb = set_default_lmxkb(isp) ! Use PAO info
           else
@@ -573,7 +549,7 @@ C Sanity checks on values
             else
               ! Set equal to the number of PAO shells with this l
               ! (with minimum of 1 and maximum of 2)
-              k%nkbl = basp%lshell(l)%nn
+              k%nkbl = basp%lshell(l)%nn     
               if (k%nkbl > 2) then
                 write(6,"(a,i1,a)") 'Warning: More than 2 PAOs for l=',
      $                l, '. The number of KB projs is capped at 2'
@@ -608,7 +584,7 @@ C Sanity checks on values
       enddo
 !
 !     Now re-scan the block (if it exists) and fill in as instructed
-!
+!            
       if (fdf_block('PS.KBprojectors',bfdf) ) then
 
         do while(fdf_bline(bfdf, pline))     !! over species
@@ -619,7 +595,7 @@ C Sanity checks on values
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PS.KBprojectors:",
      .        trim(fdf_bnames(pline,1))
-            call die("stopping program")
+            call die()
           endif
           basp => basis_parameters(isp)
           basp%nkbshells = fdf_bintegers(pline,1)
@@ -692,10 +668,10 @@ C Sanity checks on values
 !      Check that we have enough semilocal components...
 !
          basp=>basis_parameters(isp)
-         lmax_pseudo = basp%pseudopotential%npotd - 1
+         lmax_pseudo = basp%pseudopotential%npotd - 1 
          if (basp%lmxkb > lmax_pseudo) then
             write(6,'(a,i1,a)')
-     .           trim(basp%ps_file_spec) //
+     .           trim(basp%label) //
      .           " pseudopotential only contains V_ls up to l=",
      .           lmax_pseudo, " -- lmxkb reset."
             basp%lmxkb = lmax_pseudo
@@ -706,14 +682,14 @@ C Sanity checks on values
 !---------------------------------------------------------------
 
       subroutine repaobasis()
-
+      
       use m_ncps, only: get_n_semicore_shells
 
       integer isp, ish, nn, i, ind, l, indexp, index_splnorm
       integer nrcs_zetas
       integer :: nsemic_shells(0:3)
-      logical :: will_have_polarization_orb
-
+      logical :: will_have_polarization_orb 
+      
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
 
@@ -727,7 +703,7 @@ C Sanity checks on values
           write(6,'(a,1x,a)')
      .      "WRONG species symbol in PAO.Basis:",
      .      trim(fdf_bnames(pline,1))
-          call die("stopping program")
+          call die()
         endif
 
         basp => basis_parameters(isp)
@@ -743,12 +719,8 @@ C Sanity checks on values
           call get_n_semicore_shells(basp%pseudopotential,
      $                               basp%ground_state%n(0:3),
      $                               nsemic_shells)
-        else
-            nsemic_shells(:) = 0
         endif
-
-        basp%nsemic_shells(:) = nsemic_shells(:)
-
+        
         !! Check whether there are optional type and ionic charge
         if (fdf_bnnames(pline) .eq. 2)
      .    basp%basis_type = fdf_bnames(pline,2)
@@ -832,7 +804,7 @@ C Sanity checks on values
               call die("Need vcte and rinn after E in PAO.Basis")
             endif
           elseif (lsoft) then
-            s%vcte = softPt
+            s%vcte = softPt 
             s%rinn = -softRc
           else
             s%vcte = 0.0_dp
@@ -840,7 +812,7 @@ C Sanity checks on values
           endif
 !
 ! Charge confinement
-!
+! 
           if (fdf_bsearch(pline,'Q',indexp)) then
             if (fdf_bmatch(pline,'vvv',after=indexp)) then
                s%qcoe = fdf_bvalues(pline,ind=1,after=indexp)
@@ -855,7 +827,7 @@ C Sanity checks on values
                s%qyuk = 0.0_dp
                s%qwid = 0.01_dp
             else
-               call die("Need one, two or three real numbers after Q in
+               call die("Need one, two or three real numbers after Q in 
      .                   PAO.Basis")
             endif
           else
@@ -880,7 +852,7 @@ C Sanity checks on values
           s%rc(:) = 0.d0
           s%lambda(:) = 1.d0
           if (.not. fdf_bline(bfdf,pline)) call die("No rc's")
-
+          
           ! Use the last rc entered for the successive zetas
           ! if there are not enough values (useful for Bessel)
           nrcs_zetas = fdf_bnvalues(pline)
@@ -914,13 +886,13 @@ C Sanity checks on values
             if (.not. fdf_bmatch(pline,'r')) then
               ! New shell or species
               ! Default values for the scale factors
-              if (.not. fdf_bbackspace(bfdf))
+              if (.not. fdf_bbackspace(bfdf)) 
      .          call die('repaobasis: ERROR in PAO.Basis block')
               cycle shells
             else
               ! Read scale factors
               ! Use the last scale factor entered for the successive zetas
-              ! if there are not enough values
+              ! if there are not enough values 
                nrcs_zetas = fdf_bnreals(pline)
                if (nrcs_zetas < 1) then
                  call die("Need at least one scale factor in PAO.Basis")
@@ -948,37 +920,30 @@ C Sanity checks on values
         polarized_shell_ptr => null()
         allocate (basp%lshell(0:basp%lmxo))
 
-        ! Scan the shells, allocate storage and decide on some heuristics
-
-        loop_l_scan: do l= 0, basp%lmxo
+        loop_l: do l= 0, basp%lmxo
           ls => basp%lshell(l)
           call initialize(ls)
           ls%l = l
           will_have_polarization_orb = .false.
-          ! write(6,'(a,i0)') '--> building shell with l=', l
-
+          
           ! Search for tmp_shells with given l
           nn = 0
           do ish= 1, basp%nshells_tmp
             s => basp%tmp_shell(ish)
-            if (s%l .eq. l) then
-               nn=nn+1
-               ! write(6,'(a,i0)') '--> normal shell l=', s%l
-            endif
+            if (s%l .eq. l) nn=nn+1
             if (s%polarized .and. (s%l == (l-1))) then
                ! Add a new shell, which might have nzeta=0
                nn = nn + 1
                will_have_polarization_orb = .true.
-               ! write(6,'(a,1x,i0)') '--> polarized shell l=', s%l
             endif
-
+            
           enddo
 
           if (will_have_polarization_orb) then
              ! We still give the option of treating the polarization
              ! orbital requested through a "P" option in the PAO.Basis block
              ! with a non-perturbative scheme. The main choices are handled
-             ! by code in 'read_polarization_scheme', and result in the
+             ! by code in 'read_polarization_scheme', and result in the 
              ! setting of the variable 'non_perturbative_polorbs' in the
              ! specification derived type.
 
@@ -986,7 +951,7 @@ C Sanity checks on values
              ! with the same angular momentum as the polarization orbital.
              ! In that case, the pol orb will have a node. The algorithm
              ! to generate it is not robust enough, so, if the fallback has
-             ! been enabled (it is by default), we switch to generating
+             ! been enabled (it is not by default), we switch to generating
              ! the orbital explicitly (unless forced by the user in the
              ! PAO.Polarization.Scheme block or with a global setting)
              if (nn >= 2) then
@@ -998,42 +963,19 @@ C Sanity checks on values
      .                     "Fallback to non-perturbative " //
      $                     "polarization scheme for",
      $                     trim(basp%label)
-                      write(6,'(a)')
-     .                     "Please see the manual if this is not " //
-     $                     "desired in principle"
                    endif
                 endif
              endif
 
           endif
-
-          ! Save number of shells with given l and allocate space
+                
           ls%nn = nn
-          if (nn > 0) then
-             allocate(ls%shell(1:nn))
-          else
-            if (basp%ground_state%occupied(l)) then
-               write(6,'(a,i1,a1)') 'ERROR: Missing shell ' //
-     $               'in PAO.Basis for ' //
-     $               trim(basp%label) // ': ',
-     $               basp%ground_state%n(l), sym(l)
-               call die("Missing occupied shell in PAO.Basis")
-            else
-               write(6,'(/a,i1,a1)') 'WARNING: Missing shell ' //
-     $               'in PAO.Basis for ' //
-     $               trim(basp%label) // ': ',
-     $               basp%ground_state%n(l), sym(l)
-               write(6,'(a/)') 'WARNING: Possible loss ' //
-     $               'of variational freedom'
-            endif
+          if (nn.eq.0) then
             !! What else do we do here?
+            cycle loop_l  
           endif
-
-       enddo loop_l_scan
-
-       ! Final building of data structure
-       loop_l: do l= 0, basp%lmxo
-          ls => basp%lshell(l)
+                                     !! 
+          allocate(ls%shell(1:nn))
           ! Collect previously allocated shells
           ind = 0
           do ish=1, basp%nshells_tmp
@@ -1045,7 +987,6 @@ C Sanity checks on values
               if (basp%non_perturbative_polorbs) then
                  if (s%polarized) then
                     ! Save for later. There should be just one 'polarized' shell
-                    ! write(6,'(a,1x,i0)') '--> marked as polarized:', s%l
                     polarized_shell_ptr => ls%shell(ind)
                     ! Remove markers (in new objects)
                     ls%shell(ind)%polarized = .false.
@@ -1061,23 +1002,7 @@ C Sanity checks on values
                ind = ind + 1
                if (.not. basp%non_perturbative_polorbs) then
                   ! Placeholder empty shell for perturbative polarization orbital
-                  ! Cover the case in which there are lower-lying occupied states for this l
-                  ! For example, in a transition metal with 5d states, the polarization
-                  ! orbital for 6p should be 6d
-                  ! (In the current code this condition could trigger a fallback to
-                  ! a non-perturbative polarization orbital, but the following check is
-                  ! inserted for completeness)
-                  if (basp%ground_state%occupied(l)) then
-                     ls%shell(ind)%n=basp%ground_state%n(l) + 1
-                  else
-                     ls%shell(ind)%n=basp%ground_state%n(l)
-                  endif
-
-                  ! Further check for corner case of high-n diffusion orbs
-                  if (ls%shell(ind)%n < s%n) then
-                     ls%shell(ind)%n = s%n
-                  endif
-
+                  ls%shell(ind)%n=basp%ground_state%n(l)
                   ls%shell(ind)%l = ls%l
                   ls%shell(ind)%nzeta = 0
                   print "(a,i1,a1)", trim(basp%label)//
@@ -1087,16 +1012,7 @@ C Sanity checks on values
                else             !! non_perturbative_polorbs
                   ! Copy again to inherit relevant data
                   call copy_shell(source=s,target=ls%shell(ind))
-                  ! Cover the case in which there are lower-lying occupied states for this l
-                  ! For example, in a transition metal with 5d states, the polarization
-                  ! orbital for 6p should be 6d
-
-                  if (basp%ground_state%occupied(l)) then
-                     ls%shell(ind)%n=basp%ground_state%n(l) + 1
-                  else
-                     ls%shell(ind)%n=basp%ground_state%n(l)
-                  endif
-
+                  ls%shell(ind)%n = basp%ground_state%n(l)     !! earlier: -1   ! reset to find later
                   ls%shell(ind)%l = l
                   ls%shell(ind)%nzeta = s%nzeta_pol
                   ls%shell(ind)%nzeta_pol = 0
@@ -1107,14 +1023,6 @@ C Sanity checks on values
                   endif
                   ls%shell(ind)%shell_being_polarized =>
      $                 polarized_shell_ptr
-
-                  ! Further check for corner case of high-n diffusion orbs
-                  if ( ls%shell(ind)%n <
-     &                 ls%shell(ind)%shell_being_polarized%n ) then
-                    ls%shell(ind)%n =
-     &                 ls%shell(ind)%shell_being_polarized%n
-                  endif
-
 
                   ! rc's, lambdas, etc, will remain as in s.
 
@@ -1142,9 +1050,9 @@ C Sanity checks on values
                endif
             endif  ! polarized shell for l-1
 
-          enddo ! over tmp shells
+          enddo
 
-          do i = 1, ls%nn
+          do i = 1, nn
              if (ls%shell(i)%n.eq.-1) then
                  print "(a,i1,a1,i1,a,i1,a)",
      $                "ERROR: " // trim(basp%label)//
@@ -1157,7 +1065,7 @@ C Sanity checks on values
           ! We have to sort by n value to avoid cases in which
           ! a perturbative polarization orbital comes first
           ! in the 'nsm' series
-          if ( ls%nn > 0 ) call sort_by_n(ls%shell)
+          call sort_by_n(ls%shell)
 
         enddo loop_l
         ! Destroy temporary shells in basp
@@ -1271,7 +1179,7 @@ c given by the general input PAO.BasisSize, or its default value.
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PAO.BasisSizes:",
      .        trim(fdf_bnames(pline,1))
-            call die("stopping program")
+            call die()
           else
             basp => basis_parameters(isp)
             basp%basis_size = fdf_bnames(pline,2)
@@ -1313,30 +1221,30 @@ c given by the general input PAO.BasisSize, or its default value.
       integer isp, indexp
 
       type(qconf_options_t), pointer :: s
-
+      
       ! Global options that might apply to all species
-
-      non_perturbative_pols =
+      
+      non_perturbative_pols = 
      $     fdf_boolean('PAO.Polarization.NonPerturbative',
      $                 .false.)
       ! Allow legacy option
-      non_perturbative_pols =
+      non_perturbative_pols = 
      $     fdf_boolean('PAO.NonPerturbative.Polarization.Orbitals',
      $                 non_perturbative_pols)
-
+      
       ! Enable fallback to non-perturbative polarization orbitals
       ! in cases where the algorithm might fail
-      non_perturbative_pols_fallback =
+      non_perturbative_pols_fallback = 
      $     fdf_boolean(
      $     'PAO.Polarization.NonPerturbative.Fallback',
-     $                 .true.)
+     $                 .false.)
 
       loop: do isp=1, nsp
          basp=>basis_parameters(isp)
 
          basp%non_perturbative_polorbs = non_perturbative_pols
          basp%non_pert_polorbs_fallback =
-     $                          non_perturbative_pols_fallback
+     $                          non_perturbative_pols_fallback 
 
          if (non_perturbative_pols) then
             basp%non_pert_polorbs_req = .true.
@@ -1363,15 +1271,15 @@ c given by the general input PAO.BasisSize, or its default value.
           endif
 
           basp => basis_parameters(isp)
-
+             
           string = fdf_bnames(pline,2)
-
+             
           select case (trim(string))
           case ("non-perturbative")
-
+             
              basp%non_perturbative_polorbs = .true.
              basp%non_pert_polorbs_req = .true.
-
+             
              ! Optional charge confinement options
 
              if (fdf_bsearch(pline,'Q',indexp)) then
@@ -1395,9 +1303,9 @@ c given by the general input PAO.BasisSize, or its default value.
      $                  "in PAO.Polarization.Scheme")
                 endif
              endif
-
+             
           case ("perturbative")
-
+             
              if (basp%non_pert_polorbs_req) then
                 write(6,'(a,1x,a)')
      .            "'Perturbative' Setting in PAO.PolarizationScheme" //
@@ -1406,7 +1314,7 @@ c given by the general input PAO.BasisSize, or its default value.
              endif
              basp%non_perturbative_polorbs = .false.
              basp%force_perturbative_polorbs = .true.
-
+             
           case default
              call die("Bad keyword in PAO.PolarizationScheme")
           end select
@@ -1446,7 +1354,7 @@ c Reads fdf block. Not necessarily all species have to be given.
           if (isp .eq. 0) then
             write(6,'(a,1x,a)') "WRONG species symbol in PS.lmax:",
      .                           trim(fdf_bnames(pline,1))
-            call die("stopping program")
+            call die()
           else
             basp => basis_parameters(isp)
             basp%lmxkb_requested = fdf_bintegers(pline,1)
@@ -1479,14 +1387,14 @@ c (according to atmass subroutine).
         do while(fdf_bline(bfdf,pline))
           if (.not. fdf_bmatch(pline,'iv'))
      .      call die("Wrong format in AtomicMass")
-          isp = fdf_bintegers(pline,1)
-          if (isp .gt. nsp .or. isp .lt. 1)
-     .      call die("Wrong specnum in AtomicMass")
-          basp => basis_parameters(isp)
-          basp%mass = fdf_bvalues(pline,2)
-          write(6,"(a, i4, a, f12.5)")
-     .         'remass: Read atomic mass for species ', isp,
-     .         ' as ', basp%mass
+          isp = fdf_bintegers(pline,1)                                 
+          if (isp .gt. nsp .or. isp .lt. 1)                   
+     .      call die("Wrong specnum in AtomicMass")        
+          basp => basis_parameters(isp)                         
+          basp%mass = fdf_bvalues(pline,2)                             
+          write(6,"(a, i4, a, f12.5)")                        
+     .         'remass: Read atomic mass for species ', isp,  
+     .         ' as ', basp%mass                              
         enddo
       endif
 
@@ -1525,7 +1433,7 @@ c (according to atmass subroutine).
       if(leqi(str,'TZP3')) str='tzp3'
       if(leqi(str,'TZ3P')) str='tzp3'
       if(leqi(str,'TZTP')) str='tzp3'
-
+ 
       if ( (str.ne.'szp').and.(str.ne.'sz').and.
      .     (str.ne.'dz') .and.(str.ne.'dzp') .and.
      .     (str.ne.'tz') .and.(str.ne.'tzp') .and.
@@ -1535,7 +1443,7 @@ c (according to atmass subroutine).
         write(6,'(/,2a,/,9(a,/))')
      .    'size_name: Incorrect basis-size option specified,',
      .    ' active options are:',
-     .    '  SZ or MINIMAL',
+     .    '  SZ or MINIMAL', 
      .    '  SZP, SZSP, SZ1P, SZP1',
      .    '  DZ ',
      .    '  DZP, DZSP, DZP1, DZ1P or STANDARD',
@@ -1545,7 +1453,7 @@ c (according to atmass subroutine).
      .    '  TZDP, TZP2, TZ2P',
      .    '  TZTP, TZP3, TZ3P'
 
-        call die("stopping program")
+        call die()
       endif
 
       end subroutine size_name
@@ -1570,7 +1478,7 @@ c (according to atmass subroutine).
      .    'type_name: Incorrect basis-type option specified,',
      .    ' active options are:',
      .    'NODES','SPLIT','SPLITGAUSS','NONODES','FILTERET'
-         call die("stopping program")
+         call die
       endif
 
       end subroutine type_name
@@ -1590,10 +1498,10 @@ c (according to atmass subroutine).
 
       basp%semic = .false.
       if (basp%bessel) return
-
+      
       zval_vps = basp%pseudopotential%zval
       zval = basp%ground_state%z_valence
-
+      
       if (abs(Zval-zval_vps).lt.tiny) return
 
       ndiff = nint(abs(Zval-zval_vps))
@@ -1601,7 +1509,7 @@ c (according to atmass subroutine).
         write(6,'(2a)')
      .    'ERROR Fractional semicore charge for species ',
      .    basp%label
-        call die("stopping program")
+        call die()
       endif
 
       charge_loc = Zval_vps-Zval
@@ -1638,18 +1546,18 @@ c (according to atmass subroutine).
          if (basp%bessel) then
             write(6,'(2a)') basp%label,
      .      ' must be in PAO.Basis (it is a floating Bessel function)'
-            call die("stopping program")
+            call die()
          endif
          !
-         ! Set the default max l
+         ! Set the default max l 
          !
          basp%lmxo = basp%ground_state%lmax_valence
 
          ! Check whether we need to consider larger l's due to
          ! semicore states.
-
+         
          if (basp%bessel) then
-            ! There are no semicore states
+            ! There are no semicore states 
             nsemic_shells(:) = 0
 
          else if (basp%synthetic) then
@@ -1668,13 +1576,11 @@ c (according to atmass subroutine).
      $                                 basp%ground_state%n(0:3),
      $                                 nsemic_shells)
          endif
-
+         
          do l=0,ubound(nsemic_shells,dim=1)
             if (nsemic_shells(l) > 0) basp%lmxo = max(l,basp%lmxo)
          enddo
-
-         basp%nsemic_shells(:) = nsemic_shells(:)
-
+         
          ! Check whether we need to consider larger l's due to
          ! polarization orbitals (this is a new behavior -- in the
          ! case of perturbative pol orbs, the highest-l shell will remain empty)
@@ -1695,7 +1601,7 @@ c (according to atmass subroutine).
                ! Check whether there are already other (semicore) shells
                ! In that case, the pol orb will have a node. The algorithm
                ! to generate it is not robust enough, so, if the fallback has
-               ! been enabled (it is by default), we switch to generating
+               ! been enabled (it is not by default), we switch to generating
                ! the orbital explicitly (unless forced by the user in the block)
                if (nsemic_shells(l) >= 1) then
                   if (basp%non_pert_polorbs_fallback) then
@@ -1706,9 +1612,6 @@ c (according to atmass subroutine).
      .                     "Fallback to non-perturbative " //
      $                     "polarization scheme for",
      $                     trim(basp%label)
-                        write(6,'(a)')
-     .                     "Please see the manual if this is not " //
-     $                     "desired in principle"
                      endif
                   endif
                endif
@@ -1716,7 +1619,7 @@ c (according to atmass subroutine).
             endif
             enddo loop_pol2
          endif
-
+        
          allocate (basp%lshell(0:basp%lmxo))
 
          if (basp%basis_size(1:2) .eq. 'sz') nzeta = 1
@@ -1732,7 +1635,7 @@ c (according to atmass subroutine).
             ls%nn = nsh
             !
             allocate(ls%shell(1:nsh))
-            !
+            !     
             ! Inner shells get a single-z orbital
             !
             do i = 1, nsh -1
@@ -1751,7 +1654,7 @@ c (according to atmass subroutine).
                s%nzeta_pol = 0
 
                if (lsoft) then
-                  s%vcte = softPt
+                  s%vcte = softPt 
                   s%rinn = -softRc
                else
                   s%rinn = 0.d0
@@ -1769,12 +1672,12 @@ c (according to atmass subroutine).
                endif
             enddo
             ! Do the final (canonical valence)  shell
-            !
+            !  
             s => ls%shell(nsh)
             call initialize(s)
             s%l = l
             s%n = basp%ground_state%n(l)
-            if (basp%ground_state%occupied(l)) then
+            if (basp%ground_state%occupied(l)) then   
                s%nzeta = nzeta
             else
                s%nzeta = 0  ! This might be a polarization orbital... **, and still be counted as a "shell"
@@ -1789,7 +1692,7 @@ c (according to atmass subroutine).
             s%nzeta_pol = 0
 
             if (lsoft) then
-               s%vcte = softPt
+               s%vcte = softPt 
                s%rinn = -softRc
             else
                s%rinn = 0.d0
@@ -1821,10 +1724,10 @@ c (according to atmass subroutine).
 
          if (basp%basis_size(3:3) .eq. 'p') then
 
-         ! Polarization orbitals are defined so they have the minimum
-         ! angular momentum l such that there are no occupied orbitals
-         ! with the same l in the valence shell of the ground-state
-         ! atomic configuration. They polarize the corresponding l-1
+         ! Polarization orbitals are defined so they have the minimum      
+         ! angular momentum l such that there are no occupied orbitals 
+         ! with the same l in the valence shell of the ground-state 
+         ! atomic configuration. They polarize the corresponding l-1    
          ! shell.
 
          ! note that we go up to l=4 to make the loop simpler.
@@ -1846,7 +1749,7 @@ c (according to atmass subroutine).
 
                ! Note that l goes from 1 to 4
                if ( (.not. basp%ground_state%occupied(l)) ) then
-
+    
                   if (basp%non_perturbative_polorbs) then
                      ls=>basp%lshell(l)
                      nsh = size(ls%shell)
@@ -1859,9 +1762,9 @@ c (according to atmass subroutine).
                      allocate(s%lambda(1:s%nzeta))
                      s%rc(1:s%nzeta) = 0.0d0
                      s%lambda(1:s%nzeta) = 1.0d0
-
+                     
                      s%polarization_shell = .true.
-
+                     
                      ! Optional charge confinement
                      ! for non-perturbative polarization orbitals
                      ! This does not seem to be really necessary for
@@ -1877,7 +1780,7 @@ c (according to atmass subroutine).
      $                       "PAO.Polarization.Charge.Confinement",
      $                       0.0_dp)
                      endif
-
+                     
                      ls_parent=> basp%lshell(l-1)
                      nsh = size(ls_parent%shell) ! Parent is the last (l-1) shell
                      s%shell_being_polarized => ls_parent%shell(nsh)
@@ -1885,11 +1788,11 @@ c (according to atmass subroutine).
                      ls_parent%shell(nsh)%polarized = .false.
                      ls_parent%shell(nsh)%was_polarized = .true.
                      ls_parent%shell(nsh)%nzeta_pol = 0
-
+                     
                      EXIT loop_angmom       ! Polarize only one shell!
                   endif
 
-                  ! Normal treatment
+                  ! Normal treatment 
                   ls=>basp%lshell(l-1)
                   nsh = size(ls%shell) ! Use only the last shell
                   s => ls%shell(nsh)
@@ -1922,12 +1825,7 @@ c (according to atmass subroutine).
          endif
 
       enddo loop
-
+            
       end subroutine autobasis
-
-      subroutine basis_specs_reset()
-        implicit none
-        if ( associated(basp) ) call destroy( basp )
-      end subroutine basis_specs_reset
 
       End module basis_specs

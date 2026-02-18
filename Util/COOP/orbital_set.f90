@@ -9,21 +9,18 @@ module orbital_set
 CONTAINS
 subroutine get_orbital_set(line,set_mask)
   use main_vars
-  use subs, only : nwrd_in_txt, txt2wrd, orbital
+  use subs, only : txt2wrd, orbital
 
   implicit none
 
   character(len=*), intent(in) :: line
   logical, intent(out)         :: set_mask(:)
 
-  character(len=20), allocatable :: wrd(:)
-
   print *, "Size of set_mask: ", size(set_mask)
   set_mask(:) = .false.
 
-  call nwrd_in_txt(line, nwd)
-  allocate(wrd(nwd))
-  call txt2wrd (line, wrd, nwd)
+  call txt2wrd (line, wrd, nwd, nlwmx)
+  if (nwd.gt.nlwmx) stop "* Groups per subset limit exceeded."
 
   if (trim(wrd(1)).eq.'+') then
      do iw=2,nwd
@@ -77,7 +74,6 @@ subroutine get_orbital_set(line,set_mask)
      enddo
 
   endif
-  deallocate(wrd)
 
 end subroutine get_orbital_set
 

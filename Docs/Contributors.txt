@@ -1,6 +1,6 @@
 List of contributors to the development of SIESTA
 
-Copyright (C) 1996-2025 The SIESTA group
+Copyright (C) 1996-2018 The SIESTA group
 
 This file is distributed under the terms of the GNU General Public
 License, see COPYING in the top directory, or
@@ -27,33 +27,25 @@ developer and member of the Steering Committee in 2015.
 
 Other contributors (we apologize for any omissions):
 
-Anthoni Alcaraz
 Eduardo Anglada
 Thomas Archer
 Luis C. Balbas
-Laura Bellentani
 Xavier Blase
-Jorge I. Cerda
-Ramon Cuadrado
+Jorge I. Cerda,
+Ramon Cuadrado,
 Michele Ceriotti
 Fabiano Corsetti
 Raul de la Cruz
-Jose Maria Escartin
 Gabriel Fabricius
-Pol Febrer
 Marivi Fernandez-Serra
 Jaime Ferrer
 Chu-Chun Fu
 Sandra Garcia
 Victor M. Garcia-Suarez
 Rogeli Grima
-Julio Gutierrez
-Xu He
 Rainer Hoft
 Georg Huhs
 Jorge Kohanoff
-Arnold H. Kole
-Peter Koval
 Richard Korytar
 In-Ho Lee
 Lin Lin
@@ -63,17 +55,13 @@ Eduardo Machado
 Maider Machado
 Jose Luis Martins
 Volodymyr Maslyuk
-Sara G. Mayo
 Juana Moreno
-Stephan Mohr
 Frederico Dutilh Novaes
 Micael Oliveira
 Magnus Paulsson
 Oscar Paz
-Federico Pedron
 Andrei Postnikov
 Yann Pouillon
-J. Miguel A. Pruneda
 Roberto Robles
 Tristana Sondon
 Rafi Ullah
@@ -81,9 +69,7 @@ Andrew Walker
 Andrew Walkingshaw
 Toby White
 Francois Willaime
-Nils Wittemeier
 Chao Yang
-Victor Yu
 
 O.F. Sankey, D.J. Niklewski and D.A. Drabold made the FIREBALL code
 available to P. Ordejon.  Although we no longer use the routines in

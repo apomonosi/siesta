@@ -77,17 +77,11 @@ contains
     options = options // &
          ('Write.DenChar'.kvp.dumpcharge)
     options = options // &
-         ('Write.MullikenPop'.kvp.option_charges%mulliken%format)
+         ('Write.MullikenPop'.kvp.mullipop)
     options = options // &
-         ('Write.Mulliken'.kvp.option_charges%mulliken%format)
+         ('Write.HirshfeldPop'.kvp.hirshpop)
     options = options // &
-         ('Write.HirshfeldPop'.kvp.option_charges%hirshfeld%format)
-    options = options // &
-         ('Write.Hirshfeld'.kvp.option_charges%hirshfeld%format)
-    options = options // &
-         ('Write.VoronoiPop'.kvp.option_charges%voronoi%format)
-    options = options // &
-         ('Write.Voronoi'.kvp.option_charges%voronoi%format)
+         ('Write.VoronoiPop'.kvp.voropop)
 
     ! SCF options
     options = options // &
@@ -157,11 +151,11 @@ contains
     options = options // &
          ('MD.FinalTimeStep'.kvp.ifinal)
     options = options // &
-         ('FC.Displacement '.kvp.dx)
+         ('MD.FC.Displ'.kvp.dx)
     options = options // &
-         ('FC.First'.kvp.ia1)
+         ('MD.FC.First'.kvp.ia1)
     options = options // &
-         ('FC.Last'.kvp.ia2)
+         ('MD.FC.Last'.kvp.ia2)
     options = options // &
          ('MD.Temperature.Target'.kvp.tt)
     options = options // &
@@ -191,6 +185,11 @@ contains
          ('Write.Forces'.kvp.writeF)
     options = options // & ! DM.UseSaveDM
          ('Use.DM'.kvp.UseSaveDM)
+
+    options = options // & ! WriteHirshfeldPop
+         ('Write.Hirshfeld'.kvp.hirshpop)
+    options = options // & ! WriteVoronoiPop
+         ('Write.Voronoi'.kvp.voropop)
 
     ! Options related to the mesh!
     options = options // & ! Required minimum meshcutoff
@@ -320,6 +319,8 @@ contains
     
     variables = variables // &
          ('E.negf.dN'.kvp.NEGF_DE)
+    variables = variables // &
+         ('E.negf.spin_orbit'.kvp.NEGF_Eso)
     variables = variables // &
          ('E.negf.harris'.kvp.NEGF_Eharrs)
     variables = variables // &

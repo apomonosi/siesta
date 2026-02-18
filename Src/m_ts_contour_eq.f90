@@ -1016,7 +1016,7 @@ contains
     end subroutine set_abscissas
     
     function read_eta(c, lift) result(eta)
-      use fdf_parse, only: parsed_line, digest, destroy
+      use parse, only: parsed_line, digest, destroy
       type(ts_cw), intent(in) :: c
       real(dp), intent(in) :: lift
       real(dp) :: eta

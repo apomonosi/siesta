@@ -1,0 +1,42 @@
+New mechanism for building.
+
+The file 'build.mk' contains the logic for building Siesta. It
+provides low-level code to act on the user-level specification
+information, which is structured in four sections:
+
+-------------------
+A) Features needed.
+
+They are selected by setting the 'WITH_XXX' variables to 1.
+
+B) Symbols related to location of libraries.
+
+They can refer to the location of a specific package (e.g. PSML_ROOT),
+or to the actual libraries (e.g. SCALAPACK_LIBS). In some cases (such
+as netCDF) several package-location symbols might be needed, and it might be necessary to
+override directly the NETCDF_LIBS and NETCDF_INCFLAGS in hard cases.
+
+C) Compiler names and options
+
+D) Specific needs for certain files (for example, compilation without optimization)
+
+-------------------
+
+These sections could be completed in-situ in the file, but the
+recommended practice is to put them in an 'arch.make' file that in
+turn, at its bottom, includes this file (this 'reversed role' is
+needed for backwards compatibility of makefile hierarchies).
+
+Examples of arch.make files can be found in the 
+sample-arch-makes directory. 
+
+Regarding block D): if the modified dependency lines are now at the
+top of the arch.make file, they might cause an unwanted setting of the
+"default" target in some makefiles. For example, in Util/TS/tshs2tshs,
+the 'default' target line was placed *after* including the arch.make
+file. The 'atom.o' dependency line in the mn-intel.mk helper file
+forced the creation of 'atom.o', which was wrong.
+To fix this, the 'default' target line has to come near the top of the makefile.
+
+This framework works for versions of Siesta >= 4.1
+

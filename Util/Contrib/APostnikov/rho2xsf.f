@@ -2,13 +2,13 @@ C
 C    rho2xsf,  a script to transform 3-dim grid function
 C             (i.e. LDOS, RHO, DRHO, etc.) written in SIESTA by subr. iorho
 C             into an arbitrarily chosen grid for XCrysden,
-C             using linear 4-point interpolation
+C             using linear 4-point interpolation 
 C
 C   !!! --------------------  IMPORTANT  ---------------------- !!!
 C   compile this code with the same compiler switches as Siesta,
 C         in what regards using single/double precision,
-C       otherwise reading the data from unformatted files
-C              written by iorho.F  might be spoiled.
+C       otherwise reading the data from unformatted files 
+C              written by iorho.F  might be spoiled.  
 C                Don't say you haven't been warned.
 C                                !!!
 C
@@ -28,9 +28,10 @@ C
       character inpfil*60,outfil*60,syslab*30,suffix*6,
      .          unitlab*1,labunit*9,labbox*1,owrite*1
       logical unitb,charge,waves,filexist
-      double precision cc_bohr(3,3),cc_ang(3,3),cc_inv(3,3),
+      double precision b2ang,cc_bohr(3,3),cc_ang(3,3),cc_inv(3,3),
      .                 coort(3),obox(3),rbox(3,3),rinv(3,3),
      .                 cell(3,3),dum,rmaxo,rela,modu,rmesh(3),drela(3)
+      parameter (b2ang=0.529177)   !  Bohr to Angstroem
       integer, allocatable :: ityp(:),iz(:)
       double precision, allocatable :: mass(:),coor_ang(:,:)
       character(len=2), allocatable :: label(:)
@@ -39,12 +40,12 @@ C
       external test_xv,read_xv,fillbox,inver3,intpl04
 C
 C     string manipulation functions in Fortran used below:
-C     len_trim(string): returns the length of string
+C     len_trim(string): returns the length of string 
 C                       without trailing blank characters,
 C     trim(string)    : returns the string with railing blanks removed
 C     char(integer)   : returns the character in the specified position
 C                       of computer's ASCII table, i.e. char(49)=1
-
+      
       write (6,701,advance="no")
   701 format(" Specify  SystemLabel (or 'siesta' if none): ")
       read (5,*) syslab
@@ -64,7 +65,7 @@ C     inpfil = syslab(1:len_trim(syslab))//'.XV'
       call read_xv(ii1,nat,ityp,iz,cc_ang,mass,label,coor_ang)
       call inver3(cc_ang,cc_inv)
       close (ii1)
-C --- set up and fill output box:
+C --- set up and fill output box:     
       call makebox(obox,rbox)
 C --- invert the box vectors; will need it in a minute...
       call inver3(rbox,rinv)
@@ -98,7 +99,7 @@ C --- add atoms to XSF; either as periodic cell or as for molecule
 C       write (6,702)
 C 101   write (6,703,advance="no")
 C       read (5,*) labbox
-C       if (labbox.eq.'Y'.or.labbox.eq.'y') then
+C       if (labbox.eq.'Y'.or.labbox.eq.'y') then        
 C         write (io1,'(a7)') 'CRYSTAL'
 C         write (io1,'(a7)') 'PRIMVEC'
 C         write (io1,201) (rbox(ii,1),ii=1,3)
@@ -120,11 +121,11 @@ C       endif
       else
         write (6,*) ' This is OK, just be warned that your XSF file',
      .              ' will have no ATOMS secton!'
-      endif
+      endif 
       close (is1)
 
-      write (6,704)
-  102 write (6,705,advance="no")
+      write (6,704) 
+  102 write (6,705,advance="no") 
       read (5,*) n1,n2,n3
       if (n1.le.0.or.n2.le.0.or.n3.le.0) then
         write (6,*) ' Numbers must be positive, try again.'
@@ -150,7 +151,7 @@ C    .      '.'//suffix(1:len_trim(suffix))
         write (6,*) ' Fails to allocate space for ',
      .                mesh0(1)*mesh0(2)*mesh0(3),' grid points.'
         stop
-      endif
+      endif 
       write (6,*) 'mesh0 = (',mesh0,'),   nspin=',nspin
       write (io1,"('BEGIN_BLOCK_DATAGRID_',i1,'D')") idim
       write (io1,*) 'DATA_from:'//inpfil(1:len_trim(inpfil))
@@ -164,13 +165,13 @@ C    .        suffix(1:len_trim(suffix))//':spin_'//char(48+is)
         if (n1.ne.1) write (io1,'(i6)',advance="no") n1
         if (n2.ne.1) write (io1,'(i6)',advance="no") n2
         if (n3.ne.1) write (io1,'(i6)',advance="no") n3
-        write (io1,'()')
+        write (io1,'()') 
         write (io1,'(1p,3e15.7)') (obox(ii),ii=1,3)
         if (n1.ne.1) write (io1,'(1p,3e15.7)') (rbox(ii,1),ii=1,3)
         if (n2.ne.1) write (io1,'(1p,3e15.7)') (rbox(ii,2),ii=1,3)
         if (n3.ne.1) write (io1,'(1p,3e15.7)') (rbox(ii,3),ii=1,3)
-
-        ind=0
+        
+        ind=0                        
         do iiz=1,mesh0(3)
           do iiy=1,mesh0(2)
             read (ii2,err=809,end=810) (func(ind+iix),iix=1,mesh0(1))
@@ -179,7 +180,7 @@ C    .        suffix(1:len_trim(suffix))//':spin_'//char(48+is)
         enddo
 
 C ---   loop over mesh points
-C       avoid division by zero if only 1 point is selected:
+C       avoid division by zero if only 1 point is selected: 
         n1div=max(n1-1,1)  !  if (n1.eq.1) n1div=1 else n1div=n1-1
         n2div=max(n2-1,1)
         n3div=max(n3-1,1)
@@ -189,7 +190,7 @@ C       avoid division by zero if only 1 point is selected:
             do i1=1,n1
               ind = ind+1
               do ii=1,3
-                rmesh(ii) = obox(ii) +
+                rmesh(ii) = obox(ii) + 
      +                      rbox(ii,1)*(i1-1)/n1div +
      +                      rbox(ii,2)*(i2-1)/n2div +
      +                      rbox(ii,3)*(i3-1)/n3div
@@ -239,10 +240,10 @@ C             Select neighboring grid points and make the interpolation:
       deallocate (func)
       write (io1,"('END_BLOCK_DATAGRID_',i1,'D')") idim
       close (ii2)
-      goto 103
+      goto 103                                                                  
 
   201 format (3f20.8)
-  202 format (i9,3f20.8)
+  202 format (i4,3f20.8)
   203 format (3i6)
   204 format (3f12.7)
   205 format (1p,6e13.6)
@@ -260,7 +261,7 @@ C 205 format (1p,8e10.3)
   703 format(" Do you want atom section as for periodic ",
      .       " structure, Y or N ? ")
   704 format (" Now define the grid. If you want it two-dimensional,",/
-     .   " give 1 as number of grid points along one spanning vector.")
+     .   " give 1 as number of grid points along one spanning vector.") 
   705 format (" Enter number of grid points along three vectors: ")
   706 format (' Add grid property (LDOS, RHO, ...;',
      .        ' or BYE if none): ')

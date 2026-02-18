@@ -29,12 +29,9 @@ subroutine tbt_init()
 #ifdef MPI
   use mpi_siesta, only : MPI_Barrier, MPI_Comm_World
 #ifdef _OPENMP
-  use mpi_siesta, only : Mpi_Thread_Serialized, MPI_Init_Thread
-#else
-  use mpi_siesta, only : MPI_Init
+  use mpi_siesta, only : Mpi_Thread_Funneled
 #endif
 #endif
-  use siesta_version_info, only: siesta_print_version
 
   use class_Sparsity
   use class_dSpData1D
@@ -58,6 +55,7 @@ subroutine tbt_init()
   use m_sparsity_handling
 
   use runinfo_m, only: runinfo
+  use version_info, only: prversion
 
   implicit none
 
@@ -76,7 +74,7 @@ subroutine tbt_init()
   ! Initialise MPI and set processor number
 #ifdef MPI
 #ifdef _OPENMP
-  call MPI_Init_Thread(MPI_Thread_Serialized, it, MPIerror)
+  call MPI_Init_Thread(MPI_Thread_Funneled, it, MPIerror)
 #else
   call MPI_Init( MPIerror )
 #endif
@@ -90,12 +88,12 @@ subroutine tbt_init()
 
 #ifdef MPI
 #ifdef _OPENMP
-  if ( MPI_Thread_Serialized /= it ) then
+  if ( MPI_Thread_Funneled /= it ) then
     ! the requested threading level cannot be asserted
     ! Notify the user
     ! We only write this out in case the user did not request
     ! info or help
-    write(0,'(a)') '!!! Could not assert serialized threads'
+    write(0,'(a)') '!!! Could not assert funneled threads'
   end if
 #endif
 #endif
@@ -103,10 +101,16 @@ subroutine tbt_init()
   ! Initialize the output
   call tbt_init_output(Node == 0)
 
+#ifdef MPI
+  if (.not. fdf_parallel()) then
+     call die('tbt_init: ERROR: FDF module doesn''t have parallel support')
+  endif
+#endif
+
 ! Print version information ...........................................
   if (IOnode) then
      
-     call siesta_print_version()
+     call prversion()
 
      call runinfo
 
@@ -209,10 +213,10 @@ subroutine tbt_init()
            TSHS%cell,nkpnt,kpoint,kweight, &
            Elecs_xa_Eps, .false. )
      end if
-
+     
      ! clean-up
      call Elecs(iEl)%delete()
-
+     
   end do
 
   if ( IONode ) write(*,*) ! newline
@@ -317,3 +321,4 @@ subroutine tbt_init()
   ! information and we have deleted all un-needed information.
 
 end subroutine tbt_init
+                       

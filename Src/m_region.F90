@@ -6,7 +6,6 @@
 ! generate limited sets of regions (or expand them).
 
 ! Fully created by Nick Papior Andersen, 2014
-#include "mpi_macros.f"
 
 module m_region
   
@@ -864,6 +863,10 @@ contains
   !     We then place 
   subroutine rgn_sp_sort_explicit(r,n,nnzs,n_col,l_ptr,l_col, sr, method, r_logical)
 
+#ifdef MPI
+    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_MAX, MPI_MIN, MPI_AllReduce, MPI_IN_PLACE
+#endif
     use intrinsic_missing, only: index_sort_heap
 
     ! the region we wish to find the connections to
@@ -2157,11 +2160,9 @@ contains
   subroutine rgn_MPI_union(dit,r)
     use mpi_siesta, only : MPI_AllReduce, MPI_Integer, MPI_Sum
     use mpi_siesta, only : MPI_Bcast
-    use mpi_siesta, only : MPI_Recv, MPI_Send
+    use mpi_siesta, only : MPI_Recv, MPI_Send, MPI_STATUS_SIZE
     use mpi_siesta, only : MPI_Get_Count
     use intrinsic_missing, only: sort_quick
-    USE_MPI_ONLY_COMM
-    USE_MPI_ONLY_STATUS
 
     type(OrbitalDistribution), intent(in) :: dit
     type(tRgn), intent(inout) :: r
@@ -2170,10 +2171,9 @@ contains
     integer :: nt, ct, iN, it
     integer, allocatable :: rd(:)
     character(len=R_NAME_LEN) :: tmp
-    MPI_COMM_TYPE :: comm
+    integer :: comm
 
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: MPIStatus
+    integer :: MPIerror, MPIstatus(MPI_STATUS_SIZE)
 
     ! Get the communicator assigned to this
     ! distribution
@@ -2248,16 +2248,14 @@ contains
   end subroutine rgn_MPI_union
 
   subroutine rgn_MPI_Bcast(r,Bnode,Comm)
-    use mpi_siesta, only : MPI_Comm_Rank, MPI_Comm_Size
     use mpi_siesta, only : MPI_Bcast, MPI_Comm_World
     use mpi_siesta, only : MPI_Logical, MPI_Integer
-    USE_MPI_ONLY_COMM
+
     type(tRgn), intent(inout) :: r
     integer, intent(in) :: Bnode
-    MPI_COMM_TYPE, intent(in), optional :: Comm
+    integer, intent(in), optional :: Comm
 
-    integer :: Node, n, Nodes
-    MPI_COMM_TYPE :: lComm
+    integer :: Node, n, lComm, Nodes
     integer :: MPIerror
 
     lComm = MPI_COMM_WORLD

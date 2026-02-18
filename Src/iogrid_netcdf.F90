@@ -5,12 +5,9 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-#include "mpi_macros.f"
-
 module iogrid_netcdf
 
-use parallel, only: Node, Nodes
-use moreMeshSubs, only : UNIFORM, getMeshBox
+use parallel, only: Node, Nodes, ProcessorY
 use alloc, only: re_alloc, de_alloc
 use sys, only: die
 #ifdef MPI
@@ -33,7 +30,6 @@ implicit none
       logical, save                    :: initialized = .false.
 
       public :: set_box_limits, write_grid_netcdf, read_grid_netcdf
-      public :: iogrid_netcdf_reset
       private
 
 CONTAINS
@@ -43,24 +39,91 @@ subroutine set_box_limits(mesh,nsm)
 ! Set up easier-to-handle per-processor sub-mesh pointers
 ! Inspired by a routine written by Rogeli Grima (BSC)
 !
-  integer, intent(in)  :: mesh(3)     ! Mesh divisions (fine points)
+  integer, intent(in)  :: mesh(3)     ! Mesh divisions (fine points) 
   integer, intent(in)  :: nsm         ! Number of fine points per big point
-  integer,     pointer :: box(:,:,:)
-  integer              :: p
 
-  distr%nMesh(1:3) = mesh(1:3)
-  call getMeshBox( UNIFORM, box )
-  ! Allocate memory for the current distribution
-  if (.not. initialized) then
+ integer :: nm(3)
+ integer, allocatable :: npt_node(:)
+
+ integer :: ProcessorZ, PP
+ integer :: blocY, blocZ, nremY, nremZ
+ integer :: dimY, dimZ, dimX, iniY, iniZ
+ integer :: iNode, npt_total, npt_mesh
+ integer :: PY, PZ, j
+
+
+! Allocate memory for the current distribution
+ if (.not. initialized) then
     nullify( distr%box )
     call re_alloc( distr%box, 1, 2, 1, 3, 1, Nodes, name='distr%box',  &
                              routine='set_box_limits' )
     initialized = .true.
-  endif
-  do p=1, NODES
-    distr%box(1,:,p) = (box(1,:,p)-1)*nsm+1
-    distr%box(2,:,p) = box(2,:,p)*nsm
-  enddo
+ endif
+
+ allocate(npt_node(1:Nodes))
+
+ nm(1:3) = mesh(1:3) / nsm
+ npt_mesh = mesh(1)*mesh(2)*mesh(3)
+ distr%nMesh(1:3) = mesh(1:3)
+
+     ProcessorZ = Nodes/ProcessorY
+
+     blocY = (nm(2)/ProcessorY) 
+     blocZ = (nm(3)/ProcessorZ) 
+     nremY = nm(2) - blocY*ProcessorY
+     nremZ = nm(3) - blocZ*ProcessorZ
+
+     dimX = nm(1)*nsm
+
+     npt_total = 0
+
+     PP   = 1
+     iniY = 1
+     do PY = 1, ProcessorY
+
+        dimY = blocY
+        if (PY.LE.nremY) dimY = dimY + 1  ! Add extra points starting from the first nodes
+        dimY = dimY * nsm                 ! For fine points
+
+        iniZ = 1
+        do PZ = 1, ProcessorZ
+           dimZ = blocZ
+           if (PZ.LE.nremZ) dimZ = dimZ + 1
+           dimZ = dimZ*nsm                 ! For fine points
+           
+           distr%box(1,1,PP) = 1
+           distr%box(2,1,PP) = dimX
+           distr%box(1,2,PP) = iniY
+           distr%box(2,2,PP) = iniY + dimY - 1
+           distr%box(1,3,PP) = iniZ
+           distr%box(2,3,PP) = iniZ + dimZ - 1
+
+           npt_node(PP) = dimX * dimY * dimZ
+           npt_total = npt_total + npt_node(PP)
+
+           iniZ = iniZ + dimZ
+           PP   = PP + 1
+           
+        enddo
+        iniY = iniY + dimY
+     enddo
+
+     if (npt_total /= npt_mesh) then
+        if (Node == 0) then
+           write(6,*) "Nominal npt: ", npt_mesh, " /= assigned npt:", npt_total
+        endif
+        call die()
+     endif
+
+! JMS: commented out. 2009/02/06
+!     if (Node == 0) then
+!        do iNode= 1, Nodes
+!           write(6,"(a,i4,a,i12,3x,3(i4,a1,i4))") "iogrid_netcdf: -- Node ", iNode, " :", npt_node(iNode), &
+!                           (distr%box(1,j,iNode), ":", distr%box(2,j,iNode), j=1,3)
+!        enddo
+!     endif
+
+     deallocate(npt_node)
 
 end subroutine set_box_limits
 
@@ -84,10 +147,9 @@ integer  :: xyz_id, step_id, abc_id, spin_id
 integer  :: cell_id, n1_id, n2_id, n3_id, gridfunc_id
 
 #ifdef MPI
-      integer, dimension(:), allocatable  :: npt_node
+      integer, dimension(:), allocatable  :: npt_node 
       real(grid_p), dimension(:), pointer :: grid_buf  => null()
-      integer  :: MPIerror, count, BNode
-      MPI_STATUS_TYPE :: stat
+      integer  :: MPIerror, stat(MPI_STATUS_SIZE), count, BNode
       integer  :: iNode, max_npt
       integer  :: nel(3), lb(3)
 #endif
@@ -168,7 +230,7 @@ integer  :: cell_id, n1_id, n2_id, n3_id, gridfunc_id
             endif
             !
             ! Fill in the information at the proper place
-            lb(1:3) = distr%box(1,1:3,BNode+1)
+            lb(1:3) = distr%box(1,1:3,BNode+1) 
             nel(1:3) = distr%box(2,1:3,BNode+1) - distr%box(1,1:3,BNode+1) + 1
             call check( nf90_put_var(ncid,gridfunc_id,grid_buf(1:npt_node(BNode)),           &
                                                     start=(/ lb(1), lb(2), lb(3), ispin/),  &
@@ -192,9 +254,11 @@ integer  :: cell_id, n1_id, n2_id, n3_id, gridfunc_id
 
 #else
 
-   iret = nf90_put_var(ncid, gridfunc_id, gridfunc, start = (/1, 1, 1, 1 /), &
-        count = (/mesh(1), mesh(2), mesh(3), nspin/) )
-   call check(iret)
+   do ispin = 1, nspin
+      iret = nf90_put_var(ncid, gridfunc_id, gridfunc, start = (/1, 1, 1, ispin /), &
+           count = (/mesh(1), mesh(2), mesh(3), 1/) )
+      call check(iret)
+   enddo
 
 #endif
 
@@ -231,10 +295,9 @@ integer  :: nspin_file, mesh_file(3)
 character(len=40)  :: filename
 
 #ifdef MPI
-      integer, dimension(:), allocatable  :: npt_node
+      integer, dimension(:), allocatable  :: npt_node 
       real(grid_p), dimension(:), pointer :: grid_buf  => null()
-      integer  :: MPIerror, count, BNode
-      MPI_STATUS_TYPE :: stat
+      integer  :: MPIerror, stat(MPI_STATUS_SIZE), count, BNode
       integer  :: iNode, max_npt
       integer  :: nel(3), lb(3)
 #endif
@@ -283,7 +346,7 @@ character(len=40)  :: filename
                                      ! send non-contiguous arrays
       do BNode = 0, Nodes - 1
          if (Node == 0) then
-            lb(1:3) = distr%box(1,1:3,BNode+1)
+            lb(1:3) = distr%box(1,1:3,BNode+1) 
             nel(1:3) = distr%box(2,1:3,BNode+1) - distr%box(1,1:3,BNode+1) + 1
             call check( nf90_get_var(ncid,gridfunc_id,grid_buf(1:npt_node(BNode)),           &
                                                     start=(/ lb(1), lb(2), lb(3), ispin/),  &
@@ -313,9 +376,11 @@ character(len=40)  :: filename
 
 #else
 
-   iret = nf90_get_var(ncid, gridfunc_id, gridfunc, start = (/1, 1, 1, 1/), &
-        count = (/mesh(1), mesh(2), mesh(3), nspin/) )
-   call check(iret)
+   do ispin = 1, nspin
+      iret = nf90_get_var(ncid, gridfunc_id, gridfunc, start = (/1, 1, 1, ispin /), &
+           count = (/mesh(1), mesh(2), mesh(3), 1/) )
+      call check(iret)
+   enddo
 
 #endif
 
@@ -326,16 +391,6 @@ character(len=40)  :: filename
 
 #endif  /* CDF */
 end subroutine read_grid_netcdf
-
-subroutine iogrid_netcdf_reset()
-   use alloc, only: de_alloc
-   implicit none
-
-   call de_alloc( distr%box, 'distr%box', 'set_box_limits' )
-   nullify( distr%box )
-   initialized = .false.
-end subroutine iogrid_netcdf_reset
-
 
 #ifdef CDF
 subroutine check(code)

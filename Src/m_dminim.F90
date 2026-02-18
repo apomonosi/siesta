@@ -5,22 +5,16 @@
 !  or http://www.gnu.org/copyleft/gpl.txt .
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
-#include "mpi_macros.f"
 module m_dminim
 
 use fdf,            only : fdf_boolean, fdf_integer, fdf_get, fdf_physical
 use files,          only : slabel
 use parallel,       only : ProcessorY, BlockSize, Node, Nodes
 use precision,      only : dp
-use units,          only : Pi
 use siesta_options, only : fixspin
 use sys,            only : die
 #ifdef MPI
-use mpi_siesta,     only : mpi_integer, mpi_comm_world, mpi_sum
-use mpi_siesta,     only : mpi_double_precision
-use mpi_siesta,     only : mpi_bcast, mpi_send, mpi_recv
-use mpi_siesta,     only : mpi_reduce, mpi_allreduce, mpi_recv
-USE_MPI_ONLY_STATUS
+use mpi_siesta,     only : mpi_integer, mpi_double_precision, mpi_comm_world, mpi_sum, mpi_status_size
 use parallelsubs,   only : GetNodeOrbs, GlobalToLocalOrb, WhichNodeOrb
 use parallelsubs,   only : set_BlockSizeDefault
 #endif
@@ -36,6 +30,8 @@ private
 type multispin
   real(dp), allocatable :: mtrx(:,:)
 end type multispin
+
+real(dp), parameter :: Pi=3.141592653589793238462643383279502884197_dp
 
 logical, save :: LongOut               ! print detailed output?
 logical, save :: UseCholesky           ! use Cholesky factorization?
@@ -74,22 +70,10 @@ type(multispin), save :: c_orig(1:2) ! WF coeffs. matrix (before Cholesky fact.)
 !**** PUBLIC ************************************!
 
 public :: dminim
-public :: reset_dminim_c
 
 !************************************************!
 
 contains
-subroutine reset_dminim_c()
-  FirstCall(1:2)=.true.
-
-  if (allocated(c(1)%mtrx)) deallocate(c(1)%mtrx)
-  if (allocated(c(2)%mtrx)) deallocate(c(2)%mtrx)
-  if (allocated(c_orig(1)%mtrx)) deallocate(c_orig(1)%mtrx)
-  if (allocated(c_orig(2)%mtrx)) deallocate(c_orig(2)%mtrx)
-#ifdef MPI
-  if (allocated(h_dim_l2g)) deallocate(h_dim_l2g)
-#endif
-end subroutine reset_dminim_c
 
 !================================================!
 ! use the orbital minimization method (OMM) to   !
@@ -98,7 +82,7 @@ end subroutine reset_dminim_c
 !================================================!
 subroutine dminim(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,numh,listhptr,listh,d_sparse,eta,qs,h_sparse,&
     s_sparse,t_sparse)
-
+  
   use densematrix, only : psi, allocDenseMatrix, resetDenseMatrix
   implicit none
 
@@ -298,7 +282,7 @@ subroutine dminim(CalcE,PreviousCallDiagon,iscf,istp,nbasis,nspin,h_dim,nhmax,nu
     end if
 
   end if
-
+  
   ! The psi-array *must* be allocated even if it is not accessed when
   ! PreviousCallDiagon is .false. or else compilers might flag as an
   ! error the unallocated 'psi' dummy argument in some of the routines
@@ -467,7 +451,7 @@ subroutine minim_cg(CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,psi,nspin,ispi
   integer, allocatable :: ipiv(:)
 #ifdef MPI
   integer :: liwork
-  MPI_STATUS_TYPE :: mpistatus             ! MPI status
+  integer :: mpi_status(1:mpi_status_size) ! MPI status
   integer, save :: ictxt                   ! handle for main BLACS context (1D or 2D)
   integer, save :: ictxt_1D                ! handle for additional BLACS context (1D)
   integer, save :: ictxt_1D_T              ! handle for additional BLACS context (1D transposed)
@@ -530,7 +514,7 @@ subroutine minim_cg(CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,psi,nspin,ispi
   call timer('m_cg',1)
 
   ! if this is the first time the minimization module is called, several things need to be done
-  ! (detailed below)
+  ! (detailed below)  
   if (FirstCall(ispin)) then
 
 #ifdef MPI
@@ -685,7 +669,7 @@ subroutine minim_cg(CalcE,PreviousCallDiagon,iscf,h_dim,N_occ,eta,psi,nspin,ispi
             call mpi_send(psi(1,m,ispin),h_dim,mpi_double_precision,i,k,mpi_comm_world,info)
           end if
         else if (Node==i) then
-          call mpi_recv(work2(1,1),h_dim,mpi_double_precision,l,k,mpi_comm_world,mpistatus,info)
+          call mpi_recv(work2(1,1),h_dim,mpi_double_precision,l,k,mpi_comm_world,mpi_status,info)
           work1(j,1:h_dim)=work2(1:h_dim,1)
         end if
       end do
@@ -1390,7 +1374,7 @@ subroutine minim_cg_sparse(nhmax,numh,listhptr,listh,CalcE,PreviousCallDiagon,is
   integer, allocatable :: ipiv(:)
 #ifdef MPI
   integer :: liwork
-  MPI_STATUS_TYPE :: mpistatus             ! MPI status
+  integer :: mpi_status(1:mpi_status_size) ! MPI status
   integer, save :: ictxt                   ! handle for main BLACS context (1D)
   integer, save :: nhmax_max
   integer, save :: h_dim_loc_max
@@ -1447,7 +1431,7 @@ subroutine minim_cg_sparse(nhmax,numh,listhptr,listh,CalcE,PreviousCallDiagon,is
   call timer('m_cg',1)
 
   ! if this is the first time the minimization module is called, several things need to be done
-  ! (detailed below)
+  ! (detailed below)  
   if (FirstCall(ispin)) then
 
 #ifdef MPI
@@ -1602,7 +1586,7 @@ subroutine minim_cg_sparse(nhmax,numh,listhptr,listh,CalcE,PreviousCallDiagon,is
             call mpi_send(psi(1,m,ispin),h_dim,mpi_double_precision,i,k,mpi_comm_world,info)
           end if
         else if (Node==i) then
-          call mpi_recv(work2(1,1),h_dim,mpi_double_precision,l,k,mpi_comm_world,mpistatus,info)
+          call mpi_recv(work2(1,1),h_dim,mpi_double_precision,l,k,mpi_comm_world,mpi_status,info)
           c(ispin)%mtrx(j,1:h_dim)=work2(1:h_dim,1)
         end if
       end do

@@ -15,7 +15,6 @@ C This program generates .ion/.ion.xml (optionally .ion.nc) files readable
 C by SIESTA
 C
       use fdf
-      use units, only: inquire_unit
 
       use basis_types, only: nsp, basis_specs_transfer, initialize
       use basis_types, only: iz, lmxkb, nkbl, 
@@ -74,7 +73,6 @@ c Reading input for the pseudopotentials and atomic orbitals
       end if
       
       call fdf_init(filein,'gen-basis_fdf.log')
-      call fdf_set_unit_handler(inquire_unit)
       
       call get_atom_options()
       write_ion_plot_files = .true. ! get them always
@@ -97,7 +95,6 @@ c Reading input for the pseudopotentials and atomic orbitals
 !     Get the parameters for the generation of the DFT+U projectors
       call read_dftu_specs()
 
-      nspecies = nsp
       call setup_atom_tables(nsp)
 
       do is = 1,nsp
@@ -106,7 +103,7 @@ c Reading input for the pseudopotentials and atomic orbitals
         spp => species(is)
         call atom_main( iz(is), lmxkb(is),
      $      nkbl(0:,is), erefkb(1:,0:,is),lmxo(is),
-     $      nprin(0:,1,is), nzeta(0:,1:,is), rco(1:,0:,1:,is), 
+     $      nzeta(0:,1:,is), nprin(0:,1,is), rco(1:,0:,1:,is), 
      $      lambda(1:,0:,1:,is), atm_label(is),
      $      polorb(0:,1:,is), semic(is), nsemic(0:,is),
      $      cnfigmx(0:,is),charge(is),
@@ -129,6 +126,7 @@ c Reading input for the pseudopotentials and atomic orbitals
       call populate_species_info_dftu()
 
       call remove_atom_tables()
+      nspecies = nsp
       call dump_basis_ascii()
       call dump_basis_netcdf()
       call dump_basis_xml()

@@ -5,7 +5,6 @@
 ! data arrays.
 
 ! Fully created by Nick Papior Andersen, 2014
-#include "mpi_macros.f"
 
 module m_sparsity_handling
 
@@ -689,9 +688,8 @@ contains
     integer :: lio, io, no_l, no_u, n_nzs, n_nzsg, Bn, ind, lind
     integer, pointer :: l_ncol(:), l_ptr(:), l_col(:)
     integer, allocatable :: ncol(:), n_ptr(:), col(:)
-    integer :: Node
+    integer :: Node, comm
 #ifdef MPI
-    MPI_COMM_TYPE :: comm
     integer :: MPIerror
 #endif
 

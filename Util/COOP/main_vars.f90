@@ -13,7 +13,7 @@ module main_vars
 
   implicit none
 
-  public
+  public 
 
   integer :: h_spin_dim
   integer :: ierr, klb, it, is, k, nw
@@ -38,12 +38,14 @@ module main_vars
   real(dp) :: minimum_spec_energy = -huge(1.0_dp)
   real(dp) :: maximum_spec_energy = huge(1.0_dp)
 
-  real(dp)            ::  smear = 0.5        ! Units of energy are eV
+  real(dp)            ::  smear = 0.5        ! Units of energy are eV 
   integer             ::  npts_energy = 200
 
   integer :: nshmx
+  integer, parameter :: ncbmx=20
+  integer, parameter :: nlwmx=30
 
-  character :: sflnm*50, taux*100, cx*20
+  character :: sflnm*50, taux*100, wrd(nlwmx)*20, cx*20
   integer :: mpr_u=50, wk_u=51
   integer :: out_u=70, wfs_u=72, hs_u=73
   integer :: stt_u=60, tab_u=61, fat_u=66
@@ -61,7 +63,7 @@ module main_vars
   real(dp), allocatable ::   intdos(:), intebs(:)
 
   ! HS file
-  integer, allocatable :: numh(:), listhptr(:), listh(:)
+  integer, allocatable :: numh(:), listhptr(:), listh(:)  
   integer, allocatable :: indxuo(:)
   real(dp),    allocatable :: hamilt(:,:), Sover(:), xij(:,:), dij(:)
 
@@ -69,12 +71,11 @@ module main_vars
   real(SP),    allocatable :: wf_single(:,:)       ! Note single precision
   real(DP),    allocatable :: wf(:,:)              ! Note double precision
   ! MPR file
-  character :: what*4
+  character :: what*4, tit(ncbmx)*30
   logical   :: dos, coop
-  character(len=30), allocatable :: tit(:)
-  real(dp), allocatable :: dtc(:,:)
+  real(dp)  :: dtc(ncbmx,2)
 
-  integer, allocatable :: noc(:,:)
+  integer              :: noc(ncbmx,2)
   integer, allocatable :: koc(:,:,:)
   logical, allocatable :: orb_mask(:,:,:)
 
@@ -89,7 +90,7 @@ module main_vars
   integer  :: idummy
   !
   character(len=200) :: opt_arg, mflnm, ref_line
-  character(len=10)  :: opt_name
+  character(len=10)  :: opt_name 
   integer :: nargs, iostat, n_opts, nlabels, iorb, ikb
   integer :: nkb, nkp_wfs
 

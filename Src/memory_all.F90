@@ -1,12 +1,10 @@
-#include "mpi_macros.f"
-
 subroutine memory_all(str,comm)
   use m_rusage, only :  rss_max
 #ifdef MPI  
   use mpi_siesta
 #endif
   character(len=*), intent(in) :: str
-  MPI_COMM_TYPE, intent(in)   :: comm
+  integer, intent(in)          :: comm
 
   integer :: mpierror
   real    :: mem(2), tmem(2)

@@ -10,7 +10,7 @@ MODULE siesta_geom
   implicit none
 
   save
-
+  
   ! Number of atoms in supercell, unit cell
   integer                         :: na_s, na_u
 
@@ -21,13 +21,8 @@ MODULE siesta_geom
   ! Shape of the system
   character(len=10)               :: shape
 
-  ! Periodic directions in system
-  ! This may seemingly be equivalent to nsc, but it not be
-  ! in case of Gamma-calculations without auxiliary cells.
-  logical :: cell_periodic(3) = .false.
-
   ! Unit cell volume  (dangerous: the old code might have a BUG,
-  ! as the volume is printed at the end
+  ! as the volume is printed at the end 
   ! without being updated for the final cell change, and used in
   ! the calculation of Pmol in write_subs.
 
@@ -37,7 +32,7 @@ MODULE siesta_geom
   integer :: nsc(3) = 1
   !> The supercell offsets for the equivalent indices (size: `3, product(nsc)`)
   integer, pointer :: isc_off(:,:) => null()
-
+   
   !> Previous geometry diagonal elements of supercell
   integer :: nsc_old(3) = 0
 
@@ -58,23 +53,8 @@ MODULE siesta_geom
   ! character cisa(na)        : Reference string for each atom
   ! NB cisa is this length in order to contain "siesta:e<isa>"
   ! where isa is the siesta element index, and we allow max 999
-  ! such indices
+  ! such indices 
   integer,  pointer               :: isa(:)
-  character(len=11), pointer      :: cisa(:)
-
-  public :: siesta_geom_reset
-
-contains
-  subroutine siesta_geom_reset()
-    use alloc, only : de_alloc
-    implicit none
-
-    call de_alloc( isc_off )
-    call de_alloc( xa, 'xa', 'coor' )
-    call de_alloc( va, 'va', 'struct_init' )
-    call de_alloc( xa_last, 'xa_last', 'atomlist' )
-    call de_alloc( isa, 'isa', 'atomlist' )
-    if ( associated(cisa) ) deallocate( cisa )
-  end subroutine siesta_geom_reset
+  character(len=11), pointer      :: cisa(:) 
 
 END MODULE siesta_geom

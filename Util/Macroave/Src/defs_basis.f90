@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -35,9 +35,6 @@
 !! SOURCE
 
  module defs_basis
- use precision, only : dp
- use units, only : pi, eV, Ang, Joule, h_planck, c_light, Kelvin, amu, &
-                   kg, hbar
 
  implicit none
 
@@ -58,8 +55,9 @@
 
 !nb of bytes related to default double-precision real/complex subtypes
 !(= 8 for many machine architectures)
- integer, parameter :: dpc=kind((1.0_dp,1.0_dp))
-   !! Complex should not be used presently except for use of libraries
+ integer, parameter :: dp=kind(1.0d0)
+ integer, parameter :: dpc=kind((1.0d0,1.0d0))  ! Complex should not be used presently
+                                                ! except for use of libraries
 
 !Example:
 ! integer, parameter :: urp=selected_real_kind((p=)12,(r=)50)
@@ -74,23 +72,24 @@
  integer, parameter :: lgt=kind(.true.)
 
 !The default lengths
- integer, parameter :: fnlen=132
-   !! maximum length of file name variables
- integer, parameter :: strlen=32000
-   !! maximum length of input string
+ integer, parameter :: fnlen=132    ! maximum length of file name variables
+ integer, parameter :: strlen=32000 ! maximum length of input string
 
 !Some constants:
  integer, parameter :: integer_not_used=0
  logical, parameter :: logical_not_used=.true.
 
-!UNIX unit numbers : standard input, standard output, ab_out, and
-! a number for temporary access to a file.
- integer, parameter :: std_in=5,ab_in=5
-   !! generally, the number 5 is directly used
- integer, parameter :: std_out=6
-   !! generally, the number 6 is directly used
- integer, parameter :: ab_out=7
+!UNIX unit numbers : standard input, standard output, ab_out, and a number
+!for temporary access to a file.
+ integer, parameter :: std_in=5,ab_in=5  ! generally, the number 5 is directly used
+ integer, parameter :: std_out=6         ! generally, the number 6 is directly used
+ integer, parameter :: ab_out=7         
  integer, parameter :: tmp_unit=9,tmp_unit2=10
+
+!The 3x3 identity matrix
+!WARNING : this seem not to work ?!
+! integer, dimension(3,3), parameter :: &
+!& identity3by3=reshape((/1,0,0,0,1,0,0,0,1/),(/3,3/))
 
 !Real constants
  real(dp), parameter :: zero=0._dp
@@ -119,9 +118,18 @@
  real(dp), parameter :: three_quarters=0.75_dp
 
 !Real constants derived from pi
-real(dp), parameter :: two_pi=two*pi
-real(dp), parameter :: four_pi=four*pi
-real(dp), parameter :: piinv=one/pi
+ real(dp), parameter :: pi=3.141592653589793238462643383279502884197_dp
+ real(dp), parameter :: two_pi=two*pi
+ real(dp), parameter :: four_pi=four*pi
+ real(dp), parameter :: piinv=one/pi
+!The following are not used
+!real(dp), parameter :: rad_to_deg=180._dp/pi
+!real(dp), parameter :: deg_to_rad=one/rad_to_deg
+!real(dp), parameter :: half_pi=pi*half
+!real(dp), parameter :: third_pi=pi*third
+!real(dp), parameter :: quarter_pi=pi*quarter
+!real(dp), parameter :: two_thirds_pi=two_thirds*pi
+
 
 !Real precision
  real(dp), parameter :: smallest_positive_real = epsilon(one)
@@ -134,34 +142,25 @@ real(dp), parameter :: piinv=one/pi
  real(dp), parameter :: tol12=0.000000000001_dp
  real(dp), parameter :: tol14=0.00000000000001_dp
 
-!Real physical constants
+!Real physical constants 
 !Revised fundamental constants from Physics Today August 2001 p.8.
 !(from 1998 least squares adjustment)
- real(dp), parameter :: Bohr_Ang = 1.0_dp / Ang
-   !! 1 Bohr, in Angstrom
- real(dp), parameter :: Ha_eV    = 2.0_dp / eV
-   !! 1 Hartree, in eV
- real(dp), parameter :: Ha_THz   = 2000.0_dp / h_planck
-   !! 1 Hartree, in THz
- real(dp), parameter :: Ha_cmm1  = 1.0e10_dp * Ha_THz / c_light
-    !! 1 Hartree, in cm^-1
- real(dp), parameter :: e_Cb     = eV / Joule
-   !! minus the electron charge, in Coulomb
- real(dp), parameter :: kb_HaK   = ( Kelvin / eV ) / Ha_eV
-   !! Boltzmann constant in Ha/K
- real(dp), parameter :: amu_emass = ( amu / kg ) * (2.0_dp * Joule) / &
-                                  (hbar * hbar * Ang * Ang * 1.0e-10_dp)
-   !! 1 atomic mass unit, in electronic mass
- real(dp), parameter :: HaBohr3_GPa = Ha_eV / Bohr_Ang**3 * e_Cb &
-                        * 1.0e21_dp
-   !! 1 Ha/Bohr^3, in GPa
- real(dp), parameter :: Avogadro = 1.0e-3_dp * kg / amu
-   !! per mol
- real(dp), parameter :: Ohmcm = two * pi * Ha_THz * ninth * ten
-   !! This value is 1 Ohm.cm in atomic units
+ real(dp), parameter :: Bohr_Ang=0.5291772083_dp    ! 1 Bohr, in Angstrom
+ real(dp), parameter :: Ha_cmm1=219474.6313710_dp  ! 1 Hartree, in cm^-1 
+ real(dp), parameter :: Ha_eV=27.2113834_dp ! 1 Hartree, in eV
+ real(dp), parameter :: Ha_THz=6579.683920735_dp ! 1 Hartree, in THz
+ real(dp), parameter :: e_Cb=1.602176462d-19 ! minus the electron charge, in Coulomb
+ real(dp), parameter :: kb_HaK=8.617342d-5/Ha_eV ! Boltzmann constant in Ha/K
+ real(dp), parameter :: amu_emass=1.66053873d-27/9.10938188d-31 ! 1 atomic mass unit, in electronic mass
+!This value is 1Ha/bohr^3 in 1d9 J/m^3 
+!real(dp), parameter :: HaBohr3_GPa=29421.033_dp ! 1 Ha/Bohr^3, in GPa
+ real(dp), parameter :: HaBohr3_GPa=Ha_eV/Bohr_Ang**3*e_Cb*1.0d+21 ! 1 Ha/Bohr^3, in GPa
+ real(dp), parameter :: Avogadro=6.02214199d23 ! per mole
+!This value is 1 Ohm.cm in atomic units
+ real(dp), parameter :: Ohmcm=two*pi*Ha_THz*ninth*ten
 
+!Character constants
  character*1, parameter :: ch10 = char(10)
-   !! Character constants
 
  end module defs_basis
 !!***

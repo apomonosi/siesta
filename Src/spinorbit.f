@@ -8,10 +8,10 @@
 
 C *********************************************************************
 C
-C SPIN-ORBIT INTERACTION ---  ON-SITE APPROXIMATION
+C SPIN-ORBIT INTERACTION ---  ON-SITE APPROXIMATION 
 C
 C The spin-orbit hamiltonian has the form:
-C
+C 
 C                        | Lz             Lx - i Ly |
 C  <i|HSO|j> = <i| V(r)  |                          | |j>
 C                        | Lx + i Ly      - Lz      |
@@ -21,7 +21,7 @@ C  <i|HSO|j> = 0.5 M(li) |                                                    |
 C                        | -L2(li,mi,mj)-i*L3(li,mi,mj)       -i*L1(li,mi,mj) |
 C
 C where M(li) is the radial part, and Li(li,mi,mj) are the radial bits
-C
+C 
 C Hence,  <i|Lz|j> =  i L1
 C         <i|Lx|j> = -i L3
 C         <i|Ly|j> =  i L2
@@ -53,26 +53,15 @@ C
 
       logical, save  :: vso_setup = .false.
 
-      integer, pointer, save   :: nr(:) => null()
-      real(dp), pointer, save  :: vso(:,:,:) => null()
-      real(dp), pointer, save  :: r(:,:) => null()
-      real(dp), pointer, save  :: drdi(:,:) => null()
+      integer, pointer, save   :: nr(:)
+      real(dp), pointer, save  :: vso(:,:,:)
+      real(dp), pointer, save  :: r(:,:)
+      real(dp), pointer, save  :: drdi(:,:)
 
-      public :: spinorb, int_so_ang, spinorbit_reset
+      public :: spinorb, int_so_ang
       private
 
       CONTAINS
-
-      subroutine spinorbit_reset()
-        use alloc, only : de_alloc
-
-        call de_alloc(nr, 'nr', 'spinorbit')
-        call de_alloc(vso, 'vso', 'spinorbit')
-        call de_alloc(r, 'r', 'spinorbit')
-        call de_alloc(drdi, 'drdi', 'spinorbit')
-        vso_setup = .false.
-
-      end subroutine spinorbit_reset
 
       subroutine init_vso()
 
@@ -83,15 +72,13 @@ C
       use atmparams,       only: lmaxd
       use parallel,        only: Node
       use m_mpi_utils,     only: broadcast
-      use alloc,           only: re_alloc
 
       integer  :: is, mx_nrval, li, ir, iup
       real(dp) :: a, b, rpb, ea
       logical  :: there_are_so_potentials
       type(pseudopotential_t), pointer :: p
 
-      nullify(nr, vso, r, drdi)
-      call re_alloc(nr, 1, nspecies, 'nr', 'spinorbit')
+      allocate(nr(nspecies))
       mx_nrval = 0
       if (Node .eq. 0) then
          do is = 1, nspecies
@@ -105,11 +92,9 @@ C
 
       call broadcast(mx_nrval)
       call broadcast(nr)
-      call re_alloc( vso, 1, mx_nrval, 1, lmaxd, 1, nspecies, 'vso',
-     &               'spinorbit' )
-      call re_alloc( r, 1, mx_nrval, 1, nspecies, 'r', 'spinorbit' )
-      call re_alloc( drdi, 1, mx_nrval, 1, nspecies, 'drdi',
-     &               'spinorbit' )
+      allocate(vso(mx_nrval,1:lmaxd,nspecies))
+      allocate(r(mx_nrval,nspecies))
+      allocate(drdi(mx_nrval,nspecies))
 
       vso = 0.0_dp
       r   = 0.0_dp
@@ -134,7 +119,7 @@ C
                vso(1:nr(is),:,is) = 0.0_dp
             endif
             r(1:nr(is),is) = p%r(:)
-            a = p%a
+            a = p%a      
             b = p%b
             rpb=b
             ea=exp(a)
@@ -152,14 +137,14 @@ C
       call broadcast(vso)
       call broadcast(r)
       call broadcast(drdi)
-
+      
       end subroutine init_vso
 
 !------------------------------------------------
 
       subroutine spinorb(no_u,no_l,iaorb,iphorb,isa,indxuo,
      $                   maxnh,numh,listhptr,listh,Dscf,H,Eso)
-     $
+     $                   
 C *********************************************************************
 C Spin-orbit contributions to matrix elements.
 C Energies in Ry. Lengths in Bohr.
@@ -201,7 +186,7 @@ C Arguments
 
 C Internal variables
 
-      integer  ::  ia, ja, ioa, is, joa, j, ind,
+      integer  ::  ia, ja, ioa, is, joa, j, ind, 
      .             li, lj, mi, mj
       integer  ::  io_l, io_u, jo_s, jo_u, ih
 
@@ -247,7 +232,7 @@ C Internal variables
             if (li /= lj) CYCLE ! Different l
             mj=mofio(is,joa)
             if (mi == mj) CYCLE ! Same m
-
+            
             call int_so_rad(is, li, joa, ioa, int_rad)
             call int_so_ang(li, mj, mi, int_ang(:))
             Hso_ji(:) = int_rad * int_ang(:)
@@ -269,7 +254,7 @@ C Internal variables
       ! Globalzie Eso
       call globalize_sum(Eso, buffer)
       Eso = buffer
-
+      
       call timer( 'spinorb', 2 )
       end subroutine spinorb
 
@@ -277,7 +262,7 @@ C Internal variables
 C *********************************************************************
 C
 C Subroutine to calculate the spin-orbit angular integral
-C Calculates L1(li,mi,mj), L2(li,mi,mj) and L3(li,mi,,mj)
+C Calculates L1(li,mi,mj), L2(li,mi,mj) and L3(li,mi,,mj) 
 C
 C *********************************************************************
 
@@ -285,12 +270,16 @@ C *********************************************************************
 
       implicit none
 
-      integer, intent(in) :: li, mi, mj
+      integer, intent(in)  :: li, mi, mj
       real(dp),intent(out) :: L(3)
 
-      real(dp) :: La, Lb, Lc
+      real(dp) ::  La, Lb, Lc
+      real(dp), parameter :: one = 1._dp, two = 2._dp
+      real(dp), parameter :: six = 6._dp
 
-      L(1:3) = 0.0_dp
+
+
+      L(1:3)= 0.0_dp
 
       La = sqrt(li*(li+1._dp)/2._dp)
       Lb = sqrt(li*(li+1._dp)-2._dp)/2._dp

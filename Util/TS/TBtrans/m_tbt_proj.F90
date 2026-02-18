@@ -10,7 +10,6 @@
 ! Nick Papior, 2014
 !
 ! Please attribute the original author in case of dublication
-#include "mpi_macros.f"
 
 module m_tbt_proj
 
@@ -416,7 +415,7 @@ contains
     ! Open the netcdf file
     if ( save_parallel ) then
       call ncdf_open(ncdf,fname, mode=ior(NF90_WRITE,NF90_MPIIO), &
-          comm = MPI_COMM_ID(MPI_COMM_WORLD) )
+          comm = MPI_COMM_WORLD )
     else
       call ncdf_open(ncdf,fname, mode=NF90_WRITE)
     end if
@@ -651,7 +650,7 @@ contains
     type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(dictionary_t), intent(inout) :: save_DATA
 
-    character(len=100) :: char, char2
+    character(len=100) :: char
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline
     integer :: ipt, ip, iE_p, im_p, ip_p, iE_c, im_c, ip_c, it
@@ -741,11 +740,11 @@ contains
 
         ! Skip empty lines
         if ( fdf_bnnames(pline) == 0 ) cycle
-        char2 = fdf_bnames(pline,1)
-        if ( leqi(char2,'end') ) exit
+        char = fdf_bnames(pline,1)
+        if ( leqi(char,'end') ) exit
 
         ! 2 This corresponds to all the projections on Gamma_R
-        call parse_T(N_Elec,Elecs,N_mol,mols,char2,iE_c,im_c,ip_c)
+        call parse_T(N_Elec,Elecs,N_mol,mols,char,iE_c,im_c,ip_c)
 
         ! we do not allow pure projections (i.e. no projectinos)
         if ( ip_p == 0 .and. ip_c == 0 ) cycle
@@ -776,11 +775,6 @@ contains
             end if
           end if
 
-        else if ( Node == 0 ) then
-          if ( .not. any_skipped ) write(*,*) ! newline
-          any_skipped = .true.
-          write(*,'(5a)')'tbt: Projection " ',trim(char), " -> ", &
-              trim(char2), '" has been silently rejected.'
         end if
         
       end do
@@ -861,15 +855,6 @@ contains
     call fdf_brewind(bfdf)
 
     if ( N_proj_T == 0 .or. N_proj_ME == 0 ) then
-
-      if ( Node == 0 .and. any_skipped ) then
-        write(*,'(a)') 'tbt: Certain projections have been skipped'
-        write(*,'(a)') 'tbt: Often this is a result of projection from the last electrode (missing Projs.T.All flag)'
-        write(*,'(a)') 'tbt: or because of reflection projections (missing Projs.T.Out flag)'
-        write(*,'(a)') 'tbt: Check manual for allowing all projections'
-        write(*,'(a)') 'tbt:  manual for allowing all projections'
-      end if
-
       call die('The projection block was ill-formatted &
           &or all projections has been rejected. Check input.')
     end if
@@ -1076,10 +1061,7 @@ contains
 
     if ( Node == 0 .and. any_skipped ) then
       write(*,'(a)') 'tbt: Certain projections have been skipped'
-      write(*,'(a)') 'tbt: Often this is a result of projection from the last electrode (missing Projs.T.All flag)'
-      write(*,'(a)') 'tbt: or because of reflection projections (missing Projs.T.Out flag)'
       write(*,'(a)') 'tbt: Check manual for allowing all projections'
-      write(*,'(a)') 'tbt:  manual for allowing all projections'
     end if
 
   contains
@@ -1288,11 +1270,10 @@ contains
     use m_timestamp, only : datestring
 #ifdef MPI
     use mpi_siesta, only: MPI_Bcast, MPI_Logical, MPI_Comm_World
-    use mpi_siesta, only: MPI_Send, MPI_Recv
+    use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Status_Size
     use mpi_siesta, only: MPI_Double_Precision, MPI_Double_Complex
     use mpi_siesta, only: MPI_Comm_Self, MPI_Integer
     use mpi_siesta, only: MPI_Barrier
-    USE_MPI_ONLY_STATUS
 #endif
     use m_tbt_hs, only : tTSHS
     use m_tbt_diag
@@ -1337,8 +1318,7 @@ contains
     character(len=*), parameter :: COHP_unit = 'Ry/Ry'
 #endif
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     ! There is nothing to initialize
@@ -2261,9 +2241,8 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD, MPI_Gather
     use mpi_siesta, only : MPI_Send, MPI_Recv, MPI_DOUBLE_COMPLEX
-    use mpi_siesta, only : MPI_Integer
+    use mpi_siesta, only : MPI_Integer, MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
-    USE_MPI_ONLY_STATUS
 #endif
     use ts_electrode_m
 
@@ -2289,8 +2268,7 @@ contains
 #ifdef MPI
     real(dp), allocatable, target :: thisDOS(:)
     real(dp), allocatable :: rT(:,:)
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
 
     ! Grab size of arrays
@@ -2441,8 +2419,8 @@ contains
 #ifdef MPI
     use mpi_siesta, only : MPI_COMM_WORLD
     use mpi_siesta, only : MPI_Send, MPI_Recv
+    use mpi_siesta, only : MPI_STATUS_SIZE
     use mpi_siesta, only : Mpi_double_precision
-    USE_MPI_ONLY_STATUS
 #endif
     use ts_electrode_m
 
@@ -2458,8 +2436,7 @@ contains
     real(dp), pointer :: D(:)
 #ifdef MPI
     integer :: iN
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
     
     D => val(sp_dev)
@@ -2586,8 +2563,8 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Get_Count
+    use mpi_siesta, only: MPI_STATUS_SIZE
     use mpi_siesta, only: MPI_Double_Complex, MPI_Comm_World
-    USE_MPI_ONLY_STATUS
 #endif
 
     character(len=*), intent(in) :: fname
@@ -2610,8 +2587,7 @@ contains
     integer :: i, io, lio, ind, j, ip
 
 #ifdef MPI
-    integer :: MPIerror
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, status(MPI_STATUS_SIZE)
 #endif
     
     ! Assert nwork to be of good size
@@ -2814,11 +2790,9 @@ contains
     use netcdf_ncdf, ncdf_parallel => parallel
 #ifdef MPI
     use mpi_siesta, only: MPI_Send, MPI_Recv, MPI_Get_Count
-    use mpi_siesta, only: MPI_STATUSES_IGNORE, MPI_ISend
-    use mpi_siesta, only: MPI_REQUEST_NULL, MPI_WaitAll
+    use mpi_siesta, only: MPI_STATUS_SIZE, MPI_STATUSES_IGNORE
+    use mpi_siesta, only: MPI_REQUEST_NULL
     use mpi_siesta, only: MPI_Double_Complex, MPI_Comm_World
-    USE_MPI_ONLY_STATUS
-    USE_MPI_ONLY_REQUEST
 #endif
 
     type(hNCDF), intent(inout) :: ncdf
@@ -2833,10 +2807,9 @@ contains
     character(len=NF90_MAX_NAME) :: cmol, ctmp
     integer :: idx(4), cnt(4)
 #ifdef MPI
-    MPI_REQUEST_TYPE :: reqs(N_proj_ME)
+    integer :: reqs(N_proj_ME)
     complex(dp), allocatable :: tmp(:)
-    integer :: MPIerror, iN
-    MPI_STATUS_TYPE :: status
+    integer :: MPIerror, Status(MPI_STATUS_SIZE), iN
 #endif
 
     cmol  = ' '
@@ -2941,7 +2914,7 @@ contains
                 start = (/1,1,nE%iE(iN),ikpt/) )
           end do
         else if ( nE%iE(Node) > 0 ) then
-          call MPI_ISend(proj_ME(iE)%bGk(1,1),nl*nl,Mpi_double_complex, &
+          call MPI_ISend(proj_ME(iE)%bGk,nl*nl,Mpi_double_complex, &
               0, Node, Mpi_comm_world,reqs(iE),MPIerror)
         end if
 #endif
@@ -2950,7 +2923,7 @@ contains
 
 #ifdef MPI
       if ( Node /= 0 ) then
-        call MPI_WaitAll(N_proj_ME,reqs,MPI_STATUSES_IGNORE,MPIerror)
+        call MPI_WaitAll(N_proj_ME,reqs(1),MPI_STATUSES_IGNORE,MPIerror)
       end if
       deallocate(tmp)
 #endif

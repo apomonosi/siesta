@@ -1,12 +1,12 @@
       MODULE m_iotddft
 
-!     This module has different subroutines to write the total
+!     This module has different subroutines to write the total 
 !     E_KS, the instantaneous so-called Eigen values and dipole moment
-!     at every time step and time-dependent density (rho) after every
-!     given number of steps in case of TDDFT calculations depending
+!     at every time step and time-dependent density (rho) after every 
+!     given number of steps in case of TDDFT calculations depending 
 !     on the user's choice.
-!     Based on the modified version of Daniel Sanchez Portal's
-!     original  subroutines.
+!     Based on the modified version of Daniel Sanchez Portal's 
+!     original  subroutines. 
 !     Rafi Ullah November 2014.
 !
 
@@ -34,21 +34,21 @@
 
       INTEGER, INTENT(IN)           :: istp, itd, ntd, maxo, nk, nspin
       DOUBLE PRECISION, INTENT(IN)  :: totime, rstart_time, etot
-      DOUBLE PRECISION, INTENT(IN)  :: eigen(maxo,nspin,nk)
+      DOUBLE PRECISION, INTENT(IN)  :: eigen(maxo,nspin,nk) 
       LOGICAL, SAVE                 :: laststp = .false.
-
+      
       IF (istp .ge. fincoor .AND. itd .ge. ntd) THEN
          laststp = .true.
       END IF
-
+      
       IF (dip_time) THEN
       CALL iodipole (totime, dipol, laststp, rstart_time)
-      END IF
-
+      END IF 
+      
       IF (etot_time) THEN
       CALL ioetot   (totime, etot, laststp, rstart_time)
       END IF
-
+      
       IF (eigen_time) THEN
       CALL ioeigenvalues (totime, eigen, laststp, rstart_time, &
                                  maxo, nspin, nk)
@@ -58,9 +58,9 @@
       END SUBROUTINE write_tddft
 !----------------------------------------------------------------
       SUBROUTINE write_tdrho (filesOut)
-
+      
       TYPE(filesOut_t), INTENT(INOUT)      :: filesOut
-
+  
       IF (tdsaverho) THEN
          IF (mod(istp,ntdsaverho) .eq. 0) THEN
             write(filesOut%tdrho,"(i0,a)") istp, '.TDRho'
@@ -68,12 +68,12 @@
           filesOut%tdrho = ' '
         END IF
       END IF
-
+      
       END SUBROUTINE write_tdrho
 
       SUBROUTINE  iodipole (totime, dipole,lastistp,rstart_time)
-
-
+       
+       
        CHARACTER(LEN=70 ) :: dipolefile
        DOUBLE PRECISION   :: dipole(3), extfield(3), totime, rstart_time
        INTEGER, SAVE      :: iu
@@ -95,19 +95,19 @@
           totime,                                                      &
           dipole(1),dipole(2), dipole(3)
        IF (lastistp) call io_close(iu)
-
+        
        END IF ! IONode
       END SUBROUTINE iodipole
 !----------------------------------------------------------------------
       SUBROUTINE ioetot (totime, etot, lastistp, rstart_time)
-
+        
        DOUBLE PRECISION         ::totime, etot, rstart_time
        INTEGER                  :: iu, istp, itd, ntd
        LOGICAL                  :: lastistp
-       LOGICAL, SAVE            :: frstme = .true.
+       LOGICAL, SAVE            :: frstme = .true. 
        SAVE                     :: iu
        CHARACTER(LEN=70)        :: etotfile
-
+        
         IF(IONode) THEN
 
         IF (frstme) THEN
@@ -126,7 +126,7 @@
 SUBROUTINE ioeigenvalues (totime, eigen, lastistp, rstart_time, &
                            maxo, nspin, nk)
 
- INTEGER            :: maxo, nspin, nk, ik, ispin, ie, dtot
+ INTEGER            :: maxo, nspin, nk, ik, ispin, ie
  INTEGER            :: nocc(nk,nspin)
  INTEGER, SAVE      :: iu
  DOUBLE PRECISION   :: totime, rstart_time
@@ -135,7 +135,7 @@ SUBROUTINE ioeigenvalues (totime, eigen, lastistp, rstart_time, &
  LOGICAL, SAVE      :: frstme = .true.
  CHARACTER(LEN=70)  :: eigenfile
 
- IF (IONode) THEN
+ IF (IONode) THEN 
    IF (frstme) THEN
      eigenfile = trim(slabel) // '.TDEIG'
      fform = 'formatted'
@@ -147,23 +147,12 @@ SUBROUTINE ioeigenvalues (totime, eigen, lastistp, rstart_time, &
    END IF
      WRITE(iu,"(f12.8,/)") totime
      DO ik = 1, nk
-       dtot = 0
-       do ispin = 1, nspin
-         dtot = dtot + wavef_ms(ik,ispin)%dim2
-       enddo
-
-       IF ( dtot == 10 ) then
-        WRITE(iu,"(i5,10f12.5)")               &
-            ik, ((eigen(ie,ispin,ik)/eV,ie=1,(wavef_ms(ik,ispin)%dim2)), &
+       WRITE(iu,"(i5,10f12.5,/,(5x,10f12.5))")               &
+            ik, ((eigen(ie,ispin,ik)/eV,ie=1,(wavef_ms(ik,ispin)%dim2)),      &
             ispin=1,nspin)
-       ELSE
-         WRITE(iu,"(i5,10f12.5,/,(5x,10f12.5))")               &
-            ik, ((eigen(ie,ispin,ik)/eV,ie=1,(wavef_ms(ik,ispin)%dim2)), &
-            ispin=1,nspin)
-       ENDIF
      END DO
    IF (lastistp) call io_close(iu)
   END IF ! IONode
-END SUBROUTINE ioeigenvalues
+END SUBROUTINE ioeigenvalues 
 
        END MODULE m_iotddft

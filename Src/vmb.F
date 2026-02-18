@@ -136,7 +136,7 @@ C call to constrains routine)
       if (nat .le. 1) return
 
 C Correct velocity to exact temperature .....................
-      call temp(Nat,mass,va,ntcon,tempe)
+      call temp(2,Nat,mass,va,ntcon,tempe)
 
       if (abs(tempe-ttemp) .ge. 1.e-4 .and. tempe .ge. 1.e-4) then
         do i = 1,Nat
@@ -173,7 +173,6 @@ C real*8  velo             : Velocity component
 C *************************************************************************
 
       use precision
-      use units, only: amu, Kelvin
 
       implicit none
 
@@ -198,19 +197,10 @@ C ...........
 C  For other distributions med may be different from cero.
       med = 0.0
       pi = acos(-1.0d0)
-#ifdef SIESTA__UNITS_ORIGINAL
       var = sqrt(temp/mass)
-C     conversion factor to bohr/fs
+C  conversion factor to bohr/fs
       var = var * 0.00172309d0
-#else
-      ! NOTE: The above number seems to be sqrt(Kelvin/amu) The amu in Siesta
-      ! is renormalized to account for the different time unit. But in
-      ! any case, sqrt(Kelvin/amu) should be 0.00172313 using the
-      ! 'original' units.
-
-      ! So better to write:
-      var = sqrt(temp*Kelvin/(mass*amu))
-#endif
+ 
       arg1 = sqrt((-2.) * log(randomg(iseed)))
 
       arg2 = 2.0d0 * pi * randomg(iseed)
@@ -223,7 +213,7 @@ C     conversion factor to bohr/fs
 
 
 
-      subroutine temp(natoms,ma,va,ntcon,tempe)
+      subroutine temp(iunit,natoms,ma,va,ntcon,tempe)
 C *************************************************************************
 C Subroutine to calculate instantaneous temperature
 C
@@ -231,9 +221,15 @@ C Written by P.Ordejon, November'97
 C ************************* UNITS ******************************************
 C Temperature in Kelvin
 C Atomic masses in atomic mass units
-C Distances are in Bohr
-
+C
+C Space units depend on input option:
+C
+C   Option iunit = 1:
+C     Distances are in Angstrom
+C   Option iunit = 2:
+C     Distances are in Bohr
 C ************************* INPUT *********************************************
+C integer iunit         : Units option: 1 or 2 (see UNITS above)
 C integer natoms        : Number of atoms in the simulation cell
 C real*8 ma(natoms)     : Atomic masses 
 C real*8 va(3,natoms)   : Atomic velocities 
@@ -243,13 +239,12 @@ C real*8 tempe          : Instantaneous system temperature
 C *****************************************************************************
 
       use precision, only : dp
-      use units, only: eV, Ang, amu, Kelvin
       use sys,       only : die
 
       implicit none
 
       integer 
-     .   natoms, ntcon
+     .   natoms,iunit,ntcon
 
       real(dp)
      .  ma(natoms),tempe,va(3,natoms)
@@ -260,19 +255,27 @@ C Internal variables ..........................................................
      .  i,ia
 
       real(dp)
-     .  fovermp,kin
+     .  Ang,eV,fovermp,kin
 
 C ........................
 
+      if (iunit .ne. 1 .and. iunit .ne. 2)
+     $     call die('temp: Wrong iunit option;  must be 1 or 2')
+
 C Define constants and conversion factors .....................................
 
-#ifdef SIESTA__UNITS_ORIGINAL
+      Ang = 1.0d0 / 0.529177d0
+      eV  = 1.0d0 / 13.60580d0
+
+      if (iunit .eq. 1) then
+C  convert F/m in (eV/Amstrong)/amu  to  Amstrong/fs**2
+        fovermp = 0.009579038d0
+      else
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-      fovermp = 0.009579038d0 *Ang**2 / eV
-#else
-! The default units of Siesta are Bohr and fs, so no conversion needed
-      fovermp = 1._dp / amu
-#endif
+        fovermp = 0.009579038d0 *Ang**2 / eV
+      endif
+
+C ........................
 
 C Calculate kinetic energy and temperature ...................
 C Kinetic energy of atoms
@@ -283,15 +286,12 @@ C Kinetic energy of atoms
         enddo
       enddo
 
-C     Instantaneous temperature (Kelvin)
-! Note: This conversion factor is naked.
-      ! 8.617e-5 should be (Kelvin/eV)
-#ifdef SIESTA__UNITS_ORIGINAL
-      tempe = 2.0d0*kin/(3.0d0*natoms-3.0d0-ntcon)/8.617d-5/eV
-#else
-      tempe = 2.0d0*kin/(3.0d0*natoms-3.0d0-ntcon)/Kelvin
-#endif
-
+C Instantaneous temperature (Kelvin)
+      if (iunit .eq. 1) then
+        tempe = 2.0d0*kin/(3.0d0*natoms-3.0d0-ntcon)/8.617d-5
+      else
+        tempe = 2.0d0*kin/(3.0d0*natoms-3.0d0-ntcon)/8.617d-5/eV
+      endif
 C .....................
 
       return

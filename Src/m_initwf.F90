@@ -1,11 +1,12 @@
-#include "mpi_macros.f"
-
 module m_initwf
   use precision
   use wavefunctions, only:iowavef, wavef_ms, complx_0
   use MatrixSwitch
   use sparse_matrices, only: numh, listhptr, listh, H, S, xijo
   use m_eo,            only: eo, qo
+#ifdef MPI
+  use mpi_siesta, only: MPI_Comm_World
+#endif
   !
   implicit none
   !
@@ -83,7 +84,8 @@ module m_initwf
       use m_fermid,      only : fermid
       use sys,           only : die
 #ifdef MPI
-      use mpi_siesta,   only : mpi_comm_world
+      use mpi_siesta,   only : mpi_bcast, mpi_comm_world, &
+                               mpi_logical, mpi_double_precision
 #endif
       !
       implicit none
@@ -200,7 +202,7 @@ module m_initwf
           do io=1,no_u
             occup(io,ispin,ik)=.false.
             if(dabs(qo(io,ispin,ik)-2.0d0*kpoint_scf%w(ik)/nspin).le.    &
-               1.0d-2*dabs(2.0d0*kpoint_scf%w(ik)/nspin))  then
+               1.0d-2*dabs(2.0d0**kpoint_scf%w(ik)/nspin))  then
               nocc(ispin)=nocc(ispin)+1
               nocck(ik,ispin)=nocck(ik,ispin)+1
 !             Accounting the number of electrons corresponding the states being marked
@@ -241,7 +243,7 @@ module m_initwf
    end if
 !..............
 #ifdef MPI
-      call ms_scalapack_setup(MPI_COMM_ID(mpi_comm_world),1,'c',BlockSize)
+      call ms_scalapack_setup(mpi_comm_world,1,'c',BlockSize)
       m_storage='pzdbc'
 #else
       m_storage='szden'

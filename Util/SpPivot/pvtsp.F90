@@ -40,7 +40,7 @@ program pvtsp
   use m_sparsity_handling
 
   character(len=264) :: fname, arg
-
+  
   ! The sparsity
   type(OrbitalDistribution) :: fdit
   type(Sparsity) :: sp, sp_tmp
@@ -344,34 +344,32 @@ contains
     call rgn_delete(rpvt)
 
   end subroutine sp2metis
-  
+
   subroutine populate_Sp()
 
-     if ( index(trim(fname), "TSHS") > 0 ) then
-        call populate_Sp_TSHS()
-     else if ( index(trim(fname), "HSX") > 0 ) then
-        call populate_Sp_HSX()
-     else
-        stop "Unknown file format"
-     end if
-  end subroutine
-
-  subroutine populate_Sp_TSHS()
-
-    use ts_io_hs_m, only : tshs_version
+    use m_ts_io, only : tshs_version
 
     integer, parameter :: iu = 212
     integer :: nl, five(5), i, nsc(3)
-    integer :: version
+    logical :: is_simple
 
-    version = tshs_version(fname)
+    is_simple = .true.
+    nl = len_trim(fname)
+    if ( nl > 5 ) then
+       if ( fname(nl-3:nl) == 'TSHS' ) then
+          if ( tshs_version(fname) /= 1 ) then
+             stop 'We require the latest TSHS version [1]'
+          end if
+          is_simple = .false.
+       end if
+    end if
 
     open(iu, file = trim(fname) , status = 'old', form = 'unformatted' )
 
-    if ( version == 0 ) then
+    if ( is_simple ) then
        read(iu) no_u, i
-
-       call io_read(iu, no_u, sp, 'sp')
+       
+       call io_read_Sp(iu, no_u, sp, 'sp')
 
     else
        ! Read in the full information
@@ -388,7 +386,7 @@ contains
        read(iu) ! istep
        allocate(lasto(0:na_u))
        read(iu) lasto
-       call io_read(iu,no_u,sp, 'TSHS')
+       call io_read_Sp(iu,no_u,sp, 'sp')
        do i = 1 , no_u * (five(4) + 1)
           read(iu) ! S and H
        end do
@@ -399,65 +397,13 @@ contains
     end if
 
     close(iu)
-
-  end subroutine populate_Sp_TSHS
-
-  subroutine populate_Sp_HSX()
-
-    use io_hsx_m, only : hsx_version
-
-    integer, parameter :: iu = 212
-    integer :: nl, four(4), i, nsc(3)
-    integer :: version
-
-    version = hsx_version(fname)
-
-    open(iu, file = trim(fname) , status = 'old', form = 'unformatted' )
-
-    if ( version == 0 ) then
-       stop "Cannot read HSX file versions 0, only 1 or 2"
-    end if
-
-    ! Read in the full information
-    read(iu) ! version
-    read(iu) ! is_dp
-    read(iu) four, nsc
-    na_u = four(1)
-    no_u = four(2)
-    read(iu) ! ucell, Ef, qtot, temp
-    block
-       real(dp), allocatable :: xa(:,:)
-       integer, allocatable :: isa(:)
-       integer :: n_s
-
-       allocate(xa(3,na_u), isa(na_u), lasto(0:na_u))
-       lasto(0) = 0
-       n_s = product(nsc)
-       allocate(isc_off(3,n_s))
-       read(iu) isc_off, xa, isa, lasto(1:)
-       deallocate(xa, isa)
-    end block
-
-    ! Read the species block
-    read(iu) ! labelfis, ...
-    do i = 1, four(4)
-      read(iu) ! cnfigfio, ...
-    end do
-
-    if ( version == 2 ) then
-       read(iu) ! kscell, kdispl
-    end if
-
-    call io_read(iu,no_u,sp, 'HSX')
-
-    close(iu)
-
-  end subroutine populate_Sp_HSX
+    
+  end subroutine populate_Sp
 
   function trim_em(s) result(f)
     character(len=*), intent(in) :: s
-    character(len=len(s)) :: f
-
+    character(len=250) :: f
+    
     if ( s(1:2) == '--' ) then
        f = s(2:)
     else
@@ -475,7 +421,7 @@ contains
     write(*,'(a)') 'The following options are available for pvtsp:'
     write(*,'(a)') 
     write(*,gf) '--help|-h','show this help menu'
-    write(*,gf) '--atom','pivot in the atomic sparsity pattern, instead of the orbital(only for HSX|TSHS'
+    write(*,gf) '--atom','pivot in the atomic sparsity pattern, instead of the orbital(only for TSHS)'
     write(*,gf) '--graphviz|--graph','make graphviz output'
     write(*,gf) '--digraph|-di','create a directed graph'
     write(*,gf) '--metis-stdout','make METIS output (on STDOUT)'

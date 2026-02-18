@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -12,12 +12,12 @@ C *********************************************************************
 C If matrix='R'
 C Finds the matrix elements of the dk*r between basis
 C orbitals, where dk is a given vector and r is the position operator,
-C or the momentum operator plus a correction due to the non-local
+C or the momentum operator plus a correction due to the non-local 
 C potential in the case of an infinite solid.
 C
 C  S_a,b(R_a,R_b) =  <phi_a(r-R_a-t_a)|dk*r|phi_b(r-R_b-t_b)>
 C
-C
+C  
 C  Being R_a and R_b lattice vectors, and t_a and t_b the coordiantes
 C  of atoms a and b in the unit cell
 C
@@ -57,13 +57,13 @@ C integer iphKB(nokb)      : KB proj. index of each KB proj. in its atom
 C integer isa(na)          : Species index of each atom
 C integer numh(nuo)        : Number of nonzero elements of each row
 C                            of the overlap matrix
-C integer listh(maxnh)     : Column indexes of the nonzero elements
+C integer listh(maxnh)     : Column indexes of the nonzero elements  
 C                            of each row of the overlap matrix
 C real*8  dk(3)            : Vector in k-space
 C character*1 matrix       : 'R' for molecules or atoms, the matrix
-C                             elements of the position operator are
+C                             elements of the position operator are 
 C                             calculated
-C                            'P' for solids, the matrix elements of
+C                            'P' for solids, the matrix elements of 
 C                             the momentum operator are calculated.
 C **************************** OUTPUT *********************************
 C real*8  Sp(maxnh)        : Sparse overlap matrix
@@ -80,7 +80,7 @@ C *********************************************************************
       use sys,          only : die
       use neighbour,    only : jna=>jan, xij, r2ij
       use neighbour,    only : mneighb, reset_neighbour_arrays
-      use matel_m,      only : matel
+      use m_new_matel,  only : new_matel
 
       implicit none
 
@@ -94,9 +94,9 @@ C Passed variables
 C Internal variables
 C maxkba = maximum number of KB projectors of one atom
 C maxno  = maximum number of basis orbitals overlapping a KB projector
-
+        
       integer
-     &  ia, iio, ind, io, ioa, is, ix,
+     &  ia, iio, ind, io, ioa, is, ix, 
      &  j, ja, jn, jo, joa, js, nnia, norb, ka
 
       real(dp)
@@ -104,17 +104,17 @@ C maxno  = maximum number of basis orbitals overlapping a KB projector
 
       integer
      &  ikb, ina, ino, jno, ko, koa, ks, ig, jg, kg,
-     &  nkb, nna, nno, ilm1, ilm2, npoints,
+     &  nkb, nna, nno, ilm1, ilm2, npoints, 
      &  ir
 
       real(dp)
-     &  epsk, grSki(3),
+     &  epsk, grSki(3), 
      &  rki, rmax, rmaxkb, rmaxo,
-     &  Sik, Sjk, Sikr, Sjkr,
-     &  dintg2(3), dint1, dint2, dintgmod2,
+     &  Sik, Sjk, Sikr, Sjkr, 
+     &  dintg2(3), dint1, dint2, dintgmod2, 
      &  dintg1(3), dintgmod1,
      &  phi1, phi2, dphi1dr, dphi2dr, Sir0, r
-
+      
       integer,  pointer, save :: iano(:)
       integer,  pointer, save :: iono(:)
       integer,           save :: maxkba = 25
@@ -136,7 +136,7 @@ C Start timer
 C Check input matrix
       if(matrix.ne.'P'.and.matrix.ne.'R')
      &   call die('phirphi_opt: matrix only can take values R or P')
-
+ 
 C Nullify pointers
       nullify( listed, needed, Si, Vi, iano, iono, Ski )
 !N      nullify( Pij, calculated )
@@ -159,13 +159,13 @@ C Allocate arrays
 C Initialise quantities
       do io = 1,maxnh
         Sp(io) = 0.0d0
-      enddo
+      enddo 
 !N      do ka = 1,nspecies
 !N        do io = 1,norb
 !N          do jo = 1,norb
 !N            calculated(jo,io,ka) = .false.
-!N          enddo
-!N        enddo
+!N          enddo 
+!N        enddo 
 !N      enddo
 
 C Find maximum range
@@ -184,10 +184,10 @@ C Find maximum range
       enddo
       rmax = rmaxo + rmaxkb
 
-C Correction due to the non-locality of the potential have to be
+C Correction due to the non-locality of the potential have to be 
 C calculated for the momentum operator matrix elements
 
-      if (matrix.eq.'P') then
+      if (matrix.eq.'P') then 
 
 C Initialize arrayd Vi only once
         no = lasto(na)
@@ -238,7 +238,7 @@ C Find if orbital is within range
                 within = .false.
                 do ko = lastkb(ka-1)+1,lastkb(ka)
                   koa = iphKB(ko)
-                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) )
+                  if ( rki .lt. rcut(is,ioa)+rcut(ks,koa) ) 
      &              within = .true.
                 enddo
 
@@ -264,23 +264,23 @@ C Find overlap between neighbour orbitals and KB projectors
                     kg = kbproj_gindex(ks,koa)
                     do ix = 1,3
                      xinv(ix) = - xij(ix,ina)
-                    enddo
-                    call matel('S', ig, kg, xinv,
+                    enddo 
+                    call new_MATEL('S', ig, kg, xinv,
      &                         Ski(1,ikb,nno), grSki)
-
+              
                     sum = 0.0d0
                     if (abs(dk(1)).gt.tiny) then
-                      call matel('X', ig, kg, xinv,
+                      call new_MATEL('X', ig, kg, xinv,
      &                           Sik, grSki)
-                      sum = sum + Sik*dk(1)
+                      sum = sum + Sik*dk(1) 
                     endif
                     if (abs(dk(2)).gt.tiny) then
-                      call matel('Y', ig, kg, xinv,
+                      call new_MATEL('Y', ig, kg, xinv,
      &                           Sik, grSki)
                       sum = sum + Sik*dk(2)
                     endif
                     if (abs(dk(3)).gt.tiny) then
-                      call matel('Z', ig, kg, xinv,
+                      call new_MATEL('Z', ig, kg, xinv,
      &                           Sik, grSki)
                       sum = sum + Sik*dk(3)
                     endif
@@ -324,96 +324,96 @@ C Loop on KB projectors
                       Sjkr= Ski(2,ikb,jno)
                       Vi(jo) = Vi(jo) + epsk * (Sik * Sjkr - Sikr * Sjk)
                     enddo
-
+  
                   endif
                 enddo
 
 C Pick up contributions to H and restore Di and Vi
                 do j = 1,numh(iio)
                   ind = listhptr(iio) + j
-                  jo = listh(ind)
+                  jo = listh(ind) 
                   Sp(ind) = Sp(ind) + Vi(jo)
                   Vi(jo) = 0.0d0
                   listed(jo) = .false.
                 enddo
-
+  
               endif
             endif
           enddo
         enddo
 
-      endif
+      endif  
 
-C Initialize neighb subroutine
+C Initialize neighb subroutine 
       call mneighb( scell, 2.0d0*rmaxo, na, xa, 0, 0, nnia )
 
       do jo = 1,no
         Si(jo) = 0.0d0
       enddo
 
-      do ia = 1,nua
-
+      do ia = 1,nua 
+        
         is = isa(ia)
         call mneighb( scell, 2.0d0*rmaxo, na, xa, ia, 0, nnia )
-
-        do io = lasto(ia-1)+1,lasto(ia)
+           
+        do io = lasto(ia-1)+1,lasto(ia)  
           call GlobalToLocalOrb(io,Node,Nodes,iio)
           if (iio .gt. 0) then
             ioa = iphorb(io)
             ig = orb_gindex(is,ioa)
-            do jn = 1,nnia
+            do jn = 1,nnia 
               do ix = 1,3
                 xinv(ix) = - xij(ix,jn)
-              enddo
+              enddo 
               ja = jna(jn)
               rij = sqrt( r2ij(jn) )
               do jo = lasto(ja-1)+1,lasto(ja)
                 joa = iphorb(jo)
-                js = isa(ja)
+                js = isa(ja)  
                 jg = orb_gindex(js,joa)
+ 
+                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then  
 
-                if (rcut(is,ioa)+rcut(js,joa) .gt. rij) then
-
-                  if (matrix.eq.'R') then
-
-                    call matel('X', jg, ig, xinv,
+                  if (matrix.eq.'R') then 
+ 
+                    call new_MATEL('X', jg, ig, xinv,
      &                         Sij, grSij )
-                    Si(jo) = Sij*dk(1)
-
-                    call matel('Y', jg, ig, xinv,
+                    Si(jo) = Sij*dk(1)  
+                     
+                    call new_MATEL('Y', jg, ig, xinv,
      &                         Sij, grSij )
-                    Si(jo) = Si(jo) + Sij*dk(2)
-
-                    call matel('Z', jg, ig, xinv,
+                    Si(jo) = Si(jo) + Sij*dk(2)  
+ 
+                    call new_MATEL('Z', jg, ig, xinv,
      &                         Sij, grSij )
-                    Si(jo) = Si(jo) + Sij*dk(3)
-
-                    call matel('S', ig, jg, xij(1:3,jn),
+                    Si(jo) = Si(jo) + Sij*dk(3) 
+           
+                    call new_MATEL('S', ig, jg, xij(1:3,jn),
      &                         Sij, grSij )
                     Si(jo) = Si(jo) + Sij*(
      &                   xa(1,ia)*dk(1)
      &                 + xa(2,ia)*dk(2)
-     &                 + xa(3,ia)*dk(3))
-
+     &                 + xa(3,ia)*dk(3))  
+   
                   else
-
-                    if (rij.lt.tiny) then
-C Perform the direct computation of the matrix element of the momentum
+                            
+                    if (rij.lt.tiny) then 
+C Perform the direct computation of the matrix element of the momentum 
 C within the same atom
 !N                     if ( .not.calculated(joa,ioa,is) ) then
-                       ilm1 = lofio(is,ioa)**2 + lofio(is,ioa) +
+                       ilm1 = lofio(is,ioa)**2 + lofio(is,ioa) + 
      &                      mofio(is,ioa) + 1
-                       ilm2 = lofio(is,joa)**2 + lofio(is,joa) +
+                       ilm2 = lofio(is,joa)**2 + lofio(is,joa) + 
      &                      mofio(is,joa) + 1
-                       call intgry(ilm1,ilm2,dintg2,.false.)
-                       call intyyr(ilm1,ilm2,dintg1,.false.)
-                       dintgmod1 = dintg1(1)**2 + dintg1(2)**2 +
+                       call intgry(ilm1,ilm2,dintg2)
+                       call intyyr(ilm1,ilm2,dintg1)
+                       dintgmod1 = dintg1(1)**2 + dintg1(2)**2 + 
      &                      dintg1(3)**2
-                       dintgmod2 = dintg2(1)**2 + dintg2(2)**2 +
+                       dintgmod2 = dintg2(1)**2 + dintg2(2)**2 + 
      &                      dintg2(3)**2
                        Sir0 = 0.0d0
-                       if ((dintgmod2.gt.tiny).or.(dintgmod1.gt.tiny))
-     &                      then
+                       if ((dintgmod2.gt.tiny).or.(dintgmod1.gt.tiny)) 
+     &                      then 
                           dint1 = 0.0d0
                           dint2 = 0.0d0
                           npoints = int(max(rcut(is,ioa),rcut(is,joa))
@@ -424,24 +424,24 @@ C within the same atom
                              call rphiatm(is,joa,r,phi2,dphi2dr)
                              dint1 = dint1 + dx*phi1*dphi2dr*r**2
                              dint2 = dint2 + dx*phi1*phi2*r
-                          enddo
+                          enddo 
 C     The factor of two because we use Ry for the Hamiltonian
                           Sir0 =
      &                  -2.0d0*(dk(1)*(dint1*dintg1(1)+dint2*dintg2(1))+
      &                      dk(2)*(dint1*dintg1(2)+dint2*dintg2(2))+
-     &                      dk(3)*(dint1*dintg1(3)+dint2*dintg2(3)))
-                       endif
+     &                      dk(3)*(dint1*dintg1(3)+dint2*dintg2(3))) 
+                       endif 
 !N     Pij(ioa,joa,is) = - Sir0
 !N     Pij(joa,ioa,is) =   Sir0
                        Si(jo) = Sir0
 !N                       calculated(ioa,joa,is) = .true.
 !N                       calculated(joa,ioa,is) = .true.
-!N                    endif
+!N                    endif 
 
                     else
-C Matrix elements between different atoms are taken from the
-C gradient of the overlap
-                      call matel('S', ig, jg, xij(1:3,jn),
+C Matrix elements between different atoms are taken from the 
+C gradient of the overlap 
+                      call new_MATEL('S', ig, jg, xij(1:3,jn),
      &                           Sij, grSij )
 C The factor of two because we use Ry for the Hamiltonian
                       Si(jo) =
@@ -449,9 +449,9 @@ C The factor of two because we use Ry for the Hamiltonian
      &             +           grSij(2)*dk(2)
      &             +           grSij(3)*dk(3))
 
-                    endif
-
-                  endif
+                    endif 
+  
+                  endif 
                 endif
               enddo
             enddo
@@ -459,15 +459,14 @@ C The factor of two because we use Ry for the Hamiltonian
               ind = listhptr(iio) + j
               jo = listh(ind)
               Sp(ind) = Sp(ind) + Si(jo)
-              Si(jo) = 0.0d0
+              Si(jo) = 0.0d0 
             enddo
           endif
         enddo
       enddo
-      call intgry(ilm1,ilm2,dintg2,.true.)
-      call intyyr(ilm1,ilm2,dintg1,.true.)
 
 C     Free local memory
+!      call new_MATEL( 'S', 0, 0, 0, 0, xij, Sij, grSij )
       call reset_neighbour_arrays( )
 !N      call de_alloc( calculated, 'calculated', 'phirphi_opt' )
 !N      call de_alloc( Pij,        'Pij',        'phirphi_opt' )
@@ -486,17 +485,17 @@ C Stop timer
       end
 
 
-      subroutine Intgry( ilm1, ilm2, dintg, reset_intgry )
+      subroutine Intgry( ilm1, ilm2, dintg )
 C *******************************************************************
-C Returns a vector with the value of the integral of a spherical
+C Returns a vector with the value of the integral of a spherical 
 C harmonic with the gradient of another spherical harmonic.
 C written by DSP. August 1999 (from subroutine ylmexp by J. Soler)
 C ************************* INPUT ***********************************
-C integer  ilm1                     : first spherical harmonic index:
+C integer  ilm1                     : first spherical harmonic index: 
 C                                     ilm1=L1*L1+L1+M1+1.
 C integer  ilm2                     : second spherical harmonic index
 C ************************* OUTPUT **********************************
-C real*8   dintg(3)                 : Vector with the value of the
+C real*8   dintg(3)                 : Vector with the value of the 
 C                                    (angular) integral of the product
 C                                     Yl1m1*grad(Yl2m2)
 C *******************************************************************
@@ -511,9 +510,8 @@ C *******************************************************************
       implicit none
 
 C Passed variables
-      integer , intent(in)  :: ilm1, ilm2
-      real(dp), intent(out) :: dintg(3)
-      logical , intent(in)  :: reset_intgry
+      integer           ilm1, ilm2
+      real(dp)          dintg(3)
 
 C Internal variables
       integer
@@ -534,18 +532,6 @@ C Internal variables
       external
      &  dot
 
-      if (reset_intgry) then
-        frstme = .true.
-        maxl = 8
-        call de_alloc(gry,name='gry',routine='intgry')
-        call de_alloc(w,name='w',routine='intgry')
-        call de_alloc(wsp,name='wsp',routine='intgry')
-        call de_alloc(x,name='x',routine='intgry')
-        call de_alloc(y,name='y',routine='intgry')
-        call de_alloc(z,name='z',routine='intgry')
-        return
-      endif
-
 C Nullify pointers and initialise arrays on first call
       if (frstme) then
         nullify(gry,w,wsp,x,y,z)
@@ -560,8 +546,8 @@ C Nullify pointers and initialise arrays on first call
         frstme = .false.
       endif
 
-C Find special points and weights for gaussian quadrature
-      if (max(ilm1,ilm2).eq.1) then
+C Find special points and weights for gaussian quadrature 
+      if (max(ilm1,ilm2).eq.1) then 
         lmax = 1
       else
         dl = dble(max(ilm1,ilm2)) - 1.0d0 + 1.0d-2
@@ -605,7 +591,7 @@ C Find the integrals
       endif
       do ix = 1,3
         dintg(ix) = 0.0d0
-      enddo
+      enddo 
       if (l2.eq.0) return
       do isp = 1,nsp
         r(1) = x(1,isp)
@@ -617,20 +603,20 @@ C Find the integrals
      &      (gry(ix,ilm2-1) - l2*y(ilm2-1)*x(ix,isp))
         enddo
       enddo
-
+      
       end
 
 
-      subroutine Intyyr( ilm1, ilm2, dintg, reset_intyrr)
+      subroutine Intyyr( ilm1, ilm2, dintg)
 C *******************************************************************
-C Returns a vector with the value of the integral of the product of spherical
-C two spherical harmonics and the radial unit vector.
+C Returns a vector with the value of the integral of the product of spherical 
+C two spherical harmonics and the radial unit vector. 
 C ************************* INPUT ***********************************
-C integer  ilm1                     : first spherical harmonic index:
+C integer  ilm1                     : first spherical harmonic index: 
 C                                     ilm1=L1*L1+L1+M1+1.
 C integer  ilm2                     : second spherical harmonic index
 C ************************* OUTPUT **********************************
-C real*8   dintg(3)                 : Vector with the value of the
+C real*8   dintg(3)                 : Vector with the value of the 
 C                                    (angular) integral of the product
 C                                     Yl1m1*Yl2m2*(x/r,y/r,z/r)
 C *******************************************************************
@@ -645,11 +631,10 @@ C *******************************************************************
       implicit none
 
 C Passed variables
-      integer , intent(in)  :: ilm1, ilm2
-      real(dp), intent(out) :: dintg(3)
-      logical , intent(in)  :: reset_intyrr
+      integer           ilm1, ilm2
+      real(dp)          dintg(3)
 
-C Internal variables
+C Internal variables 
       integer
      &  lmax,ix, isp, iz, nsp, im, maxlm, maxsp
       real(dp)
@@ -667,19 +652,6 @@ C Internal variables
       external
      &  dot
 
-
-      if (reset_intyrr) then
-        frstme = .true.
-        maxl = 8
-        call de_alloc(gry,name='gry',routine='intyyr')
-        call de_alloc(w,name='w',routine='intyyr')
-        call de_alloc(wsp,name='wsp',routine='intyyr')
-        call de_alloc(x,name='x',routine='intyyr')
-        call de_alloc(y,name='y',routine='intyyr')
-        call de_alloc(z,name='z',routine='intyyr')
-        return
-      endif
-
 C Nullify pointers and initialise arrays on first call
       if (frstme) then
         nullify(gry,w,wsp,x,y,z)
@@ -695,7 +667,7 @@ C Nullify pointers and initialise arrays on first call
       endif
 
 C Find special points and weights for Gaussian quadrature
-      if (max(ilm1,ilm2).eq.1) then
+      if (max(ilm1,ilm2).eq.1) then 
         lmax = 1
       else
         dl = dble(max(ilm1,ilm2)) - 1.0d0 + 1.0d-2
@@ -733,7 +705,7 @@ C
 C Find the integrals
       do ix = 1,3
         dintg(ix) = 0.0d0
-      enddo
+      enddo 
       do isp = 1,nsp
         r(1) = x(1,isp)
         r(2) = x(2,isp)
@@ -741,8 +713,8 @@ C Find the integrals
         call rlylm( lmax, r, y, gry )
         do ix = 1,3
           dintg(ix) = dintg(ix) +
-     &      wsp(isp)*y(ilm1-1)*y(ilm2-1)*x(ix,isp)
+     &      wsp(isp)*y(ilm1-1)*y(ilm2-1)*x(ix,isp) 
         enddo
       enddo
-
+ 
       end

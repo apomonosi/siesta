@@ -93,7 +93,7 @@ C *******************************************************************
      .                     globalreloadb1, globalrezerob1,
      .                     globalisef
       use mpi_siesta, only: mpi_comm_world, mpi_sum
-      use mpi_siesta, only: mpi_double_precision, MPI_AllReduce
+      use mpi_siesta, only: mpi_double_precision
 #endif
 
       implicit none

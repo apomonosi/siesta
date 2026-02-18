@@ -144,7 +144,7 @@ C Determine Fermi level
             write (6,'(/a)') 
      .            'Fermid: Bands full, no excitation possible'
           endif
-          call die("stopping program")
+          call die()
           else
 #ifdef DEBUG
           call write_debug( '    POS fermid' )
@@ -157,7 +157,7 @@ C Determine Fermi level
           write(6,*) 'Fermid: Not enough states'
           write(6,*) 'Fermid: qtot,sumq=',qtot,sumq
         endif
-        call die("stopping program")
+        call die()
       endif
       T = max(temp,1.d-6)
       Tinv = 1._dp / T
@@ -339,7 +339,7 @@ C calculated here if ne < maxe
             write(6,*) 'Fermid: ispin,qtot,sumq=',
      .                 ispin,qtot(ispin),sumq(ispin)
           endif
-          call die("stopping program")
+          call die()
         ENDIF
       enddo
       T = max(temp,1.0d-6)
@@ -406,7 +406,6 @@ C calculated here if ne < maxe
 
       real(dp) function stepf(X)
       use m_errorf, only: derf
-      use units, only: Pi
       
       real(dp), intent(in) :: x
 
@@ -419,6 +418,8 @@ C Local variables
       integer,           save :: ocupfnct
       logical,           save :: ocfread = .true.
       
+      real(dp), parameter :: PI = 3.14159265358979D0
+
 C Reading which electronic occupation function to use -------
 
       if (ocfread) then
@@ -507,13 +508,14 @@ C Cold smearing function. Ref: Marzari-Vanderbilt PRL82, 16, 1999
 
 
       real(dp) function enpy(E,W)
-      use units, only: Pi
       real(dp), intent(in)  :: e, w
 
 C Computes the contribution of a given state with energy E
 C (refered to the Fermi energy, in units of the smearing 
 C temperature) and occupation W to the electronic entropy
 C P. Ordejon, June 2003
+
+      real(dp), parameter :: PI = 3.14159265358979D0
 
 C Local variables
       character(len=22) :: ocf
@@ -578,7 +580,6 @@ C Cold smearing function. Ref: Marzari-Vanderbilt PRL82, 16, 1999
 
 
       real(dp) function whg(x,n)
-      use units, only: Pi
 C
 C  Computes the factors to get the entropy term 
 C  for the Methfessel-Paxton smearing with Hermite
@@ -595,6 +596,7 @@ C Local variables
       integer        :: i
       real(dp)       :: a
       real(dp)       :: gauss
+      real(dp), save :: pi = 3.14159265358979d0
       real(dp)       :: x2
 
       x2 = x**2.0d0

@@ -67,11 +67,9 @@ contains
     use m_iodm_old,    only: write_spmatrix
 
     use atomlist,      only: no_u, lasto, Qtot
-    use dm_charge_m, only: dm_charge
+    use m_dm_charge, only: dm_charge
 
-#ifdef SIESTA__PEXSI
-    use m_pexsi_solver,        only: pexsi_prevDmax
-#endif
+    use m_pexsi_solver,        only: prevDmax
     use write_subs,            only: siesta_write_forces
     use write_subs,            only: siesta_write_stress_pressure
 
@@ -85,9 +83,6 @@ contains
     use fdf
 #ifdef SIESTA__PEXSI
     use m_pexsi, only: pexsi_finalize_scfloop
-#endif
-#ifdef SIESTA__ELSI
-    use m_elsi_interface, only: elsi_finalize_scfloop
 #endif
     use m_check_walltime
 
@@ -107,11 +102,6 @@ contains
     use m_energies, only : Ef
 
     use m_initwf, only: initwf
-
-#ifdef SIESTA__WANNIER90
-    use w90_wrapper_types, only: compute_chempotwann
-    use w90_wrapper_types, only: compute_chempotwann_after_scf
-#endif
 
     integer, intent(inout)  :: istep
 
@@ -138,7 +128,7 @@ contains
     logical               :: time_is_up
     character(len=40)     :: tmp_str
 
-    real(dp) :: Qcur(spin%Grid)
+    real(dp) :: Qcur
 #ifdef NCDF_4
     type(dictionary_t) :: d_sav
 #endif
@@ -153,11 +143,11 @@ contains
 #endif
 
     call timer('geom_init', 1)
-    
-#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
+
+#ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
-    call broadcast(nscf, comm=mpi_comm_dft)
+    call broadcast(nscf, comm=true_MPI_Comm_World)
 #endif
 
     if ( SIESTA_worker )  then
@@ -220,33 +210,14 @@ contains
     ! Initialize to no switch
     next_mixer = ' '
 #endif
-
+        
     ! This call computes the non-scf part of H and initializes the
     ! real-space grid structures.  It might be better to split the two,
     ! putting the grid initialization into state_init and moving the
     ! calculation of H_0 to the body of the loop, done if first_scf=.true.  This
     ! would suit "analysis" runs in which nscf = 0
-    if ( SIESTA_worker ) then
-
-#ifdef NCDF_4
-       block
-          logical :: old_write_cdf
-          old_write_cdf = write_cdf
-          ! For FC runs we do not allow storing Grid files
-          ! So we disable adding that grid information
-          ! to the CDF file.
-          ! In all the remaining cases we have that the
-          ! file is re-created for every MD step.
-          ! So it should be fine.
-          write_cdf = write_cdf .and. (idyn /= 6)
-#endif
-          call setup_H0(G2max, istep)
-#ifdef NCDF_4
-          write_cdf = old_write_cdf
-       end block
-#endif
-    end if
-
+    if ( SIESTA_worker ) call setup_H0(G2max)
+    
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after setup_H0")
 #endif
@@ -260,10 +231,7 @@ contains
 
 #ifdef NCDF_4
       ! Initialize the NC file
-      if ( write_cdf .and. &
-         ((idyn==6 .and. istep==0) .or. idyn/=6) ) then
-
-         ! Also add the sizes of the grids
+      if ( write_cdf ) then
 
 !       Save the settings (important to do here since mesh-cutoff may
 !       have changed).
@@ -271,6 +239,7 @@ contains
 #ifdef MPI
         call MPI_Barrier(MPI_Comm_World,MPIerror)
 #endif
+
       end if
 #endif
 
@@ -302,8 +271,7 @@ contains
             call get_H_from_file()
           else
             ! first iscf call
-            ! signal this is a *pre-step*
-            call setup_hamiltonian( 0 )
+            call setup_hamiltonian( 1 )
           end if
         end if
 
@@ -321,7 +289,7 @@ contains
       !
       ! -- At the change to a TranSiesta GF run the variable "first_scf"
       !    is implicitly reset to "true".
-
+      
       ! Start of SCF loop
       iscf = 0
       do while ( iscf < nscf )
@@ -352,8 +320,8 @@ contains
               call message('WARNING', &
                   'SCF_NOT_CONV: SCF did not converge'//&
                   ' before wall time exhaustion')
-              write(tmp_str,"(i5,1x,i5,2(1x,f12.6))") istep, iscf, dDmax, dHmax
-              call message(' (info)',"Geom step, scf iteration, dDmax, dHmax:" &
+              write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, prevDmax
+              call message(' (info)',"Geom step, scf iteration, dmax:" &
                   //trim(tmp_str))
             endif
             call barrier() ! A non-root node might get first to the 'die' call
@@ -383,12 +351,12 @@ contains
              call compute_max_diff(Hold, H, dHmax)
              
           else
-
+             
              call setup_hamiltonian( iscf )
              call compute_max_diff(Hold, H, dHmax)
-                          
+             
              call compute_DM( iscf )
-
+             
              call compute_max_diff(Dold, Dscf, dDmax)
              if ( converge_EDM ) &
                   call compute_max_diff(Eold, Escf, dEmax)
@@ -397,15 +365,12 @@ contains
 
           ! Calculate current charge based on the density matrix
           call dm_charge(spin, DM_2D, S_1D, Qcur)
-          if ( spin%Grid > 1 ) then
-             Qcur(1) = Qcur(1) + Qcur(2)
-          end if
-          dQ = Qcur(1) - Qtot
+          dQ = Qcur - Qtot
+
           call compute_energies( iscf )
           if ( mix_charge ) then
              call compute_charge_diff( drhog )
           end if
-
 
           ! Note: For DM and H convergence checks. At this point:
           ! If mixing the DM:
@@ -420,15 +385,14 @@ contains
                dDmax, dHmax, dEmax, dQ, &
                conv_harris, conv_freeE, &
                SCFconverged )
-
-#ifdef SIESTA__PEXSI
+          
           ! ** Check this heuristic
           if ( mixH ) then
-             pexsi_prevDmax = dHmax
+             prevDmax = dHmax
           else
-             pexsi_prevDmax = dDmax
+             prevDmax = dDmax
           end if
-#endif
+          
           ! In case the user has requested a Fermi-level correction
           ! Then we start by correcting the fermi-level
           if ( TSrun .and. TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then
@@ -451,6 +415,13 @@ contains
               SCFconverged = .false.
             end if
           end if
+#ifdef TS_SOC_DEBUG
+         ! Force convergence
+         if ( TSrun ) then
+           SCFconverged = .true. 
+           exit
+         end if
+#endif
 
           ! Check whether we should step to the next mixer (if we do that
           ! then we force it to not converge
@@ -466,35 +437,6 @@ contains
           end if
 
           if ( monitor_forces_in_scf ) call compute_forces()
-
-#ifdef SIESTA__WANNIER90
-          if( SCFconverged .and. compute_chempotwann .and. &
- &             (.not. compute_chempotwann_after_scf) ) then
-            if ( IONode ) then
-               write(*,"(/,a)") &
- &               "siesta_forces: Switching the computation of the "
-               write(*,"(a)")   &
- &               "siesta_forces:   Hamiltonian matrix elements from the"
-               write(*,"(a)")   &
- &               "siesta_forces:   chemical potential on the Wannier functions."
-               write(*,"(a)")   &  
- &               "siesta_forces: Initiating self-consistency cicles again"
-               write(*,"(a)")   &
- &               "siesta_forces:   adding the new hamiltonian matrix elements"
-               write(*,"(a)")   &
- &               "siesta_forces:   assuming frozen shape of the Wanniers" 
-               write(*,"(a,/)")   &
- &               "siesta_forces:   obtained after the first SCF" 
-            end if
-            compute_chempotwann_after_scf  = .true.
-            SCFconverged                   = .false.
-            mix_scf_first                  = .false.
-            iscf                           = 0
-            call timer( timer_str_scf, 2 )
-            call print_timings( first_scf, istep == inicoor )
-            cycle
-          endif
-#endif
 
           ! Mix_after_convergence preserves the old behavior of
           ! the program.
@@ -580,9 +522,9 @@ contains
           
        end if
 
-#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
-       call broadcast(iscf, comm=mpi_comm_dft)
-       call broadcast(SCFconverged, comm=mpi_comm_dft)
+#ifdef SIESTA__PEXSI
+       call broadcast(iscf, comm=true_MPI_Comm_World)
+       call broadcast(SCFconverged, comm=true_MPI_Comm_World)
 #endif
 
        ! Exit if converged
@@ -599,16 +541,16 @@ contains
     ! Clean up the charge correction object
     call ts_dq%delete()
 
-    if ( SIESTA_worker ) then
-!===
+    if ( .not. SIESTA_worker ) return
+
     call end_of_cycle_save_operations(SCFconverged)
 
     if ( .not. SCFconverged ) then
        if ( SCFMustConverge ) then
           call message('FATAL','SCF_NOT_CONV: SCF did not converge' // &
                ' in maximum number of steps (required).')
-          write(tmp_str,"(2(i5,tr1),2(1x,f12.6))") istep, iscf, dDmax, dHmax
-          call message(' (info)',"Geom step, scf iteration, dDmax, dHmax:"//trim(tmp_str))
+          write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
+          call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
           if ( TSrun ) then
             write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
             call message(' (info)',"Geom step, scf iteration, dq:"// &
@@ -621,8 +563,8 @@ contains
        else if ( .not. harrisfun ) then
           call message('WARNING', &
                'SCF_NOT_CONV: SCF did not converge  in maximum number of steps.')
-          write(tmp_str,"(2(i5,tr1),2(1x,f12.6))") istep, iscf, dDmax, dHmax
-          call message(' (info)',"Geom step, scf iteration, dDmax, dHmax:"//trim(tmp_str))
+          write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
+          call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
           if ( TSrun ) then
             write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
             call message(' (info)',"Geom step, scf iteration, dq:"//trim(tmp_str))
@@ -646,18 +588,11 @@ contains
     ! Clean-up here to limit memory usage
     call mixers_scf_history_init( )
     
-!===
-    endif  ! Siesta_Worker
-
     ! End of standard SCF loop.
     ! Do one more pass to compute forces and stresses
     
     ! Note that this call will no longer overwrite H while computing the
     ! final energies, forces and stresses...
-
-    ! If we want to preserve the "Siesta_Worker" subset implementation for ELSI,
-    ! this block needs to be executed by everybody
-    ! as it contains a call to the ELSI interface to get the EDM
     
     if ( fdf_get("compute-forces",.true.) ) then
        call post_scf_work( istep, iscf , SCFconverged )
@@ -665,15 +600,6 @@ contains
        if (ionode) call memory_snapshot("after post_scf_work")
 #endif
     end if
-
-#ifdef SIESTA__ELSI
-    ! Recall that there could be an extra call after the scf loop to get the EDM
-    if ( isolve == SOLVE_ELSI ) then
-       call elsi_finalize_scfloop()
-    end if
-#endif
-
-    if (.not. Siesta_Worker) RETURN
     
     ! ... so H at this point is the latest generator of the DM, except
     ! if mixing H beyond self-consistency or terminating the scf loop

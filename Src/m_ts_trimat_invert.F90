@@ -149,7 +149,7 @@ contains
   end subroutine invert_BiasTriMat_prep
 
 #ifdef TBTRANS
-  subroutine BiasTrimat_prep(M,N_Elec,Elecs,has_El,part_cols)
+  subroutine BiasTrimat_prep(M,N_Elec,Elecs,has_El,part_cols,basis_size)
 
     use ts_electrode_m
 
@@ -158,12 +158,17 @@ contains
     type(electrode_t), intent(in) :: Elecs(N_Elec)
     logical, intent(in) :: has_El(:)
     integer, intent(inout), allocatable :: part_cols(:,:)
+    ! Size factor, scales the size of blocks for non-col/SOC calculations
+    integer, intent(in), optional :: basis_size
 
     integer :: iEl, off, sCol, eCol
-    integer :: n, np, sN, Ne, sNm1, sNp1
+    integer :: n, np, sN, Ne, sNm1, sNp1, sfac
     ! We need to allow the electrodes to be split
     ! across two blocks.
     integer :: tmp(3,N_Elec*2)
+
+    sfac = 1
+    if ( present(basis_size) ) sfac = basis_size
 
     np = parts(M)
 
@@ -184,8 +189,8 @@ contains
         ! electrodes will only occupy at most 2 parts
         ! Hence, it makes no sense to loop them individually
         ! Also inDpvt is a sorted array with device indices
-        sNm1 = Elecs(iEl)%inDpvt%r(1)
-        sNp1 = Elecs(iEl)%inDpvt%r(Elecs(iEl)%inDpvt%n)
+        sNm1 = sfac *(Elecs(iEl)%inDpvt%r(1) - 1) + 1
+        sNp1 = sfac * Elecs(iEl)%inDpvt%r(Elecs(iEl)%inDpvt%n)
         if ( which_part(M,sNm1) <= n .and. &
             n <= which_part(M,sNp1) ) then
 
@@ -450,7 +455,7 @@ contains
 
   end subroutine invert_BiasTriMat_col
 
-  subroutine invert_BiasTriMat_rgn(M,Minv,r,pvt,r_col,only_diag)
+  subroutine invert_BiasTriMat_rgn(M,Minv,r,pvt,r_col,only_diag,basis_size)
 
     use m_region
 
@@ -463,6 +468,8 @@ contains
     type(tRgn), intent(in) :: r_col
     ! Whether we should only calculate the diagonal Green function
     logical, intent(in), optional :: only_diag
+    ! Size factor, scales the size of blocks for non-col/SOC calculations
+    integer, intent(in), optional :: basis_size
 
     complex(dp), pointer :: Mpinv(:), Mp(:)
     complex(dp), pointer :: XY(:)
@@ -472,8 +479,11 @@ contains
     integer :: sPart, ePart
     integer :: i, i_Elec, idx_Elec
     integer :: sIdxF, eIdxF, sIdxT, eIdxT
-    integer :: sN, n, in, s, sNo, nb
+    integer :: sN, n, in, s, sNo, nb, sfac
     integer, pointer :: crows(:)
+
+    sfac = 1
+    if ( present(basis_size) ) sfac = basis_size
 
     ! In this routine M should have been processed through invert_PrepTriMat
     ! So M contains all *needed* inv(Mnn) and all Xn/Cn+1 and Yn/Bn-1.
@@ -500,8 +510,8 @@ contains
     ePart = 0
     do n = 1 , r_col%n
       s = pvt%r(r_col%r(n))
-      sPart = min(sPart,which_part(M,s))
-      ePart = max(ePart,which_part(M,s))
+      sPart = min(sPart,which_part(M, sfac*(s-1)+1))
+      ePart = max(ePart,which_part(M, sfac*(s-1)+1))
     end do
 #ifndef TS_NOCHECKS
     if ( sPart < 1 ) call die('Error in the Bias inversion, sPart')
@@ -526,8 +536,6 @@ contains
 
       ! We start by creating a region of consecutive
       ! memory.
-      n = which_part(M,idx_Elec)
-      sN = nrows_g(M,n)
       nb = 1
       do while ( i_Elec + nb <= r_col%n )
         i = pvt%r(r_col%r(i_Elec+nb))
@@ -535,7 +543,7 @@ contains
         if ( i - idx_Elec /= nb ) exit
         ! In case the block changes, then
         ! we cut the block size here.
-        if ( n /= which_part(M,i) ) exit
+        if ( n /= which_part(M,sfac*(i-1)+1) ) exit
         nb = nb + 1
       end do
        
@@ -543,17 +551,18 @@ contains
        
       ! Figure out which part we have Mnn in
       i = pvt%r(r_col%r(i_Elec))
-      n = which_part(M,i)
+      n = which_part(M,sfac*(i-1)+1)
+      sN = nrows_g(M,n)
 
       ! get placement of the diagonal block in the column
-      call TriMat_Bias_idxs(Minv,r_col%n,n,sIdxT,eIdxT)
+      call TriMat_Bias_idxs(Minv,sfac*r_col%n,n,sIdxT,eIdxT)
       Mpinv => z(sIdxT:eIdxT)
 
       ! Correct the copied elements
       ! Figure out the placement in the copied to array
       ! First we calculate the starting index of the block
-      sIdxT = (i_Elec - 1 ) * sN + 1
-      eIdxT = (i_Elec + nb - 1) * sN
+      sIdxT = sfac * (i_Elec - 1) * sN + 1
+      eIdxT = sfac * (i_Elec + nb - 1) * sN
 
       ! *** Now we have the matrix that we can save the 
       !     block Mnn in
@@ -561,9 +570,9 @@ contains
       ! We now need to figure out the placement of the 
       ! Mnn part that we have already calculated.
       Mp => val(M,n,n)
-      i = pvt%r(r_col%r(i_Elec))
+      i = sfac * (pvt%r(r_col%r(i_Elec)) - 1) + 1
       sIdxF = (i-(crows(n)-sN)-1) * sN + 1
-      i = pvt%r(r_col%r(i_Elec+nb-1))
+      i = sfac * pvt%r(r_col%r(i_Elec+nb-1))
       eIdxF = (i-(crows(n)-sN)) * sN
 
       ! Check that we have something correct...

@@ -21,7 +21,6 @@ C Modified by A. Garcia, March-June 2019
 C **********************************************************************
 
       USE FDF
-      use units, only: Ang
 
       IMPLICIT NONE
 
@@ -126,7 +125,7 @@ C   Iunitcd = 3 => Multiply by volume unit cell (in bohrs**3)
       IF (IUNITCD .EQ. 1) THEN
         ARMUNI = 1.D0
       ELSEIF( IUNITCD .EQ. 2 ) THEN
-        ARMUNI = Ang**3 
+        ARMUNI = (1.D0 / 0.529177D0)**3 
       ELSEIF( IUNITCD .EQ. 3 ) THEN
         ARMUNI = VOLUME
       ENDIF

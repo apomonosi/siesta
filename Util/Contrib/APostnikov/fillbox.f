@@ -49,7 +49,7 @@ C       would be enough...
           enddo
           if (hit(coort,obox,rinv)) then
             nbox = nbox + 1
-            write (is1,'(i9,3f20.8)') iat, (coort(jj),jj=1,3)
+            write (is1,'(i4,3f20.8)') iat, (coort(jj),jj=1,3)
           endif
         enddo
         enddo

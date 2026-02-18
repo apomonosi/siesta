@@ -277,6 +277,7 @@ contains
     this%comp_lvl = 0
   end subroutine h_reset
   subroutine ncdf_init(this,name,mode,parallel,comm,overwrite,compress_lvl)
+    use mpi
     type(hNCDF), intent(inout) :: this
     character(len=*), optional, intent(in) :: name
     integer, optional, intent(in) :: mode
@@ -286,6 +287,7 @@ contains
     integer, optional, intent(in) :: compress_lvl
     integer :: format
     logical :: exist
+    integer :: MPIerror
     call h_reset(this)
     if ( present(name) ) this%name = name
     if ( present(compress_lvl) ) this%comp_lvl = compress_lvl

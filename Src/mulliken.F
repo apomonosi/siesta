@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
       subroutine mulliken(iopt,natoms,nbasistot,maxnh,numh,
      .                    listhptr,listh,s,dm,isa,lasto,iaorb,
      .                    iphorb)
@@ -53,8 +51,6 @@ C
       use alloc,        only : re_alloc, de_alloc
       use siesta_cml
       use m_spin,       only : spin
-      use intrinsic_missing, only: MODP
-      use partial_charges_m, only: write_partial_charges
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -77,8 +73,7 @@ C Number of columns in printout.  Must be smaller than 20
       parameter (ncol = 8)
 
 #ifdef MPI
-      integer  :: MPIerror
-      MPI_STATUS_TYPE :: mpistatus
+      integer  :: MPIerror, mpistatus(MPI_STATUS_SIZE)
       real(dp) :: pb(ncol)
       real(dp),  pointer :: qb(:)=>null()
       character(len=128) ::  mpibuff ! 128 is sufficiently long
@@ -93,7 +88,6 @@ C Number of columns in printout.  Must be smaller than 20
       real(dp) :: dm_aux(4)
 
       real(dp), pointer :: qo(:)=>null(), qos(:,:)=>null()
-      real(dp), pointer :: partial_qa(:,:)=>null()
 
       character sym_label(ncol)*7, atm_label*20
 
@@ -180,13 +174,10 @@ C Compute and print Overlap Populations for Orbitals ....................
               enddo
               do in = 1,numh(i)
                 ind = listhptr(i)+in
-                jo = listh(ind)
-                ! Reduce jo to the unit cell (fix old bug)
-                ! This fix will remove small differences between the
-                ! diagonal overlaps and the populations
-                j = modp(jo, nbasistot)
+                j = listh(ind)
                 ii = j - (ib - 1) * ncol
                 if (ii .ge. 1 .and. ii .le. imax) then
+                  p(ii) = 0._dp
                   do is = 1,spin%Spinor
                     p(ii) = p(ii) + dm(ind,is) * s(ind)
                   enddo
@@ -242,17 +233,20 @@ C Compute and print Overlap Populations for Atoms ....................
                 do in = 1,numh(itot)
                   ind = listhptr(itot)+in
                   jor = listh(ind)
-                  ! Fix bug -- bring column to unit cell
-                  jor = modp(jor, nbasistot)
-                  ! Find atom ja on which jor resides
-                  ja = iaorb(jor)
-                  ii = ja - (ib - 1) * ncol
+                  do jja = 1,natoms
+                    if (lasto(jja) .ge. jor) then
+                      ja = jja
+                      goto 100
+                    endif
+                  enddo
+                  goto 110
+ 100              ii = ja - (ib - 1) * ncol
                   if (ii .ge. 1 .and. ii .le. imax) then
-                    ! Note that we add the spin components
                     do is = 1,spin%Spinor
                       p(ii) = p(ii) + dm(ind,is) * s(ind)
                     enddo
                   endif
+ 110              continue
                 enddo
               endif
             enddo
@@ -274,10 +268,6 @@ C ....................
 
 C Compute and print Mulliken Orbital and Atomic Populations ..........
       if (iopt .ge. 1) then
-        call re_alloc(partial_qa, 1, spin%Grid, 1, natoms, "partial_qa",
-     &                "mulliken")
-        partial_qa(:,:) = 0._dp
-
         if (ionode) then
           write(6,*) 
           write(6,"(a)")'mulliken: Atomic and Orbital Populations:'
@@ -355,8 +345,6 @@ C             Compute charge in each orbital of atom ia
                      do in = 1,numh(itot)
                        ind = listhptr(itot) + in
                        qo(nao) = qo(nao) + dm(ind,is) * s(ind)
-                       partial_qa(is,ia) = partial_qa(is,ia) +
-     &                                     dm(ind,is) * s(ind)
                      enddo
                      qa = qa + qo(nao)
                    endif
@@ -427,10 +415,9 @@ C Global sum of total charge
           enddo
           do io = 1,nbasis
              call LocalToGlobalOrb(io,Node, Nodes, itot)
-             ia = iaorb(itot)
              do in = 1,numh(io)
                 ind = listhptr(io)+in
-                ! superfluous:  jo = listh(ind)
+                jo = listh(ind)
                 dm_aux(1:4) = dm(ind,1:4)
                 if (spin%SO) then
                    dm_aux(3) = 0.5_dp*(dm_aux(3)+dm(ind,7))
@@ -438,8 +425,6 @@ C Global sum of total charge
                 endif
                 do is = 1,spin%Grid
                    qos(is,itot) = qos(is,itot) + dm_aux(is)*s(ind)
-                   partial_qa(is,ia) = partial_qa(is,ia) + 
-     &                  dm_aux(is)*s(ind)
                 enddo
              enddo
           enddo 
@@ -530,22 +515,6 @@ C DSP, Orbitals with a 'P' belong to the polarization shell
           call de_alloc( qos, 'qos', 'mulliken' )
           
         end if ! spin%DM .ge. 4
-
-#ifdef MPI
-        ! Reduce the partial_qa
-        call re_alloc(qos,1,spin%grid,1,natoms, "p_qa_mpi", "mulliken")
-        call MPI_Reduce(partial_qa(1,1),qos(1,1),spin%Grid*natoms,
-     &                  MPI_double_precision,MPI_sum,
-     &                  0,MPI_Comm_World,MPIerror)
-        partial_qa(:,:) = qos(:,:)
-        call de_alloc(qos, "p_qa_mpi", "mulliken")
-#endif
-        ! now print out
-        call write_partial_charges(spin%Grid, natoms, 
-     &                             partial_qa, method=3)
-          
-        call de_alloc(partial_qa, "partial_qa", "mulliken")
-        
       end if
 
 C ...................

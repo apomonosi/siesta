@@ -241,7 +241,7 @@ C Loop over k points
                   write(6,"(a,2i6)") "Saved, needed: ", n_eigenvectors,
      $                 neigneeded
                endif
-               call die("stopping program")
+               call die()
             endif
 
             call timer( 'c-buildD', 1 )

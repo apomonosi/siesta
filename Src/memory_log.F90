@@ -73,6 +73,7 @@ MODULE memory_log
   use mpi_siesta, only: MPI_Bcast
   use mpi_siesta, only: MPI_Comm_World
   use mpi_siesta, only: MPI_double_precision
+  use mpi_siesta, only: MPI_integer
   use mpi_siesta, only: MPI_character
 #endif
 

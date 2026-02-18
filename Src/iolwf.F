@@ -5,7 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
       subroutine iolwf( task, nbasis, nbasisCloc, nbasisloc, maxnc, 
      .                  found, nspin)
 C *******************************************************************
@@ -40,7 +39,9 @@ C
       use on_main,       only : xi, g, hg
       use sys,           only : die
 #ifdef MPI
-      use mpi_siesta
+      use mpi_siesta,    only : MPI_logical, MPI_Status_Size
+      use mpi_siesta,    only : MPI_Comm_World, MPI_integer
+      use mpi_siesta,    only : MPI_double_precision
 #endif
       use alloc
 
@@ -57,9 +58,7 @@ C Internal variables and arrays
       integer, pointer :: numcg(:) => null()
       integer :: im, is, unit1, m, nb, ncmax, ns
 #ifdef MPI
-      integer :: MPIerror, n, ndata
-      MPI_REQUEST_TYPE :: Request
-      MPI_STATUS_TYPE  :: Status
+      integer :: MPIerror, n, ndata, Request, Status(MPI_Status_Size)
       real(dp), pointer :: bdens(:) => null()
       integer, pointer :: idens(:) => null()
 #endif

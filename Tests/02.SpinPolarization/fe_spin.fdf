@@ -1,5 +1,0 @@
-%include ../base_fe3.fdf
-SystemLabel         fe_spin
-
-Spin polarized
-

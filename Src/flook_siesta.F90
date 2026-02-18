@@ -3,7 +3,6 @@ module flook_siesta
 #ifdef SIESTA__FLOOK
   use flook
 
-  use units
   use siesta_options
   use siesta_geom
   use parallel, only : IONode, Node, Nodes
@@ -17,7 +16,7 @@ module flook_siesta
   private
 
   ! Signals to LUA
-  ! Right after reading initial options
+  ! Right after reading initial options 
   integer, parameter, public :: LUA_INITIALIZE = 1
   ! Right before SCF step starts, but at each MD step
   integer, parameter, public :: LUA_INIT_MD = 2
@@ -27,11 +26,10 @@ module flook_siesta
   integer, parameter, public :: LUA_FORCES = 4
   ! when moving the atoms, right after the FORCES step
   integer, parameter, public :: LUA_MOVE = 5
-  integer, parameter, public :: LUA_AFTER_MOVE = 6
   ! when Siesta is about to do analysis
-  integer, parameter, public :: LUA_ANALYSIS = 7
+  integer, parameter, public :: LUA_ANALYSIS = 6
   ! when SIESTA is complete, just before it exists
-  integer, parameter, public :: LUA_FINALIZE = 8
+  integer, parameter, public :: LUA_FINALIZE = 7
 
 #ifdef SIESTA__FLOOK
 
@@ -51,17 +49,14 @@ contains
 
     use fdf, only : fdf_get
     use m_os, only : file_exist
-    use dictionary
-
+    
     type(luaState), intent(inout) :: LUA
-    type(luaTbl) :: tbl
     logical, intent(in) :: md_lua
 
     character(len=30) :: fortran_msg
 
     character(*), parameter :: fortran_static_lua = '&
 siesta = { &
-    Units = {}, &
     Node = 0, &
     Nodes = 1, &
     INITIALIZE = 1, &
@@ -69,9 +64,8 @@ siesta = { &
     SCF_LOOP = 3, &
     FORCES = 4, &
     MOVE = 5, &
-    AFTER_MOVE = 6, &
-    ANALYSIS = 7, &
-    FINALIZE = 8, &
+    ANALYSIS = 6, &
+    FINALIZE = 7, &
     state = 0, &
     IOprint = function(self, ...) &
        if self.IONode then &
@@ -87,15 +81,25 @@ IOprint = function(...) &
 end &
 siesta_comm = function(...) end'
 
+    character(*), parameter :: unit_static_lua = '&
+&siesta.Units = { &
+&    Ang    = 1. / 0.529177, &
+&    eV     = 1. / 13.60580, &
+&    kBar   = 1. / 1.47108e5, &
+&    Debye  = 0.393430, &
+&    amu    = 2.133107, &
+&} &
+&siesta.Units.GPa = siesta.Units.kBar * 10 &
+&siesta.Units.Kelvin = siesta.Units.eV / 11604.45'
+
     ! For error-handling with lua
     integer :: err
     character(len=2048) :: err_msg
-    type(dictionary_t) :: units_dict
 
     ! Whether the interactive lua stuff should be runned
     slua_interactive = fdf_get('LUA.Interactive', .false.)
     slua_interactive = slua_interactive .AND. IONode
-
+    
     ! First retrieve lua file
     slua_file = fdf_get('LUA.Script',' ')
     ! Immediately return if the file is not specified...
@@ -103,7 +107,7 @@ siesta_comm = function(...) end'
 
     ! Default debugging only on the io-node.
     slua_debug = fdf_get('LUA.Debug',.false.)
-    slua_debug = slua_debug .and. IONode
+    slua_debug = slua_debug .and. IONode 
     if ( fdf_get('LUA.Debug.MPI',.false.) ) then
        ! Only if requesting parallel debug should all processors
        ! use the debugging.
@@ -120,7 +124,7 @@ siesta_comm = function(...) end'
     ! messages, but for now this is not the scope
     slua_run = file_exist(slua_file, all = .true. )
 
-    ! If not all processors sees the file,
+    ! If not all processors sees the file, 
     ! we return immediately...
     if ( .not. slua_run ) then
        ! Let the user know if their system
@@ -143,7 +147,7 @@ siesta_comm = function(...) end'
           call die('Requested Lua-MD, however no Lua ' // &
                'script could be found !')
        end if
-
+       
        return
     end if
 
@@ -155,34 +159,8 @@ siesta_comm = function(...) end'
 
     ! Create LUA table for data container
     call lua_run(LUA, code = fortran_static_lua )
-
-    ! create the unit table
-    units_dict = units_dict // &
-    	('Units.eV'.kv.eV)
-    units_dict = units_dict // &
-    	('Units.Ang'.kv.Ang)
-    units_dict = units_dict // &
-    	('Units.kBar'.kv.kBar)
-    units_dict = units_dict // &
-    	('Units.Debye'.kv.Debye)
-    units_dict = units_dict // &
-    	('Units.amu'.kv.amu)
-    units_dict = units_dict // &
-    	('Units.Kelvin'.kv.Kelvin)
-    units_dict = units_dict // &
-    	('Units.GPa'.kv.GPa)
-    units_dict = units_dict // &
-    	('Units.Pi'.kv.Pi)
-    units_dict = units_dict // &
-    	('Units.Joule'.kv.Joule)
-    units_dict = units_dict // &
-    	('Units.hbar'.kv.hbar)
-
-    ! open global siesta table
-    tbl = lua_table(LUA, 'siesta')
-    call slua_put_dict(tbl, units_dict, units_dict)
-    call lua_close_tree(tbl)
-    call delete(units_dict)
+    ! Append the unit table for SIESTA unit conversion
+    call lua_run(LUA, code = unit_static_lua )
 
     ! Register siesta calls to communicate to the lua layer
     ! Old names for backwards compatibility
@@ -244,7 +222,7 @@ siesta_comm = function(...) end'
     end type ll_line
     type(ll_line), target :: lines
     integer :: iostat
-
+    
     ! Return immediately if we should not run
     if ( .not. (slua_run .or. slua_interactive) ) return
 
@@ -279,14 +257,12 @@ siesta_comm = function(...) end'
        tmp = 'FORCES'
      case ( LUA_MOVE )
        tmp = 'MOVE'
-     case ( LUA_AFTER_MOVE )
-       tmp = 'AFTER_MOVE'
      case ( LUA_ANALYSIS )
        tmp = 'ANALYSIS'
      case ( LUA_FINALIZE )
        tmp = 'FINALIZE'
      end select
-
+       
      write(*,'(/2a)') 'Entering Lua-interactive @ siesta.state = ', trim(tmp)
      write(*,'(a)') 'The following commands are available in the interactive session:'
      write(*,*) ! newline
@@ -304,7 +280,7 @@ siesta_comm = function(...) end'
      call interactive_run()
 
    end if
-
+   
    ! Call communicator
    if ( slua_run ) then
      call lua_run(LUA, code = 'siesta_comm()', error = err, message=err_msg )
@@ -317,7 +293,7 @@ siesta_comm = function(...) end'
 
    call timer('LUA-call', 2)
    call timer('LUA', 2)
-
+   
  contains
 
    subroutine interactive_run()
@@ -332,7 +308,7 @@ siesta_comm = function(...) end'
      ! Start assembling the lines
      next => lines
      first = .true.
-     interactive_loop: do
+     interactive_loop: do 
 
        ! Read line
        if ( first ) then
@@ -342,10 +318,10 @@ siesta_comm = function(...) end'
        end if
        read(*,"(a)",iostat=iostat) line
        if ( iostat /= 0 ) exit
-
+       
        select case ( trim(line) )
        case ( "/debug" )
-
+         
          if ( slua_debug ) then
            write(*,'(a)') 'Debugging OFF!'
            slua_debug = .false.
@@ -355,21 +331,21 @@ siesta_comm = function(...) end'
          end if
 
          cycle interactive_loop
-
+         
        case ( "/show" )
-
+         
          call interactive_show()
          cycle interactive_loop
 
        case ( "/clear" )
-
+         
          call interactive_clean()
          next => lines
          first = .true.
          cycle interactive_loop
 
        case ( "/run", ";" )
-
+         
          ! Run and continue
          call interactive_execute()
          next => lines
@@ -377,25 +353,25 @@ siesta_comm = function(...) end'
          cycle interactive_loop
 
        case ( "/cont", "/continue" )
-
+         
          ! Run and exit interactive session
          call interactive_execute()
          exit interactive_loop
 
        case ( "/stop" )
-
+         
          ! Run and exit interactive session
          call interactive_execute()
          write(*,'(a)') 'Stopping future interactive sessions!'
          slua_interactive = .false.
-
+         
          exit interactive_loop
 
        end select
 
        ! Not first line
        first = .false.
-
+       
        ! Add line to linked-list
        i_chars = len_trim(line)
        allocate(next%line(i_chars + 1))
@@ -419,9 +395,9 @@ siesta_comm = function(...) end'
 
      ! Ensure the linked-list is clean
      call interactive_clean()
-
+     
    end subroutine interactive_run
-
+   
    subroutine interactive_execute()
      use variable, only: cunpack
      character, allocatable :: interactive(:)
@@ -438,7 +414,7 @@ siesta_comm = function(...) end'
          write(*,'(a)') trim(err_msg)
        end if
      end if
-
+     
      deallocate(interactive)
 
    end subroutine interactive_execute
@@ -453,7 +429,7 @@ siesta_comm = function(...) end'
 
      ! Reset n_chars to count stuff to execute
      n_chars = 1
-
+     
      next => lines
      do while ( allocated(next%line) )
        i_chars = size(next%line)
@@ -473,7 +449,7 @@ siesta_comm = function(...) end'
      ! We have to store the current size counter
      old_n_chars = n_chars
      call interactive_collect(interactive)
-
+     
      if ( size(interactive) > 0 ) then
        write(*,'(a)') cunpack(interactive)
      end if
@@ -502,7 +478,7 @@ siesta_comm = function(...) end'
      n_chars = 0
 
    end subroutine interactive_clean
-
+   
   end subroutine slua_call
 
   subroutine slua_close(LUA)
@@ -513,7 +489,7 @@ siesta_comm = function(...) end'
   end subroutine slua_close
 
 
-  ! ! ! ! ! ! !
+  ! ! ! ! ! ! ! 
   ! The remaining functions/routines are private
   ! methods.
   ! ! ! ! ! ! !
@@ -552,7 +528,7 @@ siesta_comm = function(...) end'
 
     ! open global siesta table
     tbl = lua_table(LUA, 'siesta')
-
+    
     ! Expose the dictionary
     call slua_put_dict(tbl, options, keys)
     call slua_put_dict(tbl, variables, keys)
@@ -599,7 +575,7 @@ siesta_comm = function(...) end'
 
     ! open global siesta table
     tbl = lua_table(LUA, 'siesta')
-
+    
     ! Expose the dictionary
     call slua_get_dict(tbl, options, keys)
     call slua_get_dict(tbl, variables, keys)
@@ -621,10 +597,6 @@ siesta_comm = function(...) end'
 
   subroutine slua_get_tbl_to_dict(lua,keys)
 
-    ! This aliasing of the len() function is needed for Cray compilations, at
-    ! least with Cray <= 16.0.1. Cray does not like that "len" has the same name
-    ! as an intrinsic, even though the overloading should be allowed.
-    use flook, only : tbl_len => len
     use variable
     use dictionary
 
@@ -642,7 +614,7 @@ siesta_comm = function(...) end'
     tbl = lua_table(LUA)
 
     ! Traverse all elements in the table
-    N = tbl_len(tbl)
+    N = len(tbl)
     do i = 1 , N
        call lua_get(tbl, i, name)
        keys = keys // (trim(name).kv.1)
@@ -676,7 +648,7 @@ siesta_comm = function(...) end'
       ! a bottle-neck for these small number of entries.
       pk = .first. keys
       do while ( .not. (.empty. pk) )
-
+        
         ! This is the key in the keys
         key = trim(.key. pk)
         if ( index(trim(d_key), trim(key) // '.') == 1 ) then
@@ -684,7 +656,7 @@ siesta_comm = function(...) end'
         end if
         pk = .next. pk
       end do
-
+      
       pd = .next. pd
     end do
 
@@ -724,9 +696,9 @@ siesta_comm = function(...) end'
           end if
           pd = .next. pd
        end do
-
+       
     else
-
+       
        ! Loop over all entries
        pd = .first. dic
        do while ( .not. (.empty. pd) )
@@ -779,38 +751,38 @@ siesta_comm = function(...) end'
       case ( 'b1' )
          call associate(b1,v)
          call lua_set(tbl,key,b1)
-      case ( 'b2' )
+      case ( 'b2' ) 
          call associate(b2,v)
          call lua_set(tbl,key,b2)
-      case ( 'i0' )
+      case ( 'i0' ) 
          call associate(i0,v)
          call lua_set(tbl,rkey,i0)
-      case ( 'i1' )
+      case ( 'i1' ) 
          call associate(i1,v)
          call lua_set(tbl,key,i1)
-      case ( 'i2' )
+      case ( 'i2' ) 
          call associate(i2,v)
          call lua_set(tbl,key,i2)
-      case ( 's0' )
+      case ( 's0' ) 
          call associate(s0,v)
          call lua_set(tbl,rkey,s0)
-      case ( 's1' )
+      case ( 's1' ) 
          call associate(s1,v)
          call lua_set(tbl,key,s1)
-      case ( 's2' )
+      case ( 's2' ) 
          call associate(s2,v)
          call lua_set(tbl,key,s2)
-      case ( 'd0' )
+      case ( 'd0' ) 
          call associate(d0,v)
          call lua_set(tbl,rkey,d0)
-      case ( 'd1' )
+      case ( 'd1' ) 
          call associate(d1,v)
          call lua_set(tbl,key,d1)
-      case ( 'd2' )
+      case ( 'd2' ) 
          call associate(d2,v)
          call lua_set(tbl,key,d2)
       end select
-
+       
       call lua_close(tbl,lvls = lvls)
     end subroutine slua_put_var
 
@@ -844,9 +816,9 @@ siesta_comm = function(...) end'
           end if
           pd = .next. pd
        end do
-
+       
     else
-
+       
        ! Loop over all entries
        pd = .first. dic
        do while ( .not. (.empty. pd) )
@@ -897,40 +869,40 @@ siesta_comm = function(...) end'
          na1 = len_trim(V0)
          a1 = ' '
          a1(1:na1) = cpack(V0(1:na1))
-      case ( 'b0' )
+      case ( 'b0' ) 
          call associate(b0,v)
          call lua_get(tbl,rkey,b0)
-      case ( 'b1' )
+      case ( 'b1' ) 
          call associate(b1,v)
          call lua_get(tbl,key,b1)
-      case ( 'b2' )
+      case ( 'b2' ) 
          call associate(b2,v)
          call lua_get(tbl,key,b2)
-      case ( 'i0' )
+      case ( 'i0' ) 
          call associate(i0,v)
          call lua_get(tbl,rkey,i0)
-      case ( 'i1' )
+      case ( 'i1' ) 
          call associate(i1,v)
          call lua_get(tbl,key,i1)
-      case ( 'i2' )
+      case ( 'i2' ) 
          call associate(i2,v)
          call lua_get(tbl,key,i2)
-      case ( 's0' )
+      case ( 's0' ) 
          call associate(s0,v)
          call lua_get(tbl,rkey,s0)
-      case ( 's1' )
+      case ( 's1' ) 
          call associate(s1,v)
          call lua_get(tbl,key,s1)
-      case ( 's2' )
+      case ( 's2' ) 
          call associate(s2,v)
          call lua_get(tbl,key,s2)
-      case ( 'd0' )
+      case ( 'd0' ) 
          call associate(d0,v)
          call lua_get(tbl,rkey,d0)
-      case ( 'd1' )
+      case ( 'd1' ) 
          call associate(d1,v)
          call lua_get(tbl,key,d1)
-      case ( 'd2' )
+      case ( 'd2' ) 
          call associate(d2,v)
          call lua_get(tbl,key,d2)
       end select
@@ -939,7 +911,7 @@ siesta_comm = function(...) end'
     end subroutine slua_get_var
 
   end subroutine slua_get_dict
-
+  
   subroutine key_split(key,lkey,rkey)
     character(len=*), intent(in) :: key
     character(len=*), intent(inout) :: lkey, rkey
@@ -997,7 +969,7 @@ siesta_comm = function(...) end'
        write(*,fmt) trim(key)
        et = .next. et
     end do
-
+    
     write(*,'(a)') '}'
 
   end function slua_siesta_print_objects

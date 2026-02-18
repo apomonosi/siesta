@@ -731,7 +731,7 @@ module m_vee_integrals
 ! &    'ee_4index_int_real: l    = ', l_value
 !    do a = 0, 2*l_value
 !      write(6,'(a,i1,a,f12.5,a)')                 & 
-! &      'ee_4index_int_real: F(', a,') = ', Slater_F(a) / eV, ' eV'
+! &      'ee_4index_int_real: F(', a,') = ', Slater_F(a) * 13.6058_dp, ' eV'
 !    enddo 
 !!   End debugging
 

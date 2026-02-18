@@ -9,17 +9,17 @@
 C     Written by Daniel Sanchez-Portal
 
       program optical_input
-      use units, only: eV
       implicit none
       integer, parameter :: dp = selected_real_kind(10,100)
       
        INTEGER NE, NEMX, NSPIN, LASTI,NEXT
        PARAMETER (NEMX=10000)
        REAL(DP) E(2),E2(NEMX,2),ESTEP
-       REAL(DP) OMEGA(NEMX), OMG
+       REAL(DP) OMEGA(NEMX), OMG, eV
        REAL(DP) EMAX, EMIN, FSUM(2), THRESHOLD, THRES
        REAL(DP) C,P,SUM,A,B, EPSMIN, SUM2 , EMAXP, DRUDE(2)
        PARAMETER (THRESHOLD=0.80_dp)
+       PARAMETER (eV= 13.6058d0)     
        PARAMETER (EPSMIN=0.01_dp)
        PARAMETER (EMAXP=200.0d0)
        CHARACTER(len=3) STR

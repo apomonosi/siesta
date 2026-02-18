@@ -6,10 +6,9 @@ module m_ncps_froyen_ps_t
   private
 
   integer, parameter  :: dp = selected_real_kind(14)
-
+      
   public :: froyen_ps_t
   public :: pseudo_init_constant
-  public :: pseudo_reset
 
   type froyen_ps_t
         character(len=2)        :: name
@@ -63,22 +62,6 @@ module m_ncps_froyen_ps_t
       p%npotd = 0
 
       end subroutine pseudo_init_constant
-
-      subroutine pseudo_reset(p)
-         implicit none
-         type(froyen_ps_t), intent(inout) :: p
-
-         call pseudo_init_constant(p)
-         if ( associated(p%r)      ) deallocate(p%r)
-         if ( associated(p%chcore) ) deallocate(p%chcore)
-         if ( associated(p%chval)  ) deallocate(p%chval)
-         if ( associated(p%vdown)  ) deallocate(p%vdown)
-         if ( associated(p%vup)    ) deallocate(p%vup)
-         if ( associated(p%ldown)  ) deallocate(p%ldown)
-         if ( associated(p%lup)    ) deallocate(p%lup)
-
-         nullify( p%r, p%chcore, p%chval, p%vdown, p%vup, p%ldown, p%lup)
-      end subroutine pseudo_reset
 
    end module m_ncps_froyen_ps_t
 

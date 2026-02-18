@@ -10,7 +10,7 @@ module MatrixSwitch
   use MatrixSwitch_mm_multiply
   use MatrixSwitch_m_add
   use MatrixSwitch_m_set
-  use MatrixSwitch_copy_m
+  use MatrixSwitch_m_copy
   use MatrixSwitch_m_register
 #ifdef HAVE_PSPBLAS
   use pspBLAS

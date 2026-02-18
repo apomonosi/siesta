@@ -28,7 +28,6 @@ module timer_options
  logical, public :: use_walltime 
  logical, public :: use_parallel_timer = .false.
  logical, public :: time_mpi_calls
- logical, public :: use_inbalance = .false.
 end module timer_options
 
 recursive subroutine timer( prog, iOpt )
@@ -54,10 +53,6 @@ recursive subroutine timer( prog, iOpt )
   use extrae_eventllist
 #endif
 
-#ifdef __PROFILE_NVTX
-  use nvtx
-#endif
-  
 ! Arguments
   implicit none
   character(len=*),intent(in):: prog   ! Name of program to time
@@ -91,25 +86,6 @@ recursive subroutine timer( prog, iOpt )
     call die('timer: ERROR: invalid iOpt value')
   end if
 
-#endif
-
-
-#ifdef __PROFILE_NVTX
-  
-  if (iOpt==0) then
-     ! do nothing?
-  else if (iOpt==1) then
-     call nvtxStartRange(prog)
-  else if (iOpt==2) then
-     ! This might NOT work as is, depending on the internal workings of
-     ! the library.
-     ! We might need a stack, as in tree_timer...
-     call nvtxEndRange()
-  else if (iOpt==3) then
-     ! do nothing?
-  else
-     call die('timer: ERROR: invalid iOpt value')
-  end if
 #endif
 
 if (use_tree_timer) then
@@ -152,6 +128,19 @@ end if
 
 end subroutine timer
 
+subroutine timer_mpi( prog, iOpt )
+ use timer_options, only : time_mpi_calls
+
+  implicit none
+  character(len=*),intent(in):: prog   ! Name of program to time
+  integer,         intent(in):: iOpt   ! Action option
+
+  if (time_mpi_calls) then
+     call timer(prog,iOpt)
+  endif
+
+end subroutine timer_mpi
+
 function use_walltime_in_timer()
   use timer_options, only: use_walltime
 
@@ -159,9 +148,12 @@ function use_walltime_in_timer()
   use_walltime_in_timer = use_walltime
 end function use_walltime_in_timer
 
-function use_inbalance_in_timer_report()
-  use timer_options, only: use_inbalance
-
-  logical :: use_inbalance_in_timer_report
-  use_inbalance_in_timer_report = use_inbalance
-end function use_inbalance_in_timer_report
+subroutine gridxc_timer_start(str)
+  character(len=*), intent(in)  :: str
+  call timer("gridxc@"//trim(str),1)
+end subroutine gridxc_timer_start
+!
+subroutine gridxc_timer_stop(str)
+  character(len=*), intent(in)  :: str
+  call timer("gridxc@"//trim(str),2)
+end subroutine gridxc_timer_stop

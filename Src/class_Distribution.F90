@@ -1,6 +1,4 @@
 !
-#include "mpi_macros.f"
-
 module class_Distribution
 #ifdef MPI
   use mpi_siesta
@@ -31,8 +29,8 @@ module class_Distribution
      !------------------------
      integer       :: dist_type
      !------------------------------------------
-     MPI_COMM_TYPE  :: ref_comm  = MPI_COMM_NULL
-     MPI_GROUP_TYPE :: group     = MPI_GROUP_NULL      ! MPI group
+     integer  :: ref_comm  = MPI_COMM_NULL
+     integer  :: group     = MPI_GROUP_NULL      ! MPI group
      integer  :: node      = MPI_UNDEFINED       ! MPI rank in group  (my_proc)
      integer, allocatable :: ranks_in_ref_comm(:)
      integer  :: nodes = 0       ! MPI size of group  (nprocs)
@@ -121,14 +119,13 @@ module class_Distribution
     ! Constructor
     !........................................
     type (Distribution), intent(inout) :: this
-    MPI_COMM_TYPE, intent(in)                :: ref_comm
+    integer, intent(in)                       :: ref_comm
     integer, intent(in)                       :: ranks_in_ref_comm(:)
     integer, intent(in)                       :: dist_type
     integer, intent(in)                       :: Blocksize
     character(len=*), intent(in), optional    :: name
 
-    integer :: error, gsize
-    MPI_GROUP_TYPE :: ref_group
+    integer :: error, gsize, ref_group
 
     call init(this)
 
@@ -184,7 +181,7 @@ module class_Distribution
   !-----------------------------------------------------------
   function ref_comm_(this) result(comm)
     type(Distribution), intent(in)  :: this
-    MPI_COMM_TYPE                   :: comm
+    integer                 :: comm
 
     obj => this%data
     comm =  obj%ref_comm

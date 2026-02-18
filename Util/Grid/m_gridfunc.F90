@@ -206,7 +206,7 @@ module m_gridfunc
 
      read(iu,iostat=iostat) gf%cell, gf%origin, gf%is_periodic
      if (iostat /= 0) then
-        rewind(iu)
+        backspace(iu)
         read(iu) gf%cell
         gf%origin(:) = 0.0_dp
         gf%is_periodic(:) = .true.

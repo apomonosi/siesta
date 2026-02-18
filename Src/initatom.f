@@ -116,15 +116,15 @@
           write(6,'(a)') ' initatom: still needs pseudopotential files'
           do is = 1 , nsp
              basp => basis_parameters(is)
-             basp%ps_file_spec = ps_file_spec(is)
-             call pseudo_read(basp%ps_file_spec,basp%pseudopotential,
+             basp%label = species_label(is)
+             call pseudo_read(basp%label,basp%pseudopotential,
      $            basp%psml_handle,basp%has_psml_ps)
           end do
        end if
        write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'
        call read_basis_ascii(ns)
        call elec_corr_setup()
-
+       
       else
         ! We generate PAOs and KB projectors
 !       New routines in basis_specs and basis_types.

@@ -27,10 +27,14 @@ module m_transiesta
   use m_ts_tri_init, only : ts_tri_init
 
   use m_ts_fullg
+  use m_ts_fullg_spinor
   use m_ts_fullk
+  use m_ts_fullk_spinor
 
   use m_ts_trig
+  use m_ts_trig_spinor
   use m_ts_trik
+  use m_ts_trik_spinor
 
 #ifdef SIESTA__MUMPS
   use m_ts_mumpsg
@@ -60,7 +64,7 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
 
-    use ts_kpoint_scf_m, only : ts_kpoint_scf
+    use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_gamma_scf
 
     use ts_electrode_m
 
@@ -95,7 +99,7 @@ contains
     real(dp), intent(in) :: xa(3,na_u)
     integer, intent(in)  :: n_nzs
     real(dp), intent(in) :: H(n_nzs,nspin), S(n_nzs)
-    real(dp), intent(inout) :: DM(n_nzs,nspin), EDM(n_nzs,nspin)
+    real(dp), intent(inout) :: DM(n_nzs,nspin), EDM(n_nzs,min(nspin,4))
     real(dp), intent(in) :: Qtot
     real(dp), intent(inout) :: Ef
 
@@ -115,10 +119,6 @@ contains
     integer :: N_F, i_F, ioerr
     real(dp) :: dEf
     real(dp), pointer :: Q_Ef(:,:) => null()
-
-    if ( nspin > 2 ) then
-      call die('transiesta does not work for non-collinear or spin-orbit')
-    end if
 
     ! Open GF files...
     ! Read-in header of Green functions
@@ -156,7 +156,7 @@ contains
       end if
 
       ! print out estimated memory usage...
-      call ts_print_memory(ts_kpoint_scf%is_gamma())
+      call ts_print_memory(ts_gamma_scf, nspin)
 
       call ts_charge_print(N_Elec,Elecs, Qtot, sp_dist, sparse_pattern, &
           nspin, n_nzs, DM, S, TS_Q_INFO_FULL)
@@ -200,6 +200,8 @@ contains
           no_used = Elecs(iEl)%device_orbitals()
           nq(iEl) = 1
        end if
+       ! Adjust number of orbitals for calculation with non-collinear spin
+       if (nspin > 2) no_used = 2 * no_used
 
        if ( IsVolt .or. .not. Elecs(iEl)%Bulk ) then
           ! If we using bulk electrodes, we need not the Hamiltonian, 
@@ -220,6 +222,11 @@ contains
              no_used2 = Elecs(iEl)%no_used
           end if
        end if
+       ! Adjust number of orbitals for calculation with non-collinear spin
+       if (nspin > 2) then
+           no_used  = 2 * no_used
+           no_used2 = 2 * no_used2
+       end if
        call re_alloc(Elecs(iEl)%Gamma,1,no_used*no_used2,routine='transiesta')
 
        ! This seems stupid, however, we never use the expansion array and
@@ -228,7 +235,10 @@ contains
        ! When the UC_expansion_Sigma_GammaT is called:
        ! first the GAA is "emptied" of information and then
        ! Gamma is filled.
-       if ( Elecs(iEl)%pre_expand == 0 ) no_used2 = Elecs(iEl)%no_used
+       if ( Elecs(iEl)%pre_expand == 0 ) then
+           no_used2 = Elecs(iEl)%no_used
+           if (nspin > 2) no_used2 = 2 * no_used2
+       end if
        Elecs(iEl)%GA => Elecs(iEl)%Gamma(1:no_used*no_used2)
 
     end do
@@ -254,38 +264,80 @@ contains
 
       select case ( ts_method )
       case ( TS_FULL )
-        if ( ts_kpoint_scf%is_gamma() ) then
-          call ts_fullg(N_Elec,Elecs, &
-              nq, uGF, nspin, na_u, lasto, &
-              sp_dist, sparse_pattern, &
-              no_u, n_nzs, &
-              H, S, DM, EDM, Ef, NEGF_DE)
-        else
-          call ts_fullk(N_Elec,Elecs, &
-              nq, uGF, &
-              ucell, nspin, na_u, lasto, &
-              sp_dist, sparse_pattern, &
-              no_u, n_nzs, &
-              H, S, DM, EDM, Ef, NEGF_DE)
-        end if
+        select case ( nspin )
+        case ( 1, 2 )
+          if ( ts_gamma_scf ) then
+            call ts_fullg(N_Elec,Elecs, &
+                nq, uGF, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          else
+            call ts_fullk(N_Elec,Elecs, &
+                nq, uGF, &
+                ucell, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          end if
+        case ( 4, 8 )
+          if ( ts_gamma_scf ) then
+            call ts_fullg_spinor(N_Elec,Elecs, &
+                nq, uGF, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          else
+            call ts_fullk_spinor(N_Elec,Elecs, &
+                nq, uGF, &
+                ucell, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          end if
+        case default
+          call die('Programming error, unrecognized number &
+              &of spin components.')
+        end select
       case ( TS_BTD )
-        if ( ts_kpoint_scf%is_gamma() ) then
-          call ts_trig(N_Elec,Elecs, &
+        select case ( nspin )
+        case ( 1, 2 )
+          if ( ts_gamma_scf ) then
+            call ts_trig(N_Elec,Elecs, &
+                nq, uGF, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          else
+            call ts_trik(N_Elec,Elecs, &
+                nq, uGF, &
+                ucell, nspin, na_u, lasto, &
+                sp_dist, sparse_pattern, &
+                no_u, n_nzs, &
+                H, S, DM, EDM, Ef, NEGF_DE)
+          end if
+      case ( 4, 8 )
+        if ( ts_gamma_scf ) then
+          call ts_trig_spinor(N_Elec,Elecs, &
               nq, uGF, nspin, na_u, lasto, &
               sp_dist, sparse_pattern, &
               no_u, n_nzs, &
               H, S, DM, EDM, Ef, NEGF_DE)
         else
-          call ts_trik(N_Elec,Elecs, &
+          call ts_trik_spinor(N_Elec,Elecs, &
               nq, uGF, &
               ucell, nspin, na_u, lasto, &
               sp_dist, sparse_pattern, &
               no_u, n_nzs, &
               H, S, DM, EDM, Ef, NEGF_DE)
         end if
+      case default
+        call die('Programming error, unrecognized number &
+            &of spin components.')
+      end select
 #ifdef SIESTA__MUMPS
       case ( TS_MUMPS )
-        if ( ts_kpoint_scf%is_gamma() ) then
+        if ( ts_gamma_scf ) then
           call ts_mumpsg(N_Elec,Elecs, &
               nq, uGF, nspin, na_u, lasto, &
               sp_dist, sparse_pattern, &
@@ -552,14 +604,15 @@ contains
 
   end subroutine transiesta
 
-  subroutine ts_print_memory(ts_gamma_scf)
-    
+  subroutine ts_print_memory(ts_gamma_scf, nspin)
+
     use parallel, only : IONode
     use precision, only : i8b
 
 #ifdef MPI
-    use mpi_siesta, only : MPI_Comm_World, MPI_Reduce 
-    use mpi_siesta, only : MPI_Integer, MPI_Max
+    use mpi_siesta, only : MPI_Comm_World
+    use mpi_siesta, only : MPI_Max
+    use mpi_siesta, only : MPI_Integer
 #endif 
 
     use class_Sparsity
@@ -576,7 +629,8 @@ contains
     use byte_count_m, only: byte_count_t
 
     logical, intent(in) :: ts_gamma_scf ! transiesta Gamma
-    integer :: i, no_E, no_used
+    integer, intent(in) :: nspin
+    integer :: i, no_E, no_used, spin_factor
     integer(i8b) :: nel
     integer :: padding, worksize
     character(len=32) :: c_tmp
@@ -584,12 +638,15 @@ contains
 #ifdef MPI
     integer :: MPIerror
 #endif
+    spin_factor = 1
+    ! For NC/SO calculations memory requirements are four times higher
+    if ( nspin > 2 ) spin_factor = 2
 
     ! Estimate electrode sizes
     do i = 1 , N_Elec
 
-      no_used = Elecs(i)%no_used
-      no_E = Elecs(i)%device_orbitals()
+      no_used = Elecs(i)%no_used * spin_factor
+      no_E = Elecs(i)%device_orbitals() * spin_factor
 
       if ( IsVolt .or. .not. Elecs(i)%Bulk ) then
         ! Hamiltonian and overlap
@@ -618,7 +675,7 @@ contains
     end if
 
     ! Global arrays
-    nel = nnzs(ts_sp_uc)
+    nel = nnzs(ts_sp_uc) * spin_factor**2
     if ( ts_gamma_scf ) then
       call m_glob%add_type(0._dp, nel, 2_i8b)
     else
@@ -626,7 +683,7 @@ contains
     end if
 
     ! global sparsity update
-    nel = nnzs(tsup_sp_uc)
+    nel = nnzs(tsup_sp_uc) * spin_factor**2
     if ( Calc_Forces ) then
       i = max(N_mu,N_nEq_id) + N_mu
     else
@@ -645,7 +702,7 @@ contains
 
     ! Local sparsity update
     if ( IsVolt ) then
-      no_E = nnzs(ltsup_sp_sc)
+      no_E = nnzs(ltsup_sp_sc) * spin_factor**2
 #ifdef MPI
       call MPI_Reduce(no_E,i,1,MPI_INTEGER, &
           MPI_MAX, 0, MPI_Comm_World, MPIerror)
@@ -676,7 +733,7 @@ contains
             N_Elec, Elecs, padding, worksize)
       end if
 
-      nel = nnzs_tri(c_Tri%n,c_Tri%r)
+      nel = nnzs_tri(c_Tri%n,c_Tri%r) * spin_factor**2
       ! Check we do not cross allowed indexing routines
       if ( nel + max(padding, worksize) > huge(1) ) then
         call die('transiesta: Memory consumption is too large!')
@@ -693,13 +750,13 @@ contains
 
       ! Calculate size of the full matrices
       ! Here we calculate number of electrodes not needed to update the cross-terms
-      no_E = sum(Elecs(:)%device_orbitals(),Elecs(:)%DM_update==0)
-      i = nrows_g(ts_sp_uc) - no_Buf
+      no_E = sum(Elecs(:)%device_orbitals(),Elecs(:)%DM_update==0) * spin_factor
+      i = (nrows_g(ts_sp_uc) - no_Buf) * spin_factor
       ! LHS
       call m_inv%add_type(cmplx(0, 0, dp), i, i)
       ! RHS
       if ( IsVolt ) then
-        call m_inv%add_type(cmplx(0, 0, dp), i, max(i-no_E,sum(Elecs%device_orbitals())))
+        call m_inv%add_type(cmplx(0, 0, dp), i, max(i-no_E,sum(Elecs%device_orbitals()) * spin_factor))
       else
         call m_inv%add_type(cmplx(0, 0, dp), i, i-no_E)
       end if
@@ -707,7 +764,6 @@ contains
       if ( IONode ) then
         write(*,'(a,t55,a)') 'transiesta: [memory] full matrices: ', trim(c_tmp)
       end if
-
 #ifdef SIESTA__MUMPS
     else if ( ts_method == TS_MUMPS ) then
       if ( IONode ) then

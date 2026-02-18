@@ -1,1 +1,0 @@
-siestaqmmm_subtest(restraints LABELS qmmm FILES_SETUP amber.parm)

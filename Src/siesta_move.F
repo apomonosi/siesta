@@ -33,7 +33,7 @@
 
       use m_dynamics,      only: nose, verlet2, npr, anneal, pr
 
-      use m_energies,      only: Ekinion, Etot
+      use m_energies,      only: Ekinion
       use write_subs
       use m_steps
       use m_kinetic
@@ -56,36 +56,34 @@
 
       use m_check_walltime
       use m_mpi_utils,     only: barrier
-      use QMMM_interface, only: QMMM_get_qm_coords, QMMM_send_forces
-      use QMMM_structure, only: mm_charges
-
+      
 #ifdef NCDF_4
       use m_exp_coord, only : exp_coord_next
 #endif
 #ifdef SIESTA__FLOOK
       use siesta_dicts, only : dict_variable_add
-      use flook_siesta, only : slua_call, LUA_MOVE, LUA_AFTER_MOVE
+      use flook_siesta, only : slua_call, LUA_MOVE
 #endif
 
       implicit none
 
-      integer, intent(inout) :: istep
-      logical, intent(out)   :: relaxd
+      integer, intent(in)   :: istep
+      logical, intent(out)  :: relaxd
 
 
       integer               :: ix, iadispl, ixdispl
       integer, parameter    :: iunit = 2   ! Physical-units option for MD:
                                        ! 1=>(eV,Ang), 2=>(Ry,Bohr)
-      real(dp)              :: Pint    ! Instantaneous pressure
-      real(dp)              :: eff_stress(3,3)
+      real(dp)              :: Pint    ! Instantaneous pressure 
+      real(dp)              :: eff_stress(3,3)  
       real(dp)              :: tp_pr
-
+                
       logical               :: foundxv  ! dummy for call to ioxv
       logical               :: foundzm  ! dummy for call to iozm
 
       logical               :: time_is_up
       character(len=40)     :: tmp_str
-
+      
       real(dp), external :: volcel
 
 #ifdef DEBUG
@@ -96,7 +94,7 @@
 
       call timer( 'siesta_move', 1 )
 
-      ! Save the last geometry for which the density matrix
+      ! Save the last geometry for which the density matrix 
       ! (electronic structure) has been calculated
 
       xa_last(1:3,1:na_s) = xa(1:3,1:na_s)
@@ -106,7 +104,7 @@
 ! Move atoms ..........................................................
 !
 !  ** Regarding the output of coordinates:
-!
+!     
 !     -- 'state_init' should record the actual coordinates of a step (CG, MD, whatever)
 !     -- this routine (siesta_move) should only record checkpointing information, such as
 !        the predicted coordinates for a possible next geometry step.
@@ -130,7 +128,7 @@
 
       select case(idyn)
 
-      case(0)
+      case(0)   
          ! The original "relaxation" case, but note that it also covers
          ! pure single-point calculations (with MD.NumCGsteps = 0)
 
@@ -199,13 +197,13 @@
             !    file produced in state_init in this step.
             !  - The Zmatrix files...
           else
-             call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+             call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
              if (lUseZmatrix) call iozm('write',ucell,vcell,xa,foundzm)
              ! This writes the "next_iter" STRUCT and canonical zmatrix files
              call siesta_write_positions(moved=.true.)
              ! Save atomic positions and velocities accumulatively and
-             ! accumulate coor in Xmol file for animation
+             ! accumulate coor in Xmol file for animation 
              call write_md_record( istep )
              call superx_if_compat( ucell, nsc, na_u, na_s, xa, scell )
           endif
@@ -232,7 +230,7 @@
                write(6,'(/,a,f12.3,a)')
      $              'siesta: Temp_ion =', tempion, ' K'
             endif
-              call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+              call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
 
             call siesta_write_positions(moved=.true.)
@@ -249,7 +247,7 @@
          if (IOnode) then
             write(6,'(/,a,f12.3,a)') 'siesta: Temp_ion =', tempion, ' K'
          endif
-         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
          call siesta_write_positions(moved=.true.)
          call write_md_record( istep )
@@ -271,12 +269,12 @@
             tp_pr = 0.0_dp  ! As we are already passing the modified stress
          else
             ! Standard MD mode
-            relaxd = .false.
+            relaxd = .false.    
             tp_pr = tp      ! Keep the original target pressure
          endif
          if (.not. relaxd) then
             call pr(istp, iunit, iquench, na_u, cfa, cstress, tp_pr, dt,
-     .           amass, mpr, ntcon, va, xa, vcell, ucell, Ekinion,
+     .           amass, mpr, ntcon, va, xa, vcell, ucell, Ekinion, 
      .           kpr, vpr, tempion, Pint)
             if (IOnode) then
                write(6,'(/,a,f12.3,a)')
@@ -284,7 +282,7 @@
                write(6,'(/,a,f12.3,a)')
      $              'siesta: Temp_ion =', tempion, ' K'
             endif
-            call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+            call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &             foundxv)
             call siesta_write_positions(moved=.true.)
             call write_md_record( istep )
@@ -293,15 +291,15 @@
 
       case (4)  ! Canonical variable-cell MD (Nose-Parrinello-Rahman)
 
-         relaxd = .false.
+         relaxd = .false.    
          call npr(istp, iunit, na_u, cfa, cstress, tp, tt, dt,
-     .            amass, mn, mpr, ntcon, va, xa, vcell, ucell,
+     .            amass, mn, mpr, ntcon, va, xa, vcell, ucell, 
      .            Ekinion, kn, kpr, vn, vpr, tempion, Pint)
          if (IOnode) then
             write(6,'(/,a,f12.3,a)')
      $           'siesta: Temp_ion =', tempion, ' K'
          endif
-         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &        foundxv)
          call siesta_write_positions(moved=.true.)
          call write_md_record( istep )
@@ -317,7 +315,7 @@
             write(6,'(/,a,f12.3,a)')
      $           'siesta: Temp_ion =', tempion, ' K'
          endif
-         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+         call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &        foundxv)
          call siesta_write_positions(moved=.true.)
          call write_md_record( istep )
@@ -333,7 +331,7 @@
         ! fincoor appropriately
 
         ! Save current (displaced) atomic positions
-         call ioxv( 'write', ucell, vcell, na_u, isa, iza,
+         call ioxv( 'write', ucell, vcell, na_u, isa, iza,  
      &        xa, va, foundxv)
 
         ! Undo the last atom displacement
@@ -346,7 +344,7 @@
 
         ! Displace atom by dx
         ! NOTE: MOVE is before istep increment, hence
-        ! fincoor == istep will be the last step and
+        ! fincoor == istep will be the last step and 
         ! the initial geometry should be retained.
         if ( istep < fincoor ) then ! fincoor = (ia2-ia1+1)*6
           iadispl = ((istep+1)-mod(istep,6))/6+ia1
@@ -369,10 +367,10 @@
          ! client.
 
           ! Save atomic positions and velocities accumulatively and
-          ! accumulate coor in Xmol file for animation
+          ! accumulate coor in Xmol file for animation 
           call write_md_record( istep )
 
-          ! Get coordinates from driver program
+          ! Get coordinates from driver program 
           call coordsFromMaster( na_u, xa, ucell )
           if (volcel(ucell) < 1.0e-8_dp) then
             call automatic_cell(ucell,scell,na_u,xa,isa,charnet)
@@ -385,8 +383,8 @@
       !      call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
       !&             foundxv)
       !      end if
-      !   else
-      !  call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+      !   else 
+      !  call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
       !&             foundxv)
       !  end if    ! td_elec_dyn
 
@@ -403,7 +401,7 @@
              relaxd = .true.
           end if
 #endif
-
+          
 #ifdef SIESTA__FLOOK
        case (10) ! LUA hook coordinates
 
@@ -424,39 +422,16 @@
           if ( relaxd ) then
              ! see comments for idyn == 1
           else
-             call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va,
+             call ioxv( 'write', ucell, vcell, na_u, isa, iza, xa, va, 
      &            foundxv)
-
+             
              call siesta_write_positions( moved=.true. )
              call write_md_record( istep )
              call superx_if_compat( ucell, nsc, na_u, na_s, xa, scell )
           end if
 #endif
-       case (11)
-         ! We temporarily add MM stress contributions to send to the
-         ! MM program.
-         cstress(:,:) = cstress(:,:) + mm_charges%stress(:,:)
 
-         call QMMM_send_forces( na_u, mm_charges%n, cfa, mm_charges%f,
-     &                          Etot, cstress, fincoor )
-
-         relaxd = .false.
-         cstress(:,:) = cstress(:,:) - mm_charges%stress(:,:)
-
-         if ( istep <= fincoor .and. (.not. (fincoor == 0)) ) then
-           call QMMM_get_qm_coords( na_u, xa, ucell )
-           if ( volcel(ucell) < 1.0e-8_dp )
-     &       call automatic_cell( ucell, scell, na_u, xa, isa, charnet )
-
-           ! Updates partial charge distribution for QM/MM (if needed)
-           call mm_charges%update( na_u, xa, ucell )
-         endif
        end select
-
-#ifdef SIESTA__FLOOK
-      ! We have already moved the atoms, communicate with lua
-      call slua_call(LUA, LUA_AFTER_MOVE)
-#endif
 
 ! Output memory use at the end of this geometry step
       if (cml_p) then
@@ -509,7 +484,7 @@
          call superx( UCELL, NSC, NA, MAXA, XA, SCELL )
       end if
       end subroutine superx_if_compat
-
+      
       end subroutine siesta_move
 
       end module m_siesta_move

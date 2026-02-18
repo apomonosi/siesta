@@ -635,6 +635,17 @@ contains
     if ( ltmp ) then
       save_DATA = save_DATA // ('T-sum-out'.kv.1)
     end if
+
+    ltmp = fdf_get('TBT.T.Spin', .false. )
+    if ( ltmp .and. nspin > 2 ) then
+      save_DATA = save_DATA // ('T-Spin'.kv.1)
+    end if
+
+    ltmp = fdf_get('TBT.T.Spin.Fast', .false. )
+    if ( ltmp .and. nspin > 2 ) then
+      save_DATA = save_DATA // ('T-Spin-Fast'.kv.1)
+    end if
+
     
     ! We cannot calculate the transmission for more than 3
     ! electrodes if using the diagonal
@@ -703,6 +714,8 @@ contains
     use parallel, only: IONode
     use files, only: slabel
 
+    use m_spin, only: spin
+
     use m_ts_method, only: ts_A_method, TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
 
     use m_tbt_contour, only: print_contour_tbt_options, io_contour_tbt
@@ -754,7 +767,9 @@ contains
     write(*,f12) 'Calc. # transmission eigenvalues',N_eigen
     write(*,f1) 'Calc. T between all electrodes',('T-all'.in.save_DATA)
     write(*,f1) 'Calc. total T out of electrodes',('T-sum-out'.in.save_DATA)
-    if ( nspin > 1 ) then
+    if ( spin%none ) then
+      write(*,f11) 'Non-polarized Hamiltonian'
+    else if ( spin%Col ) then
        if ( spin_idx == 0 ) then
           write(*,f11) 'Calculate spin UP and DOWN'
        else if ( spin_idx == 1 ) then
@@ -764,8 +779,10 @@ contains
        else
           call die('Error in spin_idx')
        end if
-    else
-       write(*,f11) 'Non-polarized Hamiltonian'
+    else if ( spin%NCol ) then
+      write(*,f11) 'Non-collinear spin Hamiltonian'
+    else ! spin%SO
+      write(*,f11) 'Spin-orbit Hamiltonian'
     end if
 
 

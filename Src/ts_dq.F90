@@ -11,7 +11,6 @@
 
 ! Module for correcting the density matrix for retaining a constant charge density
 ! The idea is to introduce several different schemes of charge corrections.
-#include "mpi_macros.f"
 
 module ts_dq_m
 
@@ -131,6 +130,7 @@ contains
     use class_OrbitalDistribution
     use class_Sparsity
     use geom_helper, only : UCORB
+    use m_spin, only: spin
 
     use ts_charge_m, only: ts_charge_get
     
@@ -144,7 +144,7 @@ contains
     ! Number of non-zero elements
     integer, intent(in) :: nspin, n_nzs
     ! The density matrix and energy density matrix
-    real(dp), intent(inout) :: DM(n_nzs,nspin), EDM(n_nzs,nspin)
+    real(dp), intent(inout) :: DM(n_nzs,spin%DM), EDM(n_nzs,spin%EDM)
     ! The overlap
     real(dp), intent(in) :: S(n_nzs)
     ! Total charge of the system
@@ -163,7 +163,7 @@ contains
     ! Reset to zero if not existing
     if ( no_Buf == 0 ) return
 
-    allocate(Q(0:2+N_Elec*2,nspin))
+    allocate(Q(0:2+N_Elec*2,spin%spinor))
     
     call ts_charge_get(N_Elec, dit, sp, nspin, n_nzs, DM, S, Q = Q)
 
@@ -185,7 +185,7 @@ contains
     deallocate(Q)
 
 !    addQ(:) = 0.0_dp
-    do ispin = 1 , nspin
+    do ispin = 1 , spin%spinor
        do lio = 1 , no_lo
           
           ! obtain the global index of the orbital.
@@ -339,6 +339,7 @@ contains
     use class_OrbitalDistribution
     use alloc, only: de_alloc
     use m_interpolate
+    use m_spin, only: spin
 #ifdef MPI
     use mpi_siesta
 #endif
@@ -351,7 +352,7 @@ contains
     ! Number of non-zero elements
     integer, intent(in) :: nspin, n_nzs
     ! The density matrices and overlap
-    real(dp), intent(in) :: DM(n_nzs,nspin), S(n_nzs)
+    real(dp), intent(in) :: DM(n_nzs,spin%DM), S(n_nzs)
     real(dp), intent(out) :: dEf
 
 ! ******************* Local arrays *******************
@@ -359,7 +360,7 @@ contains
     integer :: imu, ind, N_dq
 #ifdef MPI
     real(dp), allocatable :: tmp(:)
-    MPI_COMM_TYPE :: comm
+    integer :: comm
     integer :: MPIerror
 #endif
 
@@ -370,7 +371,7 @@ contains
     dQ = 0._dp
 !$OMP parallel do default(shared), private(ind), reduction(+:dQ)
     do ind = 1, n_nzs
-      dQ = dQ + sum(DM(ind,:)) * S(ind)
+      dQ = dQ + sum(DM(ind,1:spin%spinor)) * S(ind)
     end do
 !$OMP end parallel do
 

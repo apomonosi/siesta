@@ -295,9 +295,7 @@ CONTAINS
 
       ! Sets up indexes for the handling of rho(G)
 
-      use parallel,    only : Node, Nodes
-      use moreMeshSubs, only : UNIFORM, getMeshBox
-
+      use parallel,    only : Node, Nodes, ProcessorY
       use alloc, only: re_alloc
       use fdf,   only: fdf_get, fdf_defined
       use sorting, only: ordix
@@ -320,8 +318,9 @@ CONTAINS
       real(dp)              :: B(3,3), g(3), celvol
       integer               :: I, I1, I2, I3, IX, J, J1, J2, J3, JX,  &
                                NP, NG, NG2, NG3,                      &
-                               J2min, J2max,      &
-                               J3min, J3max, J2L, J3L
+                               ProcessorZ, Py, Pz, J2min, J2max,      &
+                               J3min, J3max, J2L, J3L, NRemY, NRemZ,  &
+                               BlockSizeY, BlockSizeZ
       external :: reclat
       real(dp), external :: volcel
 
@@ -330,7 +329,6 @@ CONTAINS
       integer :: ng_diis_min, ng_diis_max, ng_diis_sum
 
       real(dp) :: pi, qtf2, length, length_max, q0_size
-      integer, pointer :: box(:,:,:)
       
 !
 !     Find the genuine thomas fermi k0^2. This does not
@@ -386,15 +384,24 @@ CONTAINS
 
       jg0 = -1
 
-      call getMeshBox( UNIFORM, box )
-
-      J3min = (box(1,3,Node+1)-1)*NSM
-      J3max = box(2,3,Node+1)*NSM-1
-      J2min = (box(1,2,Node+1)-1)*NSM
-      J2max = box(2,2,Node+1)*NSM-1
+      ProcessorZ = Nodes/ProcessorY
+      Py = (Node/ProcessorZ) + 1
+      Pz = Node - (Py - 1)*ProcessorZ + 1
 
       NG2 = Mesh(2)
       NG3 = Mesh(3)
+      BlockSizeY = ((NG2/NSM)/ProcessorY)*NSM
+      BlockSizeZ = ((NG3/NSM)/ProcessorZ)*NSM
+      NRemY = (NG2 - BlockSizeY*ProcessorY)/NSM
+      NRemZ = (NG3 - BlockSizeZ*ProcessorZ)/NSM
+      J2min = (Py-1)*BlockSizeY + NSM*min(Py-1,NRemY)
+      J2max = J2min + BlockSizeY - 1
+      if (Py-1.lt.NRemY) J2max = J2max + NSM
+      J2max = min(J2max,NG2-1)
+      J3min = (Pz-1)*BlockSizeZ + NSM*min(Pz-1,NRemZ)
+      J3max = J3min + BlockSizeZ - 1
+      if (Pz-1.lt.NRemZ) J3max = J3max + NSM
+      J3max = min(J3max,NG3-1)
 
       do J3 = J3min,J3max
         if (J3.gt.NG3/2) then

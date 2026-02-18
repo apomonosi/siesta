@@ -31,7 +31,6 @@ C Modules --------------------------------------------------------------
       USE DEFS_COMMON
       use interpolation, only: spline, splint
       use gpfa_fft,only : fft_gpfa_ez
-      use units, only: unit_convfac
 
       IMPLICIT NONE
 
@@ -51,8 +50,9 @@ C **********************************************************************
       PARAMETER(NP = 12)
       PARAMETER(N = 2**NP) 
 
-      REAL(DP), PARAMETER :: HARTREE_to_RYDBERG = 2.0d0
-      REAL(DP)            :: RYDBERG_to_eV
+      REAL(DP) HARTREE, RYDBERG
+      PARAMETER(HARTREE = 2.D0)
+      PARAMETER(RYDBERG = 13.6058D0)
 
 C ********* VARIABLES **************************************************
       CHARACTER
@@ -178,8 +178,6 @@ C REAL*4    VRENC(N)   : Real part of the nuclear potential in real space
 C REAL*4    VIMNC(N)   : Imag. part of the nuclear potential in real space
 C *********************************************************************
 
-      RYDBERG_to_eV = unit_convfac("Ry","eV")
-      
 C Reading input data from a file ---------------------------------------
       CALL IO_ASSIGN(UNIT1)
         OPEN(UNIT=UNIT1, FILE='macroave.in', STATUS='OLD')
@@ -317,7 +315,7 @@ C needed for the charge density
 C (it is directly read in electrons/bohr**3).
           IF (POTENTIAL) THEN 
             DO IP = 1, NPT 
-              RHO(IP,IS) = RHO(IP,IS) * HARTREE_to_RYDBERG
+              RHO(IP,IS) = RHO(IP,IS) * HARTREE
             ENDDO
           ENDIF
         ENDDO
@@ -343,7 +341,7 @@ C Initialize some variables (we suppose orthorombic cells) -------------
       DRHODZ(1:N)         = 0.D0
 
       IF (POTENTIAL) THEN 
-         CONVFAC = RYDBERG_to_eV
+         CONVFAC = RYDBERG
       ELSE IF (CHARGE) THEN
          CONVFAC = 1.0D0
       ELSE IF (TOTALCHARGE) THEN
@@ -511,8 +509,8 @@ c          IF ( POISON ) THEN
 c            IG = (II-1) / 2
 c            GSQ= (2.D0*PI*IG/L)**2
 c            IF(GSQ .GT. 0.D0) THEN
-c              V(II) = DATA(II) * (4.D0*PI/GSQ) * HARTREE_to_RYDBERG * RYDBERG_to_eV
-c              V(II+1) = DATA(II+1) * (4.D0*PI/GSQ) * HARTREE_to_RYDBERG * RYDBERG_to_eV
+c              V(II) = DATA(II) * (4.D0*PI/GSQ) * HARTREE * RYDBERG
+c              V(II+1) = DATA(II+1) * (4.D0*PI/GSQ) * HARTREE * RYDBERG
 c            ELSE
 c              V(II) = 0.D0
 c              V(II+1) = 0.D0
@@ -530,8 +528,8 @@ c          IF ( POISON ) THEN
 c            IG = (-2*N+II-1) / 2
 c            GSQ= (2.D0*PI*IG/L)**2
 c            IF(GSQ .GT. 0.D0) THEN
-c              V(II) = DATA(II) * (4.D0*PI/GSQ) * HARTREE_to_RYDBERG * RYDBERG_to_eV
-c              V(II+1) = DATA(II+1) * (4.D0*PI/GSQ) * HARTREE_to_RYDBERG * RYDBERG_to_eV
+c              V(II) = DATA(II) * (4.D0*PI/GSQ) * HARTREE * RYDBERG
+c              V(II+1) = DATA(II+1) * (4.D0*PI/GSQ) * HARTREE * RYDBERG
 c            ELSE
 c              V(II) = 0.D0
 c              V(II+1) = 0.D0

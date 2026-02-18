@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -22,7 +22,7 @@ c logical varcel        : true if variable cell optimization
 c *************************** INPUT AND OUTPUT ******************************
 c real*8 xa(3,na)       : Atomic coordinates
 c                         input: current step; output: next step
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 stress(3,3)    : Stress tensor components
@@ -39,8 +39,6 @@ C
       use sys,         only : die
       use fdf
       use units, only: kBar, Ang
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
       use m_broyddj_nocomm, only: broyden_t
       use m_broyddj_nocomm, only: broyden_reset, broyden_step,
      $                     broyden_destroy, broyden_init,
@@ -77,11 +75,13 @@ C Saved internal variables:
       integer,       save :: ndeg
       logical,       save :: frstme = .true.
       logical,       save :: tarstr = .false.
+      logical,       save :: constant_volume
       real(dp),      save :: initial_volume
 
-      real(dp),      save :: cellin(3,3)
-      real(dp),      save :: modcel(3)
-      real(dp),      save :: precon
+      real(dp),      save :: tstres(3,3) 
+      real(dp),      save :: cellin(3,3) 
+      real(dp),      save :: modcel(3) 
+      real(dp),      save :: precon 
       real(dp),      save :: strain(3,3)  ! Special treatment !!
 
       real(dp), allocatable :: ftoln(:), dxmaxn(:), rnew(:)
@@ -116,7 +116,7 @@ c ---------------------------------------------------------------------------
      $                            1.0_dp)
 
         if (ionode) then
-          write(6,*)
+          write(6,*) 
           write(6,'(a,i3)')
      $         "Broyden_optim: max_history for broyden: ", maxit
           write(6,'(a,l1)')
@@ -125,7 +125,7 @@ c ---------------------------------------------------------------------------
      $         "Broyden_optim: Variable weight not implemented yet"
           write(6,'(a,f8.4)')
      $         "Broyden_optim: initial inverse jacobian: ", jinv0
-          write(6,*)
+          write(6,*) 
         endif
 
         call broyden_init(br,debug=broyden_debug)
@@ -134,7 +134,7 @@ c ---------------------------------------------------------------------------
       endif
 
       if ( frstme ) then
-
+  
         ! Find number of variables
         ndeg = 0
         do ia = 1,na
@@ -154,7 +154,64 @@ c ---------------------------------------------------------------------------
 
         if ( varcel ) then
 
-          call set_target_stress( tp )
+          constant_volume = fdf_get("MD.ConstantVolume", .false.)
+
+          tarstr = fdf_block('MD.TargetStress',bfdf)
+
+          ! Look for target stress and read it if found, 
+          ! otherwise generate it
+          if (tarstr) then
+            if (IOnode) then
+              write(6,'(/a,a)')
+     $          'zm_broyden_optimizer: Reading %block MD.TargetStress',
+     .          ' (units of MD.TargetPressure).'
+            endif
+            if (.not. fdf_bline(bfdf,pline))
+     $        call die('zm_broyden_optimizer: ERROR in ' //
+     .                 'MD.TargetStress block')
+            sxx = fdf_bvalues(pline,1)
+            syy = fdf_bvalues(pline,2)
+            szz = fdf_bvalues(pline,3)
+            sxy = fdf_bvalues(pline,4)
+            sxz = fdf_bvalues(pline,5)
+            syz = fdf_bvalues(pline,6)
+            call fdf_bclose(bfdf)
+            
+            tstres(1,1) = - sxx * tp
+            tstres(2,2) = - syy * tp
+            tstres(3,3) = - szz * tp
+            tstres(1,2) = - sxy * tp
+            tstres(2,1) = - sxy * tp
+            tstres(1,3) = - sxz * tp
+            tstres(3,1) = - sxz * tp
+            tstres(2,3) = - syz * tp
+            tstres(3,2) = - syz * tp
+          else
+            write(6,'(/a,a)')
+     $        'zm_broyden_optimizer: No target stress found, ',
+     .        'assuming hydrostatic MD.TargetPressure.'
+            do i = 1, 3
+              do j = 1, 3
+                tstres(i,j) = 0.0_dp
+              enddo
+              tstres(i,i) = - tp
+            enddo
+          endif
+
+          if (constant_volume) then
+            tstres(:,:) = 0.0_dp
+            if (IOnode) then
+              write(6,"(a)") "***Target stress set to zero " //
+     $                       "for constant-volume calculation"
+            endif
+          endif
+          if (IOnode) then
+            write(6,"(/a)") 'cgvc_zmatrix: Target stress (kBar)'
+            do i=1, 3
+              write(6,"(a,2x,3f12.3)") 
+     .          'cgvc_zmatrix:', (tstres(i,j)/kBar,j=1,3)
+            enddo
+          endif
 
 C Moduli of original cell vectors for fractional coor scaling back to au ---
           do n = 1, 3
@@ -166,7 +223,7 @@ C Moduli of original cell vectors for fractional coor scaling back to au ---
           enddo
 
 C Scale factor for strain variables to share magnitude with coordinates
-C ---- (a length in Bohrs typical of bond lengths ..)
+C ---- (a length in Bohrs typical of bond lengths ..) 
 
           ! AG: This could better be volume^(1/3) by default
           precon = fdf_get('MD.PreconditionVariableCell',
@@ -174,7 +231,7 @@ C ---- (a length in Bohrs typical of bond lengths ..)
 
 C Initialize absolute strain and save initial cell vectors
 C Initialization to 1 for numerical reasons, later substracted
-
+       
           strain(1:3,1:3) = 1.0_dp
           cellin(1:3,1:3) = cell(1:3,1:3)
           initial_volume = volcel(cellin)
@@ -196,14 +253,14 @@ C Allocate local memory
         ! Inverse of matrix of cell vectors  (transpose of)
         call reclat( cell, celli, 0 )
 
-C Transform coordinates and forces to fractional ----------------------------
+C Transform coordinates and forces to fractional ---------------------------- 
 C but scale them again to Bohr by using the (fix) moduli of the original ----
 C lattice vectors (allows using maximum displacement as before) -------------
 C convergence is checked here for input forces and compared with ftoln ------
 
         relaxd = .true.
         ndegi = 0
-        ! Loop over degrees of freedom, scaling
+        ! Loop over degrees of freedom, scaling 
         ! only cartesian coordinates to fractional
           do ia = 1,na
             do n = 1,3
@@ -222,10 +279,10 @@ C convergence is checked here for input forces and compared with ftoln ------
                   force = ZmatForce(indi)
                 else
                   force = ZmatForceVar(vi)
-                endif
+                endif 
                 relaxd=relaxd.and.(dabs(force).lt.ftoln(ndegi))
                 if (ZmatType(indi).gt.2) then
-C Cartesian coordinate
+C Cartesian coordinate                
                   gxa(ndegi) = 0.0_dp
                   gfa(ndegi) = 0.0_dp
                   do i = 1,3
@@ -237,7 +294,7 @@ C Cartesian coordinate
                     else
                       force1 = ZmatForce(indi1)
                     endif
-                    gfa(ndegi) = gfa(ndegi)+
+                    gfa(ndegi) = gfa(ndegi)+ 
      .                          cell(i,n)*force1/modcel(n)
                   enddo
                 else
@@ -258,7 +315,7 @@ C Symmetrizing the stress tensor --------------------------------------------
 
 C Subtract target stress
 
-        stress_dif = stress - target_stress
+        stress_dif = stress - tstres
 !
 !       Take 1/3 of the trace out here if constant-volume needed
 !
@@ -269,7 +326,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append stress (substracting target stress) and strain to gxa and gfa ------
+C Append stress (substracting target stress) and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
         do i = 1,3
           do j = i,3
@@ -284,7 +341,7 @@ C Check stress convergence
         strtol = dabs(strtol)
         do i = 1,3
           do j = 1,3
-            relaxd = relaxd .and.
+            relaxd = relaxd .and. 
      .        ( dabs(stress_dif(i,j)) .lt. abs(strtol) )
           enddo
         enddo
@@ -322,9 +379,9 @@ C Set number of degrees of freedom & variables
       endif
 
       if (relaxd) then
-
+         
          call local_dealloc()
-
+         
          return
       end if
 
@@ -360,7 +417,7 @@ C Set number of degrees of freedom & variables
            cell =  cell * (initial_volume/new_volume)**(1.0_dp/3.0_dp)
         endif
 
-C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
+C Output fractional coordinates to cartesian Bohr, and copy to xa ----------- 
         ndegi = 0
         do ia=1,na
             do k=1,3
@@ -368,7 +425,7 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
               if (VaryZmat(indi)) then
                 ndegi = ndegi + 1
                 j = indi
-                do while (j.ne.0)
+                do while (j.ne.0) 
                   if (ZmatType(j).gt.2) then
                     Zmat(j) = 0.0_dp
                     do n=1,3
@@ -386,12 +443,12 @@ C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
                 enddo
               endif
             enddo
-          enddo
+          enddo  
           call Zmat_to_Cartesian(xa)
 
       else
 C Fixed cell
-C Return coordinates to correct arrays
+C Return coordinates to correct arrays 
         ndegi = 0
           do ia = 1,na
             do k = 1,3
@@ -428,5 +485,5 @@ C     Deallocate local memory
       end subroutine local_dealloc
 
       end subroutine zm_broyden_optimizer
-
+      
       end module m_zm_broyden_optim

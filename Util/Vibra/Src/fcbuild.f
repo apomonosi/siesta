@@ -24,7 +24,7 @@ c
 c **********************************************************************
 
       use fdf
-      use units, only: Pi, Ang, inquire_unit
+      use units, only: Pi
       use precision, only: dp
 
       implicit none
@@ -62,7 +62,6 @@ c Set up fdf ...
       filein = 'stdin'
       fileout = 'out.fdf'
       call fdf_init(filein,fileout)
-      call fdf_set_unit_handler(inquire_unit)
 c ...
 
 c Defile Name of the system ...
@@ -91,7 +90,7 @@ c Read Number of Atoms in Unit cell ...
 c ...
 
 c Lattice constant of unit cell...
-      alat = fdf_get('LatticeConstant',Ang,'Bohr')
+      alat = fdf_get('LatticeConstant',0.d0,'Bohr')
       if (alat .eq. 0.d0) then
         write(6,'(a)') 
      . 'ERROR: No valid lattice constant specified.'
@@ -307,9 +306,9 @@ c ...
 
 c  Write MD options: Force Constant Calculation ...
       write(iunit,'(2a)')    'MD.TypeOfRun       ','    FC'
-      write(iunit,'(a,i5)') 'FC.First          ',i1
-      write(iunit,'(a,i5)') 'FC.last           ',i2
-      write(iunit,'(a,f15.10,a)') 'FC.Displacement   ',dx,'  Bohr'
+      write(iunit,'(a,i5)') 'MD.FCfirst          ',i1
+      write(iunit,'(a,i5)') 'MD.FClast           ',i2
+      write(iunit,'(a,f15.10,a)') 'MD.FCdispl          ',dx,'  Bohr'
 c ...
       
       write(6,'(/,3(/,a,/),/)') 
@@ -328,6 +327,17 @@ c ...
      . '    ERROR: File FC.fdf already exists!',
      . '********************************************'
       stop
+
+      CONTAINS
+
+      subroutine die(str)
+      character(len=*), intent(in), optional:: str
+      if (present(str)) then
+         write(6,"(a)") str
+         write(0,"(a)") str
+      endif
+      STOP
+      end subroutine die
 
       end program fcbuild
 

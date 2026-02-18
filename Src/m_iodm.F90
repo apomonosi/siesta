@@ -8,8 +8,6 @@
      
 ! This module has been rewritten to conform to Nick Papior Andersens IO routines
 ! It has also been coded by Nick Papior Andersen
-#include "mpi_macros.f"
-
 module m_iodm
 
   use parallel, only : Node
@@ -25,11 +23,6 @@ module m_iodm
   
   private
   public :: write_dm, read_dm
-
-  interface write_dm
-   module procedure write_dm_1
-   module procedure write_dm_2
-  end interface write_dm
 
 contains
         
@@ -61,7 +54,6 @@ contains
     logical :: lBcast
     integer :: iu, five(5), no_u, nspin, ierr
     integer, allocatable, target :: gncol(:)
-    MPI_COMM_TYPE :: dit_comm
 #ifdef MPI
     integer :: MPIerror
 #endif
@@ -102,8 +94,8 @@ contains
     if ( lBcast ) then
       call MPI_Bcast(five,5,MPI_integer,0,MPI_Comm_World,MPIerror)
     else
-      dit_comm = dist_comm(dit)
-      call MPI_Bcast(five,5,MPI_integer,0,dit_comm,MPIerror)
+      ierr = dist_comm(dit)
+      call MPI_Bcast(five,5,MPI_integer,0,ierr,MPIerror)
     end if
 #endif
 
@@ -140,7 +132,7 @@ contains
 
   end subroutine read_dm
   
-  subroutine write_dm_1( file, nsc, DM )
+  subroutine write_dm( file, nsc, DM )
     
 ! **********************
 ! * INPUT variables    *
@@ -195,67 +187,6 @@ contains
        call io_close(iu)
     end if
     
-  end subroutine write_dm_1
-  
-  
-  subroutine write_dm_2( file, nsc, DM1, DM2 )
-    
-   ! **********************
-   ! * INPUT variables    *
-   ! **********************
-       character(len=*), intent(in) :: file
-       integer, intent(in) :: nsc(3)
-       type(dSpData2D), intent(inout) :: DM1
-       type(dSpData2D), intent(inout) :: DM2
-       
-   ! ************************
-   ! * LOCAL variables      *
-   ! ************************
-       type(Sparsity), pointer :: sp
-       type(OrbitalDistribution), pointer :: dit
-       integer, allocatable, target :: gncol(:)
-       integer :: no_u, nspin1, nspin2
-       integer :: iu
-   
-       external :: io_assign, io_close
-       
-       ! Gather sparse pattern
-       dit => dist(DM1)
-       sp => spar(DM1)
-       call attach(sp, nrows_g=no_u)
-       ! Retrieve number of spin-components
-       nspin1 = size(DM1, 2)
-       nspin2 = size(DM2, 2)
-       
-       if ( Node == 0 ) then
-   
-          ! Open file
-          call io_assign( iu )
-          open( iu, file=file, form='unformatted', status='unknown' )
-          rewind(iu)
-          
-          write(iu) no_u, nspin1+nspin2, nsc
-   
-       end if
-   
-       allocate(gncol(no_u))
-       ! signal we need to globalize and distribute it
-       gncol(1) = -1
-   
-       ! Write sparsity pattern...
-       call io_write(iu, sp, dit=dit, gncol=gncol)
-   
-       ! Write density matrix
-       call io_write(iu, DM1, gncol=gncol)
-       call io_write(iu, DM2, gncol=gncol)
-   
-       deallocate(gncol)
-   
-       ! Close
-       if ( Node == 0 ) then
-          call io_close(iu)
-       end if
-       
-     end subroutine write_dm_2
+  end subroutine write_dm
 
 end module m_iodm

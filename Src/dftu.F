@@ -15,47 +15,38 @@
       private
 
       public :: hubbard_term
-      public :: reset_dftu
 
       ! Last change in population of DFT+U occupations
       real(dp), save, public :: DFTU_dPop = huge(1._dp)
-
+      
       ! These are private variables that is used below
       integer, save :: DFTU_pop_iter = 0
 
       ! Maximum number of DFT+U projectors
       integer, save :: maxdftu = 0
-      real(dp), dimension(:,:,:,:), pointer, save :: occu => null()
-        !! Array used to store the occupations of the DFT+U proj.
-      real(dp), dimension(:,:,:,:), pointer, save :: occu_old => null()
-        !! Same as occu but in the previous step.
+      real(dp), dimension(:,:,:,:), pointer, save :: occu      ! Array used to 
+                                                               ! store the 
+                                                               ! occupations of
+                                                               ! the DFT+U proj.
+      real(dp), dimension(:,:,:,:), pointer, save :: occu_old  ! Same as occu
+                                                               ! but in the 
+                                                               ! previous step
 
       CONTAINS
 
-      subroutine reset_dftu( )
-        use alloc, only : de_alloc
-        call de_alloc(occu    , 'occu'    , 'dftu')
-        call de_alloc(occu_old, 'occu_old', 'dftu')
-
-        nullify( occu, occu_old )
-        DFTU_dPop = huge(1._dp)
-        DFTU_pop_iter = 0
-        maxdftu = 0
-      end subroutine reset_dftu
-
       subroutine hubbard_term( scell, nua, na, isa, xa, indxua,
      .                         maxnh, maxnd, lasto, iphorb, no_u, no_l,
-     .                         numd, listdptr, listd, numh,
-     .                         listhptr, listh, nspin, Dscf,
-     .                         Edftu, DEdftu, Hdftu,
+     .                         numd, listdptr, listd, numh, 
+     .                         listhptr, listh, nspin, Dscf, 
+     .                         Edftu, DEdftu, Hdftu, 
      .                         fa, stress, H, iscf,
-     .                         matrix_elements_only )
+     .                         matrix_elements_only )      
 C *********************************************************************
-C Calculates Hubbard-like U term contribution to total
+C Calculates Hubbard-like U term contribution to total 
 C energy, atomic forces, stress and hamiltonian matrix elements.
 C Energies in Ry. Lengths in Bohr.
 C Merged into the trunk by J. Junquera, March 2016.
-C Written by D. Sanchez-Portal, October 2008,
+C Written by D. Sanchez-Portal, October 2008, 
 C after subroutine nlefsm by J.Soler and P.Ordejon (June 1997).
 C Based on a previous version by S. Riikonen and D. Sanchez-Portal (2005)
 C **************************** INPUT **********************************
@@ -77,13 +68,13 @@ C integer numd(nuo)        : Number of nonzero elements of each row of the
 C                            density matrix
 C integer listdptr(nuo)    : Pointer to the start of each row (-1) of the
 C                            density matrix
-C integer listd(maxnd)     : Nonzero hamiltonian-matrix element column
+C integer listd(maxnd)     : Nonzero hamiltonian-matrix element column 
 C                            indexes for each matrix row
 C integer numh(nuo)        : Number of nonzero elements of each row of the
 C                            hamiltonian matrix
 C integer listhptr(nuo)    : Pointer to the start of each row (-1) of the
 C                            hamiltonian matrix
-C integer listh(maxnh)     : Nonzero hamiltonian-matrix element column
+C integer listh(maxnh)     : Nonzero hamiltonian-matrix element column 
 C                            indexes for each matrix row
 C integer nspin            : Number of spin components
 C integer iscf             : Counter of the cycles of SCF iterations
@@ -96,8 +87,8 @@ C real*8 fa(3,na)          : NL forces (added to input fa)
 C real*8 stress(3,3)       : NL stress (added to input stress)
 C real*8 H(maxnh,nspin)    : NL Hamiltonian (added to input H)
 C **************************** OUTPUT *********************************
-C real*8 Edftu             : U-Hubbard energy 1
-C real*8 DEdftu            : U-hubbard energy 2
+C real*8 Edftu             : U-Hubbard energy 1 
+C real*8 DEdftu            : U-hubbard energy 2 
 C real*8 Hdftu(maxnh,nspin): Hamiltonian elements from DFT+U
 C*********************************************************************
 C
@@ -115,7 +106,7 @@ C
       use neighbour    , only : iana=>jan, r2ki=>r2ij, xki=>xij
       use neighbour    , only : mneighb
       use alloc,         only : re_alloc, de_alloc
-      use matel_m,       only : matel
+      use m_new_matel,   only : new_matel
       use radial,        only : rad_func
       use atm_types,     only : nspecies
       use atm_types,     only : species_info    ! Derived type with all the info
@@ -133,14 +124,14 @@ C
                                                 !   the populations of
                                                 !   the DFT+U projections
       use dftu_specs,  only : dtol_dftupop      ! Parameter that defines the
-                                                !   convergence criterium
-                                                !   for the DFT+U local
+                                                !   convergence criterium 
+                                                !   for the DFT+U local 
                                                 !   population
-      use dftu_specs,  only : dftu_init         ! Flag that determines whether
-                                                !   the local populations are
-                                                !   calculated on the
+      use dftu_specs,  only : dftu_init         ! Flag that determines whether 
+                                                !   the local populations are 
+                                                !   calculated on the 
                                                 !   first iteration
-      use dftu_specs,  only : dftu_shift        ! Flag that determines whether
+      use dftu_specs,  only : dftu_shift        ! Flag that determines whether 
                                                 !   the U parameter
                                                 !   is interpreted
                                                 !   as a local potential shift
@@ -148,9 +139,9 @@ C
 
       integer, intent(in) ::
      .   maxnh, na, maxnd, nspin, nua, iscf, no_u, no_l
-
+      
       integer, intent(in)  ::
-     .  indxua(na), iphorb(*), isa(na),
+     .  indxua(na), iphorb(*), isa(na),  
      .  lasto(0:na), listd(maxnd), listh(maxnh),
      .  numd(no_l), numh(no_l), listdptr(no_l), listhptr(no_l)
       real(dp), intent(inout) :: Hdftu(maxnh,nspin)
@@ -171,36 +162,36 @@ C maxno  = maximum number of basis orbitals overlapping a KB projector
 
       integer
      .  ia, ishdftu, ina, ind, ino,
-     .  io, iio, ioa, is, ispin, ix, ikb,
-     .  j, jno, jo, jx, ka, ko, ks, kua, dftuidx,
+     .  io, iio, ioa, is, ispin, ix, ikb, 
+     .  j, jno, jo, jx, ka, ko, ks, kua, dftuidx, 
      .  ndftuproj, nna, nno, no, nuotot, ja,
-     .  lko, lkb, nprin_ko, nprin_kb, kg, ig
+     .  lko, lkb, nprin_ko, nprin_kb, kg, ig 
 
       integer, dimension(:), pointer :: iano, iono
 
       real(dp)
-     .  Cijk, fik, rki, rmax, rmaxdftu, rmaxo,
-     .  Sik, Sjk, volume,  oc(nspin), Ueff, dn,
+     .  Cijk, fik, rki, rmax, rmaxdftu, rmaxo, 
+     .  Sik, Sjk, volume,  oc(nspin), Ueff, dn, 
      .  Dij, rci
 
       real(dp), dimension(:,:), pointer :: Vi, Di
       real(dp), dimension(:,:), pointer :: Ski, xno
+
       real(dp), dimension(:,:,:), pointer :: grSki
-!      real(dp) :: Ski2, grSki2(3)
 
 #ifdef MPI
       ! Reduction operations
       real(dp), dimension(:,:), pointer :: buffer1 => null()
 #endif
 
-      logical :: first                            ! For a given set of
+      logical :: first                            ! For a given set of 
                                                   !   atomic positions
-                                                  !   determine whether this
+                                                  !   determine whether this 
                                                   !   is the first step in the
                                                   !   SCF iterations
       logical :: within, pop_conv
       logical, dimension(:), pointer ::  listed, listedall
-      logical, save :: firstime = .true.          !  First time that this
+      logical, save :: firstime = .true.          !  First time that this 
                                                   !   subroutine is called?
       type(species_info),  pointer :: spp
       type(rad_func),      pointer :: pp
@@ -217,15 +208,15 @@ C ......................
       Edftu = 0.0_dp
       DEdftu = 0.0_dp
 
-!     Determine whether this is the first SCF step for a
+!     Determine whether this is the first SCF step for a 
 !     given atomic configuration
-      first = (iscf <= 1)
+      first = (iscf == 1)
       ! Reset population iteration
       if ( first ) DFTU_pop_iter = 0
-
+         
 !     Initialization and allocation of matrices
-      if( firstime ) then
-!       Find maximum number of DFT+U projectors on a given atom
+      if( firstime ) then 
+!       Find maximum number of DFT+U projectors on a given atom 
         maxdftu = 0
         do ka = 1, na
           is  = isa(ka)
@@ -233,15 +224,15 @@ C ......................
           maxdftu = max(maxdftu,spp%nprojsdftu)
         enddo
 
-!       Allocate local array to store the occupations of the
+!       Allocate local array to store the occupations of the 
 !       DFT+U projectors
         nullify( occu, occu_old )
-        call re_alloc(occu    , 1, maxdftu, 1, maxdftu, 1, nua,
-     &                1, nspin, 'occu'    , 'dftu')
-        call re_alloc(occu_old, 1, maxdftu, 1, maxdftu, 1, nua,
-     &                1, nspin, 'occu_old'    , 'dftu')
-
+        allocate( occu(maxdftu,maxdftu,nua,nspin) )
+        call memory( 'A', 'D', size(occu), 'hubbard_term' )
+        allocate( occu_old(maxdftu,maxdftu,nua,nspin) )
+        call memory( 'A', 'D', size(occu_old), 'hubbard_term' )
         occu_old = 0.0_dp
+
         firstime  = .false.
       endif
 
@@ -258,26 +249,26 @@ C ......................
         return
       endif
 
-
+      
       occupations: if( first .or.
      &                 (dDmax_current .lt. dDmax_threshold) .or.
-     &                 dftu_shift ) then
+     &                 dftu_shift ) then 
 
 
 !       Find unit cell volume
         volume = volcel( scell ) * nua / na
 
-!       Find maximum range of the atomic orbitals (rmaxo)
+!       Find maximum range of the atomic orbitals (rmaxo) 
 !       and of the DFT+U projectors (rmaxdftu)
         rmaxo    = 0.0_dp
         rmaxdftu = 0.0_dp
         do is = 1, nspecies
-
+           
            ! Species orbital range
            do io = 1, nofis(is)
               rmaxo = max(rmaxo, rcut(is,io))
            enddo
-
+           
            ! Species DFTU range
            spp => species(is)
            do io = 1, spp%n_pjdftunl
@@ -285,7 +276,7 @@ C ......................
               rmaxdftu = max(rmaxdftu, pp%cutoff)
            end do
         enddo
-
+        
         ! Total range of the projector is Oo
         rmax = rmaxo + rmaxdftu
 
@@ -294,19 +285,19 @@ C ......................
         nuotot = lasto(nua)
 
 !       Allocate local memory
-        call re_alloc( Di, 1, no, 1, nspin,
+        call re_alloc( Di, 1, no, 1, nspin, 
      &                 name='Di', routine='hubbard_term' )
         Di = 0.0_dp
 
-        call re_alloc( Vi, 1, no, 1, nspin,
+        call re_alloc( Vi, 1, no, 1, nspin, 
      &                 name='Vi', routine='hubbard_term' )
         Vi = 0.0_dp
 
-        call re_alloc( listed, 1, no,
+        call re_alloc( listed, 1, no, 
      &                 name='listed', routine='hubbard_term')
         listed(1:no) = .false.
 
-        call re_alloc( listedall, 1, no,
+        call re_alloc( listedall, 1, no, 
      &                 name='listedall', routine='hubbard_term' )
         listedall(1:no) = .false.
 
@@ -321,18 +312,18 @@ C ......................
         enddo
 
 !       Allocate local arrays that depend on saved parameters
-        call re_alloc( iano, 1, maxno,
+        call re_alloc( iano, 1, maxno, 
      &                 name='iano', routine='hubbard_term' )
-        call re_alloc( iono, 1, maxno,
+        call re_alloc( iono, 1, maxno, 
      &                 name='iono', routine='hubbard_term' )
-        call re_alloc( xno, 1, 3, 1, maxno,
+        call re_alloc( xno, 1, 3, 1, maxno, 
      &                 name='xno', routine='hubbard_term' )
-        call re_alloc( Ski, 1, maxdftu, 1, maxno,
+        call re_alloc( Ski, 1, maxdftu, 1, maxno, 
      &                 name='Ski', routine='hubbard_term' )
-        call re_alloc( grSki, 1, 3, 1, maxdftu, 1, maxno,
+        call re_alloc( grSki, 1, 3, 1, maxdftu, 1, maxno, 
      &                 name='grSki', routine='hubbard_term' )
-
-!       Counter for the SCF loops to converge the population of the
+      
+!       Counter for the SCF loops to converge the population of the 
 !       DFT+U projectors
         DFTU_pop_iter = DFTU_pop_iter + 1
         if( Node == 0 ) write(6,'(a,i4)')
@@ -344,7 +335,7 @@ C ......................
 !       Initialize neighb subroutine
         call mneighb( scell, rmax, na, xa, 0, 0, nna )
 
-!       Loop on atoms with DFT+U projectors
+!       Loop on atoms with DFT+U projectors      
         do ka = 1, na
           kua = indxua(ka)
           ks = isa(ka)
@@ -352,7 +343,7 @@ C ......................
           ndftuproj = spp%nprojsdftu
           if( ndftuproj == 0 ) cycle
 
-!         Find neighbour atoms
+!         Find neighbour atoms 
           call mneighb( scell, rmax, na, xa, ka, 0, nna )
 
 !         Find neighbour orbitals
@@ -387,12 +378,12 @@ C ......................
      &                       copy=.true., routine='hubbard_term' )
                     call re_alloc( iono, 1, maxno, name='iono',
      &                       copy=.true., routine='hubbard_term' )
-                    call re_alloc( xno, 1, 3, 1, maxno, name='xno',
+                    call re_alloc( xno, 1, 3, 1, maxno, name='xno', 
      &                       copy=.true., routine='hubbard_term' )
                     call re_alloc( Ski,1, maxdftu, 1, maxno, name='Ski',
      &                       copy=.true., routine='hubbard_term' )
                     call re_alloc( grSki, 1, 3, 1, maxdftu, 1, maxno,
-     &                       name='grSki', routine='hubbard_term',
+     &                       name='grSki', routine='hubbard_term', 
      &                       copy=.true. )
                   endif
                   nno = nno + 1
@@ -408,8 +399,8 @@ C ......................
                   iano(nno) = ia
 
 !                 The relative position between the center of the DFT+U proj.
-!                 and the center of the nno-eme neighbour orbital
-!                 is xno
+!                 and the center of the nno-eme neighbour orbital 
+!                 is xno 
                   do ix = 1,3
                     xno(ix,nno) = xki(ix,ina)
                   enddo
@@ -418,8 +409,8 @@ C ......................
 !                 and a neighbour atomic orbital
                   do ko = 1, ndftuproj
                     kg  = dftu_gindex(ks,ko)
-                    call matel( 'S', kg, ig, xki(1:3,ina),
-     &                   Ski(ko,nno), grSki(1:3,ko,nno))
+                    call new_matel( 'S', kg, ig, xki(1:3,ina),
+     &                  Ski(ko,nno), grSki(1:3,ko,nno) )
                   enddo
 
                 endif   ! If on orbitals within range
@@ -434,14 +425,14 @@ C ......................
           do ino = 1,nno
             io = iono(ino)
             ia = iano(ino)
-
+            
             ! Only atoms in the unit cell
             if ( ia > nua ) cycle
 
             ! Only local orbitals
             call GlobalToLocalOrb(io,Node,Nodes,iio)
             if ( iio < 1 ) cycle
-
+            
 !           Scatter filter and density matrix row of orbital io
             do j = 1, numd(iio)
               ind = listdptr(iio) + j
@@ -464,11 +455,11 @@ C ......................
                   do ikb = 1, ndftuproj
                     Sjk = Ski(ikb,jno)
                     do ispin = 1, nspin
-                      Dij = Di(jo,ispin)
-                      occu(ko,ikb,kua,ispin) =
-     &                     occu(ko,ikb,kua,ispin) +
+                      Dij = Di(jo,ispin) 
+                      occu(ko,ikb,kua,ispin) = 
+     &                     occu(ko,ikb,kua,ispin) + 
      &                     Dij * Sik * Sjk/(3.0_dp-dble(nspin))
-                    enddo
+                    enddo 
                   enddo
                 enddo
               endif
@@ -486,7 +477,7 @@ C ......................
           enddo            ! End loop on neighbour orbitals (ino)
 
         enddo              ! End of the loop on atoms with DFT+U projectors
-
+     
 #ifdef MPI
 !       Global reduction of occupation
         call re_alloc(buffer1, 1, maxdftu, 1, maxdftu,
@@ -502,7 +493,7 @@ C ......................
              occu(1:ndftuproj,1:ndftuproj,ka,ispin) =
      &            buffer1(1:ndftuproj,1:ndftuproj)
           end do
-        enddo
+        enddo 
         call de_alloc(buffer1, name='buffer1', routine = 'hubbard_term')
 #endif
 
@@ -512,9 +503,9 @@ C ......................
           spp => species(is)
           ndftuproj = spp%nprojsdftu
           if ( ndftuproj == 0 ) cycle
-
+          
           oc = 0.0_dp
-
+          
           if( dftu_shift .and. Node == 0 ) then
              write(6,*) 'hubbard_term: projector occupations'
              write(6,*) 'hubbard_term: atom, species: ',ka, is
@@ -529,23 +520,23 @@ C ......................
               do ispin = 1, nspin
                  dn = occu(ko,ikb,ka,ispin)-occu_old(ko,ikb,ka,ispin)
                  DFTU_dPop = max(DFTU_dPop,dabs(dn))
-              enddo
-            enddo
+              enddo 
+            enddo 
             if ( dftu_shift ) then
               do ispin = 1 , nspin
                 oc(ispin) = oc(ispin) + occu(ko,ko,ka,ispin)
               end do
             endif
-           enddo
+           enddo 
            if ( dftu_shift .and. Node == 0 ) then
-              write(6,'(a,/,a,3f12.6)')
+              write(6,'(a,/,a,3f12.6)') 
      &             'hubbard_term: Total projector shell',
      &             'Occupations: ', (oc(ispin),ispin=1,nspin)
      &             ,sum(oc)
            end if
-        enddo
+        enddo 
 
-
+        
 #ifdef MPI
         ! DFTU_dPop need not be globalized.
         ! The occupations are already globalized
@@ -554,18 +545,18 @@ C ......................
            write(6,'(a,f12.6)')
      &          'hubbard_term: maximum change in local occup.',DFTU_dPop
         endif
-
+        
         pop_conv = ( DFTU_dPop < dtol_dftupop )
         if( .not. pop_conv ) occu_old = occu
 
-        recalc_hamilt: if( .not. pop_conv .or. first .or.
+        recalc_hamilt: if( .not. pop_conv .or. first .or. 
      &                     .not. matrix_elements_only ) then
-          if ( Node == 0 ) then
+          if ( Node == 0 ) then 
             if ( matrix_elements_only ) then
               write(6,'(a)')'hubbard_term: recalculating Hamiltonian'
             else
               write(6,'(a)')
-     &          'hubbard_term: recalculating Hamiltonian and forces'
+     &          'hubbard_term: recalculating Hamiltonian and forces'      
             endif
           endif
 
@@ -616,12 +607,12 @@ C ......................
      &                         copy=.true., routine='hubbard_term' )
                       call re_alloc( iono, 1, maxno, name='iono',
      &                         copy=.true., routine='hubbard_term' )
-                      call re_alloc( xno, 1, 3, 1, maxno, name='xno',
+                      call re_alloc( xno, 1, 3, 1, maxno, name='xno', 
      &                         copy=.true., routine='hubbard_term' )
-                      call re_alloc( Ski,1, maxdftu, 1,maxno,name='Ski',
+                      call re_alloc( Ski,1, maxdftu, 1,maxno,name='Ski',       
      &                         copy=.true., routine='hubbard_term' )
                       call re_alloc( grSki, 1, 3, 1, maxdftu, 1, maxno,
-     &                         name='grSki', routine='hubbard_term',
+     &                         name='grSki', routine='hubbard_term', 
      &                         copy=.true. )
                     endif
                     nno = nno + 1
@@ -632,9 +623,8 @@ C ......................
                     enddo
                     do ko = 1, ndftuproj
                       kg = dftu_gindex(ks,ko)
-                      call matel( 'S', kg, ig, xki(1:3,ina),
-     &                     Ski(ko,nno), grSki(1:3,ko,nno))
-
+                      call new_matel( 'S', kg, ig, xki(1:3,ina),
+     &                    Ski(ko,nno), grSki(1:3,ko,nno) )
                     enddo
 
                   endif   ! If on orbitals within range
@@ -688,45 +678,45 @@ C ......................
                       Vi(jo,ispin) = Vi(jo,ispin) +
      &                               0.5_dp * Sik * Sjk * Ueff
                       Dij  = Di(jo,ispin)
-                      Cijk = Ueff * Dij * Sjk
-                      if(.not. matrix_elements_only) then
+                      Cijk = Ueff * Dij * Sjk 
+                      if(.not. matrix_elements_only) then 
                         do ix=1,3
                           fik = Cijk * grSki(ix,ko,ino)
                           fa(ix,ia)  = fa(ix,ia)  - fik
                           fa(ix,kua) = fa(ix,kua) + fik
                           do jx = 1, 3
                             stress(jx,ix) = stress(jx,ix) +
-     &                                      xno(jx,ino)*fik/volume
-                          enddo
-                        enddo
+     &                                      xno(jx,ino)*fik/volume       
+                          enddo 
+                        enddo 
                       endif
 
-                      if( .not. dftu_shift ) then
+                      if( .not. dftu_shift ) then 
                         do ikb = 1, ndftuproj
                           lkb      = spp%pjdftu_l(ikb)
                           nprin_kb = spp%pjdftu_n(ikb)
                           if( lko      .eq. lkb        .and.
-     &                        nprin_ko .eq. nprin_kb ) then
+     &                        nprin_ko .eq. nprin_kb ) then 
 !                            For the time being we will use the formulation
 !                            of Dudarev and collaborators
                              Cijk = occu(ko,ikb,kua,ispin) *
      &                              Ueff * Ski(ikb,jno)
                              Vi(jo,ispin) = Vi(jo,ispin) -
      &                                      Sik * Cijk
-                             if(.not. matrix_elements_only) then
+                             if(.not. matrix_elements_only) then 
                               do ix=1,3
-                                fik = -2.0_dp * Dij * Cijk *
-     &                                grSki(ix,ko,ino)
+                                fik = -2.0_dp * Dij * Cijk * 
+     &                                grSki(ix,ko,ino) 
                                 fa(ix,ia)  = fa(ix,ia)  - fik
                                 fa(ix,kua) = fa(ix,kua) + fik
                                 do jx = 1, 3
                                   stress(jx,ix)= stress(jx,ix) +
      &                                    xno(jx,ino) * fik / volume
                                 enddo
-                              enddo
+                              enddo 
                             endif
-                          endif
-                        enddo
+                          endif 
+                        enddo 
                       endif
 
                     enddo        ! Enddo ispin
@@ -739,11 +729,11 @@ C ......................
                 ind = listhptr(iio)+j
                 jo = listh(ind)
                 do ispin = 1,nspin
-                  Hdftu(ind,ispin) = Hdftu(ind,ispin) +
+                  Hdftu(ind,ispin) = Hdftu(ind,ispin) + 
      &                               Vi(jo,ispin)
                   Vi(jo,ispin) = 0.0_dp
                   Di(jo,ispin) = 0.0_dp
-                enddo
+                enddo 
                 listed(jo) = .false.
               enddo
 
@@ -754,20 +744,20 @@ C ......................
 
       endif occupations
 
-      add_hamilt: if ( DFTU_pop_iter > 0 ) then
-
+      add_hamilt: if ( DFTU_pop_iter > 0 ) then 
+        
         ! Add the Hamiltonian elements and calculate energy
         do iio = 1 , no_l
            do j = 1, numh(iio)
               ind = listhptr(iio) + j
               do ispin = 1, nspin
                  Edftu = Edftu +
-     &                0.5_dp * Hdftu(ind,ispin) * Dscf(ind,ispin)
+     &                0.5_dp * Hdftu(ind,ispin) * Dscf(ind,ispin)       
                  H(ind,ispin) = H(ind,ispin) + Hdftu(ind,ispin)
               end do
            end do
         end do
-
+        
         do ia = 1,nua
           is = isa(ia)
           spp => species(is)
@@ -783,7 +773,7 @@ C ......................
      &               0.25_dp * (3.0_dp-dble(nspin)) * Ueff *
      &               occu(ko,ko,ia,ispin)
               enddo
-            enddo
+            enddo   
           endif
         enddo
 

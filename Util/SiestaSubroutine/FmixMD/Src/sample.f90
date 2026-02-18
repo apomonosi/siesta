@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -54,13 +54,13 @@ subroutine sample( task, t, cell, na, ma, xa, va, fa, ep )
   case('print')
     ecsum  = ecsum/nt
     ec2sum = ec2sum/nt
-    ec2sum = sqrt(abs(ec2sum-ecsum**2))
+    ec2sum = dsqrt(ec2sum-ecsum**2)
     epsum  = epsum/nt
     ep2sum = ep2sum/nt
-    ep2sum = sqrt(abs(ep2sum-epsum**2))
+    ep2sum = dsqrt(ep2sum-epsum**2)
     etsum  = etsum/nt
     et2sum = et2sum/nt
-    et2sum = sqrt(abs(et2sum-etsum**2))
+    et2sum = dsqrt(et2sum-etsum**2)
     print*, 'sample: nt =', nt
     print*, 'sample: Ec =', ecsum, ' +/-', ec2sum
     print*, 'sample: Ep =', epsum, ' +/-', ep2sum

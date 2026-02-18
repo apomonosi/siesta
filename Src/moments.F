@@ -5,7 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
       subroutine moments(iopt, natoms, no_u, maxnh, numh,
      .                    listhptr,listh,s,dm,isa,lasto,iaorb,
      .                    iphorb, indxuo)
@@ -122,8 +121,7 @@ C
       integer :: no_l, io_u, io_l, li, mi, zi
 
 #ifdef MPI
-      integer MPIerror
-      MPI_STATUS_TYPE :: mpistatus
+      integer MPIerror, mpistatus(MPI_STATUS_SIZE)
       real(dp), dimension(3) :: qb, pb
       character(len=200)     :: mpibuff
 #endif

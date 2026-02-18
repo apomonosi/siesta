@@ -11,11 +11,11 @@ input file of SIESTA.
 
 There are two small programs:
 
-optical_input (in source optical_input.f)
+optical_input.f 
 
 and
 
-optical (in source optical_cond.f)
+optical.f
 
 
 Both can be compile independently:
@@ -50,7 +50,7 @@ cases it can create pathological problems. Anyway, it can be easily
 desactivated by setting THRESHOLD to zero.
 
 
-The program optical reads a file called 'e2.dat' containing 
+The program optical.f reads a file called 'e2.dat' containing 
 the imaginary part of the dieletric function, and creates the
 file 'e1.interband.out' that contains the real part of the dieletric function, 
 'e2.interband.out' is the imaginary part calculated back 

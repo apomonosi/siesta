@@ -19,9 +19,8 @@ C **********************************************************************
       use precision, only: dp
       USE FDF, only: block_fdf, fdf_block, fdf_bline
       use fdf, only: fdf_bmatch, fdf_bintegers
-      USE fdf_parse, only: parsed_line, digest, match
+      USE PARSE, only: parsed_line, digest, match
       USE SYS, only: die
-      ! use units, only: Ang     -- see usage below
 
       IMPLICIT NONE
 
@@ -113,7 +112,7 @@ C Rotate the coordinates -----------------------------------------------
   
 C        IF (ISCALE .EQ. 2) THEN
 C          DO IX = 1,3
-C           XAPLANE(IX,INDICES(IAT))=XAPLANE(IX,INDICES(IAT)) / Ang
+C           XAPLANE(IX,INDICES(IAT))=XAPLANE(IX,INDICES(IAT))*0.529177D0
 C          ENDDO
 C        ENDIF
 

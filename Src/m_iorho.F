@@ -1,14 +1,13 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
       module m_iorho
 !
-!     To have both reading and writing, allowing a change in the
+!     To have both reading and writing, allowing a change in the 
 !     values of variables used as array dimensions, is not very
 !     safe. Thus, the old iorho has been split in three routines:
 
@@ -18,7 +17,7 @@
 !
 !     The magnitudes are saved in SINGLE PRECISION (sp), regardless
 !     of the internal precision used in the program. Historically,
-!     the internal precision has been "single".
+!     the internal precision has been "single". 
 !
 
       use precision,    only : dp, grid_p, sp
@@ -29,13 +28,13 @@
 #ifdef MPI
       use mpi_siesta
       use parallel,     only : Nodes
-      use moreMeshSubs, only : UNIFORM, getMeshBox
+      use parallelsubs, only : HowManyMeshPerNode
 #endif
 
       implicit          none
 
       public :: write_rho, read_rho, check_rho
-
+         
       private
 
       CONTAINS
@@ -56,9 +55,9 @@ C Y and Z values. Hence there will be a total of mesh(2) x mesh(3)
 C records.
 
       character(len=*), intent(in) ::     fname       ! File name
-      integer, intent(in)          ::     nsm
+      integer, intent(in)          ::     nsm         
           !Number of sub-mesh points per mesh point
-          !  (not used in this version)
+          !  (not used in this version) 
       integer, intent(in)          ::     mesh(3)
           ! Number of mesh divisions of each lattice vector
       integer, intent(in)          ::     maxp
@@ -76,12 +75,11 @@ C Internal variables and arrays
      .           iy, iz, izm, Ind, ir
 
 #ifdef MPI
-      integer    Ind2, MPIerror, BNode, NBlock
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer    Ind2, MPIerror, Request,
+     .           Status(MPI_Status_Size), BNode, NBlock
       real(grid_p), pointer :: bdens(:) => null()
 #endif
-      real(sp),     pointer :: temp(:)
+      real(sp),     pointer :: temp(:) => null()
 
 #ifdef MPI
 #ifdef DEBUG
@@ -95,7 +93,6 @@ C Work out density block dimensions
      $     ' number of processors!')
       ProcessorZ = Nodes/ProcessorY
       BlockSizeY = ((((mesh(2)/nsm)-1)/ProcessorY) + 1)*nsm
-      nullify(bdens)
       call re_alloc(bdens, 1, BlockSizeY*mesh(1), 'bdens', 'write_rho')
 #else
       ProcessorZ = 1
@@ -111,12 +108,11 @@ C Find file format
         return
       endif
 
-      nullify(temp)
       call re_alloc( temp, 1, mesh(1), 'temp', 'write_rho' )
 C Open file
       if (Node.eq.0) then
         call io_assign( iu )
-        open( iu, file=fname, form=fform, status='unknown' )
+        open( iu, file=fname, form=fform, status='unknown' )      
       endif
 
       np = mesh(1) * mesh(2) * mesh(3)
@@ -166,7 +162,7 @@ C Work out size of density sub-matrix to be transfered
 #ifdef MPI
                 NBlock = BlockSizeY*mesh(1)
 C Work out which node block is stored on
-                BNode = (iz-1)*ProcessorY + iy - 1
+                BNode = (iy-1)*ProcessorZ + iz - 1
 
                 if (BNode.eq.0.and.Node.eq.BNode) then
 #endif
@@ -256,7 +252,7 @@ C Reads the electron density or potential at the mesh points.
 !
 ! AG: The magnitudes are saved in SINGLE PRECISION (sp), regardless
 !     of the internal precision used in the program. Historically,
-!     the internal precision has been "single".
+!     the internal precision has been "single". 
 !
 C Writen by J.Soler July 1997.
 C Parallel modifications added, while maintaining independence
@@ -296,20 +292,18 @@ C Arguments
 
 C Internal variables and arrays
       character(len=12) :: fform, fileFormat
-      integer    ip, iu, is, np, ns,
+      integer    ip, iu, is, np, ns, 
      .           BlockSizeY, BlockSizeZ, ProcessorZ,
      .           meshnsm(3), npl, NRemY, NRemZ,
      .           iy, iz, izm, Ind, ir
 
 #ifdef MPI
-      integer    Ind2, MPIerror, BNode, NBlock
-      integer, pointer :: box(:,:,:)
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer    Ind2, MPIerror, Request, meshl(3),
+     .           Status(MPI_Status_Size), BNode, NBlock
       logical    ltmp
-      real(grid_p), pointer :: bdens(:)
+      real(grid_p), pointer :: bdens(:) => null()
 #endif
-      real(sp),     pointer :: temp(:)
+      real(sp),     pointer :: temp(:) => null()
 
       logical    baddim, found
 
@@ -321,7 +315,6 @@ C Work out density block dimensions
      $     ' number of processors!')
       ProcessorZ = Nodes/ProcessorY
       BlockSizeY = ((((mesh(2)/nsm)-1)/ProcessorY) + 1)*nsm
-      nullify( bdens )
       call re_alloc( bdens, 1, BlockSizeY*mesh(1), 'bdens', 'read_rho' )
 #else
       ProcessorZ = 1
@@ -346,7 +339,7 @@ C Find file format
 C Open file
           if (Node.eq.0) then
             call io_assign( iu )
-            open( iu, file=fname, form=fform, status='old' )
+            open( iu, file=fname, form=fform, status='old' )      
 
 C Read cell vectors and number of points
             if (fform .eq. 'formatted') then
@@ -357,7 +350,6 @@ C Read cell vectors and number of points
               read(iu) mesh, ns
             endif
           endif
-          nullify( temp )
           call re_alloc( temp, 1, mesh(1), 'temp', 'read_rho' )
 #ifdef MPI
           call MPI_Bcast(cell(1,1),9,MPI_double_precision,0,
@@ -372,10 +364,7 @@ C Get local dimensions
           meshnsm(2) = mesh(2)/nsm
           meshnsm(3) = mesh(3)/nsm
 #ifdef MPI
-          call getMeshBox( UNIFORM, box )
-          npl = (box(2,1,node+1)-box(1,1,node+1)+1)*nsm*
-     &          (box(2,2,node+1)-box(1,2,node+1)+1)*nsm*
-     &          (box(2,3,node+1)-box(1,3,node+1)+1)*nsm
+          call HowManyMeshPerNode(meshnsm,Node,Nodes,npl,meshl)
 #else
           npl = np
 #endif
@@ -425,7 +414,7 @@ C Work out size of density sub-matrix to be transfered
 #ifdef MPI
                 NBlock = BlockSizeY*mesh(1)
 C Work out which node block is stored on
-                BNode = (iz-1)*ProcessorY + iy - 1
+                BNode = (iy-1)*ProcessorZ + iz - 1
 
                 if (BNode.eq.0.and.Node.eq.BNode) then
 #endif
@@ -513,7 +502,7 @@ C                           equal to mesh(1)*mesh(2)*mesh(3)
 C integer nspin           : Number of spin polarizations (1 or 2)
 C integer nsm             : Number of sub-mesh points per mesh point
 C                           (not used in this version)  ??
-C logical found           : Were data found?
+C logical found           : Were data found? 
 C logical overflow        : True if maxp or nspin were changed
 
       character(len=*), intent(in) ::     fname
@@ -526,7 +515,7 @@ C logical overflow        : True if maxp or nspin were changed
       integer  :: mesh(3)
       integer  :: meshnsm(3), npl, ns, iu, np, npmax
 #ifdef MPI
-      integer, pointer :: box(:,:,:)
+      integer  :: meshl(3)
       logical  :: ltmp
       integer  :: MPIerror
 #endif
@@ -553,7 +542,7 @@ C Find file format
 C Open file
           if (Node.eq.0) then
             call io_assign( iu )
-            open( iu, file=fname, form=fform, status='old' )
+            open( iu, file=fname, form=fform, status='old' )      
 
 C Read cell vectors and number of points
             if (fform .eq. 'formatted') then
@@ -577,10 +566,7 @@ C Get local dimensions
           meshnsm(2) = mesh(2)/nsm
           meshnsm(3) = mesh(3)/nsm
 #ifdef MPI
-          call getMeshBox( UNIFORM, box )
-          npl = (box(2,1,node+1)-box(1,1,node+1)+1)*nsm*
-     &          (box(2,2,node+1)-box(1,2,node+1)+1)*nsm*
-     &          (box(2,3,node+1)-box(1,3,node+1)+1)*nsm
+          call HowManyMeshPerNode(meshnsm,Node,Nodes,npl,meshl)
 #else
           npl = np
 #endif

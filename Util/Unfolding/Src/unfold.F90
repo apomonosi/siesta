@@ -8,14 +8,13 @@
 
 program unfold
 
-! Reads the .fdf, .ion, .HSX, .EIG and .psf files of a SIESTA calculation and
+! Reads the .fdf, .ion, .HSX, .EIG and .psf files of a SIESTA calculation and 
 ! generates unfolded and refolded bands. See Util/Unfolding/README for details.
 ! Ref: "Band unfolding made simple", S.G.Mayo and J.M.Soler, Dic.2018
 !       arXiv:1812.03925          ( https://arxiv.org/abs/1812.03925 )
 ! S.G.Mayo and J.M.Soler, Oct.2018
 ! P. Ordejón, Jan 2021 - Parallelization over orbitals implemented
 
-  use units, only: Ang
   use alloc,        only: de_alloc, re_alloc
   use memory_log,   only: memory_report
   use atmfuncs,     only: lofio, mofio, nofis, rcut, rphiatm, zetafio
@@ -23,8 +22,10 @@ program unfold
   use basis_types,  only: basis_parameters, initialize
   use basis_io,     only: read_basis_ascii
   use cellsubs,     only: reclat, volcel
-  use chemical,     only: read_chemical_types
-  use fdf
+  use fdf,          only: block_fdf, fdf_bintegers, fdf_bline, fdf_block, &
+                          fdf_bmatch, fdf_bnames, fdf_bnnames, fdf_bnvalues, &
+                          fdf_bvalues, fdf_convfac, fdf_get, fdf_init, &
+                          fdf_parallel, parsed_line
   use hsx_m,        only: hsx_t, read_hsx_file
   use m_array,      only: array_copy
   use m_get_kpoints_scale, &
@@ -35,7 +36,7 @@ program unfold
 #ifdef MPI
   use mpi_siesta,   only: MPI_Comm_Rank, MPI_Comm_Size, MPI_Comm_World, &
                           MPI_double_precision, MPI_Init, MPI_Finalize, &
-                          MPI_Reduce, MPI_Sum, MPI_AllReduce
+                          MPI_Reduce, MPI_Sum
  use parallelsubs,  only: GetNodeOrbs,LocalToGlobalOrb
 #endif
   use m_radfft,     only: radfft
@@ -46,8 +47,6 @@ program unfold
   use siesta_geom,  only: ucell, xa, isa   ! unit cell, atomic coords and species
   use sys,          only: die
 
-  use units,        only: inquire_unit
-  use unfold_handlers_m, only: unfold_set_handlers
 
   implicit none
 
@@ -108,8 +107,6 @@ program unfold
 
 !--------------------
 
-  call unfold_set_handlers()
-
 ! Initialize MPI
 #ifdef MPI
   call MPI_Init( ierr )
@@ -123,15 +120,11 @@ program unfold
 #endif
 
   ! Initialize input
-
-  if (myNode == 0) then
-     call fdf_init( fileOutput='unfold.fdflog', unitInput=5 )
-  endif
 #ifdef MPI
-  call broadcast_fdf_struct(0,mpi_comm_world)
+  if (.not.fdf_parallel()) &
+    call die('unfold ERROR: FDF has no parallel support')
 #endif
-
-  call fdf_set_unit_handler(inquire_unit)
+  call fdf_init( fileOutput='unfold.fdflog', unitInput=5 )
 
   ! Initialize timer
   threshold = fdf_get('TimerReportThreshold', 0._dp)
@@ -168,7 +161,6 @@ program unfold
   ! Read atomic basis
   if (myNode==0) then
     print*,'unfold: reading atomic orbitals'
-    call read_chemical_types( )
     allocate(basis_parameters(nsp))
     do isp=1,nsp
       call initialize(basis_parameters(isp))
@@ -216,7 +208,7 @@ program unfold
   if (myNode==0) then
     print*,'unfold: nr,dr,rc=',nr,dr,rc
     print*,'unfold: nq,dq,qc=',nq,dq,qc
-    if (nq .gt. maxnq) &
+    if (nq .gt. maxnq) & 
           call die('unfold ERROR: parameter maxnq is too small')
     print'(a,/,(2i4,f12.6))','unfold: isp,io,rc=', &
       ((isp,io,rcut(isp,io),io=1,nofis(isp)),isp=1,nsp)
@@ -313,7 +305,7 @@ program unfold
 
   ! Find unit cell and initialize atomic coords
   if (myNode==0) print'(a,/,(3f12.6))','unfold: reading system geometry'
-  alat = fdf_get('LatticeConstant',Ang,'bohr')
+  alat = fdf_get('LatticeConstant',1._dp,'bohr')
   call coor(na,ucell)        ! atomic coordinates xa stored in module siesta_geom
   vol = volcel(ucell)        ! unit cell volume
   call reclat(ucell,rcell,1) ! rcell = reciprocal cell vectors
@@ -381,7 +373,7 @@ program unfold
   nq = 0
   lastq(0) = 0
   label = ' '
-
+  
   do while( fdf_bline(bfdf,pline) ) ! bline and pline refer to text lines, not q lines
 
     nn = fdf_bnnames(pline)
@@ -411,7 +403,7 @@ program unfold
         enddo
         nq = nq+nqline
         if(nn .gt. 0) label(nq) = fdf_bnames(pline,1)
-      endif
+      endif 
 
       lastq(npaths) = nq
     else
@@ -464,7 +456,7 @@ program unfold
   notSuperCell = .not.all(abs(cellRatio-nint(cellRatio))<tolSuperCell)
   if (myNode==0) print'(a,l,a,/,(3f12.6))', &
     'unfold: notSuperCell= ',notSuperCell,'   cellRatio=',cellRatio
-
+  
   ! Set some constants
   ii = cmplx(0,1,dp)
   nlm = (lmax+1)**2
@@ -493,7 +485,7 @@ program unfold
 
   call re_alloc( h,   1,nou, 1,noul,          myName//'h'   )
   call re_alloc( s,   1,nou, 1,noul,          myName//'s'   )
-  call re_alloc( psi, 1,nou, 1,noul,          myName//'psi' )
+  call re_alloc( psi, 1,nou, 1,noul,          myName//'psi' ) 
   call re_alloc( eb,  1,nou,                  myName//'eb'  )
 
   ! Main loops on unfolded band paths and q vectors along them
@@ -525,7 +517,7 @@ program unfold
             qx = matmul(qg,ucell)/(2*pi)   ! qg in mesh coords: qg=matmul(rcell,qx)
             kq = matmul(rcell,qx-nint(qx)) ! q+g translated to FBZ of SC, i.e. kq=k+g-G
           endif
-          gq = qg-kq                       ! supercell G vector
+          gq = qg-kq                       ! supercell G vector 
           do ispin = 1,nspin
 
             if (ig==1 .or. notSuperCell) then
@@ -617,7 +609,7 @@ program unfold
     enddo ! iq
 
 if (myNode==0) print*,'unfold: end of main loop'
-
+    
 #ifdef MPI
     if (ParallelOverK) then
       ntmp = (iq2-iq1+1)*(ne+1)*nspin
@@ -673,14 +665,14 @@ if (myNode==0) print*,'unfold: writing output files'
           else
             string = ""//trim(label(iq))//""
           endif
-          write(iu,'(3(f13.8),i5,a12)') q(:,iq), iline(iq), string
+          write(iu,'(3(f13.8),i5,a12)') q(:,iq), iline(iq), string 
           do j = 0,ne
             write(iu,'(e15.6)') udos(iq,j,ispin)
           enddo
         enddo ! iq
         call io_close(iu)
 
-        if (refolding) then
+        if (refolding) then 
           fname = trim(slabel)//'.refoldedBands'
           if (nspin==2 .and. ispin==1) then
             fname = trim(fname)//'.spinUp'

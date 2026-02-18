@@ -7,7 +7,7 @@
 ! ---
 
       SUBROUTINE REINIT( MAXO, MAXA, MAXUO, MAXNH, MAXNA, NSPIN, IDIMEN,
-     .                   CHARGE, WAVES, WANNIER )
+     .                   CHARGE, WAVES )
 
 C **********************************************************************
 C Read some variables from SIESTA in order to define
@@ -24,7 +24,7 @@ C **********************************************************************
 
       INTEGER, INTENT(OUT) ::
      .  MAXO, MAXA, MAXUO, NSPIN, MAXNH, MAXNA, IDIMEN
-      LOGICAL, INTENT(OUT) ::  CHARGE, WAVES, WANNIER
+      LOGICAL, INTENT(OUT) ::  CHARGE, WAVES
 
 C **********************************************************************
 C INTEGER MAXO           : Maximum number of atomic orbitals in supercell
@@ -39,7 +39,6 @@ C                          Nspin = 1 => Non polarized. Nspin = 2 => Polarized
 C INTEGER IDIMEN         : Type of calculation: 2D or 3D
 C LOGICAL CHARGE         : Should charge density be computed?
 C LOGICAL WAVES          : Should wave functions be computed?
-C LOGICAL WANNIER        : Should wannier functions be computed?
 C **********************************************************************
 
 C Internal variables --------------------------------------------------
@@ -73,11 +72,10 @@ C Assign the name of the output file -----------------------------------
 
       CHARGE = FDF_BOOLEAN('Denchar.PlotCharge',.FALSE.)
       WAVES  = FDF_BOOLEAN('Denchar.PlotWaveFunctions',.FALSE.)
-      WANNIER= FDF_BOOLEAN('Denchar.PlotWannierFunctions',.FALSE.)
 
-      IF (.NOT. CHARGE .AND. .NOT. WAVES .AND. .NOT. WANNIER) THEN
-        WRITE(6,*)'Denchar.PlotCharge and Denchar.PlotWaveFunctions' 
-        WRITE(6,*)' and Denchar.PlotWannierFunctions are all .FALSE.'
+      IF (.NOT. CHARGE .AND. .NOT. WAVES) THEN
+        WRITE(6,*)'Denchar.PlotCharge and Denchar.PlotWaveFunctions'
+        WRITE(6,*)' are all .FALSE.'
         WRITE(6,*)'At least one of them should be .TRUE.'
         STOP
       ENDIF

@@ -2,9 +2,8 @@ C...............................................................
 C
       subroutine write_axsf2(ii2,io1,nstep,mdfirst,mdlast,mdstep,
      .                       nat,nz,mdmod,varcel,cc_ang,coord,veloc)
-      use units, only : Ang
 C
-C     writes output info into the AXSF file for the case
+C     writes output info into the AXSF file for the case 
 C     when no output box is selected.
 C     The AXSF is as for periodic structure, with SIESTA native box,
 C     either from MD (if it is written with variable cell), or from XV.
@@ -15,13 +14,14 @@ C
       integer ii2,io1,mdfirst,mdlast,mdstep,nat,nz(nat),mdmod,
      .        ii,jj,istep,nstep,iat,idum
       double precision cc_ang(3,3),cc_bohr(3,3),cc_velo(3,3),cc_md(3,3),
-     .                 coord(3,nat),veloc(3,nat),coorf(3),coorx(3)
+     .                 coord(3,nat),veloc(3,nat),b2ang,coorf(3),coorx(3)
+      parameter (b2ang=0.529177)   !  Bohr to Angstroem
       logical varcel
       character lett*1,symbol*2
 
-      rewind (ii2)
-      rewind (io1)
-      write (io1,"('ANIMSTEPS',i15)") (mdlast-mdfirst)/mdstep+1
+      rewind (ii2) 
+      rewind (io1) 
+      write (io1,"('ANIMSTEPS',i6)") (mdlast-mdfirst)/mdstep+1
       if (mdmod.eq.1) then  ! (read data from MD, all in Bohr)
         write (io1,"('CRYSTAL')")
         if (.not.varcel) then
@@ -38,17 +38,17 @@ C         write cell vectors from XV (only once)
      .        (istep.le.mdlast).and.
      .        (mod(istep-mdfirst,mdstep).eq.0)) then
             if (varcel) then
-              cc_ang = cc_bohr/Ang
-              write (io1,"('PRIMVEC',i15)") (istep-mdfirst)/mdstep+1
+              cc_ang = cc_bohr*b2ang
+              write (io1,"('PRIMVEC',i8)") (istep-mdfirst)/mdstep+1
               do ii=1,3
                 write (io1,'(3x,3f18.9)') (cc_ang(jj,ii),jj=1,3)
               enddo
-            endif  ! if (varcel)
-            write (io1,"('PRIMCOORD',i15)") (istep-mdfirst)/mdstep+1
-            write (io1,"(i9,'  1')") nat
+            endif  ! if (varcel) 
+            write (io1,"('PRIMCOORD',i6)") (istep-mdfirst)/mdstep+1
+            write (io1,"(i6,'  1')") nat
             do iat=1,nat
               write (io1,'(i4,3f13.6)') nz(iat),
-     .                                  (coord(ii,iat)/Ang,ii=1,3)
+     .                                  (coord(ii,iat)*b2ang,ii=1,3)
 C             coordinates in MD are in Bohr, and converted to Ang
             enddo
           endif  !  if write this MD step
@@ -73,22 +73,22 @@ C         write cell vectors from XV (only once)
      .        (istep.le.mdlast).and.
      .        (mod(istep-mdfirst,mdstep).eq.0)) then
             if (varcel) then
-              write (io1,"('PRIMVEC',i15)") (istep-mdfirst)/mdstep+1
+              write (io1,"('PRIMVEC',i8)") (istep-mdfirst)/mdstep+1
               write (io1,'(3x,3f18.9)') cc_md
-            endif  ! if (varcel)
-            write (io1,"('PRIMCOORD',i15)") (istep-mdfirst)/mdstep+1
-            write (io1,"(i9,'  1')") nat
+            endif  ! if (varcel) 
+            write (io1,"('PRIMCOORD',i6)") (istep-mdfirst)/mdstep+1
+            write (io1,"(i6,'  1')") nat
             do iat=1,nat
-              read (ii2,'(3f16.9)') coorf ! -- fractional coordinates
+              read (ii2,'(3f16.9)') coorf ! -- fractional coordinates 
 ! ---         reconstruct cartesian coordinates in Ang:
               coorx(:) = coorf(1)*cc_md(:,1) +
      +                   coorf(2)*cc_md(:,2) +
      +                   coorf(3)*cc_md(:,3)
               write (io1,'(i4,3f13.6)') nz(iat),coorx
             enddo
-          else   !  skip this MD step
+          else   !  skip this MD step 
             do iat=1,nat
-              read (ii2,'(3f16.9)') coorf ! -- dummy read, not used
+              read (ii2,'(3f16.9)') coorf ! -- dummy read, not used 
             enddo
           endif  !  if write this MD step
         enddo  !  do istep
@@ -109,8 +109,8 @@ C           coordinates in ANI are in Angstroem, and so written to AXSF
           if ((istep.ge.mdfirst).and.
      .        (istep.le.mdlast).and.
      .        (mod(istep-mdfirst,mdstep).eq.0)) then
-            write (io1,"('PRIMCOORD',i15)") (istep-mdfirst)/mdstep+1
-            write (io1,"(i9,'  1')") nat
+            write (io1,"('PRIMCOORD',i6)") (istep-mdfirst)/mdstep+1
+            write (io1,"(i6,'  1')") nat
             do iat=1,nat
               write (io1,'(i4,3f13.6)')  nz(iat),(coord(ii,iat),ii=1,3)
             enddo
@@ -120,6 +120,6 @@ C           coordinates in ANI are in Angstroem, and so written to AXSF
       endif
 
       return
-  301 format(i9,/)
+  301 format(i5,/)
 
       end

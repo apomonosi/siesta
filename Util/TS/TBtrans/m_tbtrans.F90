@@ -41,6 +41,7 @@ contains
     use m_region
 
     use ts_electrode_m
+    use m_spin, only : spin
     use m_tbt_options, only : N_Elec, Elecs
 
     use m_tbt_hs, only: tTSHS, spin_idx, Volt, prep_next_HS
@@ -48,6 +49,7 @@ contains
     use m_tbt_tri_init, only : tbt_tri_init, tbt_tri_print_opti
     use m_tbt_tri_init, only : DevTri, ElTri
     use m_tbt_trik, only: tbt_trik
+    use m_tbt_trik_spinor, only: tbt_trik_spinor
 
     use m_tbt_contour
 
@@ -96,7 +98,7 @@ contains
 #endif
 
 ! * local variables
-    integer :: iEl, NEn, no_used, no_used2, ispin, ils, i
+    integer :: iEl, NEn, no_used, no_used2, ispin, ils, i, qspin
 #ifdef NCDF_4
     type(Sparsity) :: sp1, sp_total
 #endif
@@ -183,8 +185,13 @@ contains
        ! This is because we are downfolding the self-energies and thus the
        ! Gamma is constructed in the device sub-region.
        if ( .not. Elecs(iEl)%Bulk ) then
-          call re_alloc(Elecs(iEl)%HA,1,no_used,1,no_used,1,nq(iEl),routine='tbtrans')
-          call re_alloc(Elecs(iEl)%SA,1,no_used,1,no_used,1,nq(iEl),routine='tbtrans')
+          if ( spin%NCol .or. spin%SO) then 
+            call re_alloc(Elecs(iEl)%HA,1,2*no_used,1,2*no_used,1,nq(iEl),routine='tbtrans')
+            call re_alloc(Elecs(iEl)%SA,1,2*no_used,1,2*no_used,1,nq(iEl),routine='tbtrans')
+          else
+            call re_alloc(Elecs(iEl)%HA,1,  no_used,1,  no_used,1,nq(iEl),routine='tbtrans')
+            call re_alloc(Elecs(iEl)%SA,1,  no_used,1,  no_used,1,nq(iEl),routine='tbtrans')
+          end if
        end if
 
        ! We need to retain the maximum size of Gamma
@@ -201,7 +208,11 @@ contains
           no_used2 = Elecs(iEl)%o_inD%n ** 2 / no_used + 1
        end if
 
-       call re_alloc(Elecs(iEl)%Gamma,1,no_used*no_used2,routine='tbtrans')
+       if ( spin%NCol .or. spin%SO) then 
+          call re_alloc(Elecs(iEl)%Gamma,1,4*no_used*no_used2,routine='tbtrans')
+       else
+          call re_alloc(Elecs(iEl)%Gamma,1,  no_used*no_used2,routine='tbtrans')
+       end if
 
        ! This seems stupid, however, we never use the expansion array and
        ! GammaT at the same time. Hence it will be safe
@@ -211,7 +222,11 @@ contains
        ! Gamma is filled.
        no_used2 = no_used
        if ( Elecs(iEl)%pre_expand == 0 ) no_used2 = Elecs(iEl)%no_used
-       Elecs(iEl)%GA => Elecs(iEl)%Gamma(1:no_used*no_used2)
+       if ( spin%NCol .or. spin%SO) then 
+          Elecs(iEl)%GA => Elecs(iEl)%Gamma(1:4*no_used*no_used2)
+       else
+          Elecs(iEl)%GA => Elecs(iEl)%Gamma(1:no_used*no_used2)
+       end if
 
     end do
 
@@ -237,7 +252,9 @@ contains
     ! Print memory usage (after open_GF)
     call print_memory()
     
-    do ils = 1 , TSHS%nspin
+    qspin = TSHS%nspin
+    if ( TSHS%nspin > 2 ) qspin = 1
+    do ils = 1 , qspin
 
        ! Determine the actual spin-index
        if ( spin_idx == 0 ) then
@@ -325,8 +342,12 @@ contains
           nullify(kpt,wkpt)
        end if
 #endif
-
-       call tbt_trik(ispin, N_Elec, Elecs, TSHS, nq, uGF)
+      
+       if ( spin%NCol .or. spin%SO) then
+         call tbt_trik_spinor(N_Elec, Elecs, TSHS, nq, uGF)
+       else
+         call tbt_trik(ispin, N_Elec, Elecs, TSHS, nq, uGF)
+       end if
 
        ! the spin-index is zero for all,
        ! and one of the allowed spin indices if
@@ -489,7 +510,11 @@ contains
          else
             
            ! prepare the electrode to create the surface self-energy
-           call Elecs(iEl)%prepare_SE(IO=.false., spin=max(1, spin_idx))
+            if ( spin%none .or. spin%Col) then
+              call Elecs(iEl)%prepare_SE(IO=.false., spin=max(1, spin_idx))
+            else
+              call Elecs(iEl)%prepare_SE(IO=.false.)
+            end if
             
          end if
 

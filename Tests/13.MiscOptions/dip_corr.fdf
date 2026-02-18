@@ -1,5 +1,0 @@
-%include ../base_wat_bigbox.fdf
-SystemLabel     dip_corr
-
-Slab.DipoleCorrection True
-

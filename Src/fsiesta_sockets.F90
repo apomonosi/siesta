@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -13,11 +13,11 @@
 ! Used modules
 !   f90sockets : support for socket communications (in file fsockets.f90)
 ! Usage:
-!   call siesta_launch( label, nnodes, comm, launcher, localhost )
+!   call siesta_launch( label, nnodes, mpi_comm, launcher, localhost )
 !     character(len=*),intent(in) :: label  : Name of siesta process
 !                                             (prefix of its .fdf file)
 !     integer,optional,intent(in) :: nnodes : Number of MPI nodes
-!     integer,optional,intent(in) :: comm : not used in this version
+!     integer,optional,intent(in) :: mpi_comm : not used in this version
 !     character(len=*),intent(in),optional:: launcher : full launch command
 !     logical,optional,intent(in) :: localhost : will siesta run at localhost?
 !
@@ -37,14 +37,14 @@
 !     character(len=*),intent(in) :: label  : Name of one siesta process,
 !                                             or 'all' to stop all procs.
 ! Behaviour:
-! - If nnodes is not present among siesta_launch arguments, or nnodes<2,
-!   a serial siesta process will be launched. Otherwise, a parallel
+! - If nnodes is not present among siesta_launch arguments, or nnodes<2, 
+!   a serial siesta process will be launched. Otherwise, a parallel 
 !   mpirun process will be launched. In this case, the mpi launching
-!   command (e.g., "mpiexec <options> -n ") can be specified in the
+!   command (e.g., "mpiexec <options> -n ") can be specified in the 
 !   optional argument mpi_launcher
 ! - localhost=.true. is assumed by default, if not present at siesta_launch,
-!   or if siesta_launch is not called.
-! - If localhost=.false., the IP address of the driver program's host must
+!   or if siesta_launch is not called. 
+! - If localhost=.false., the IP address of the driver program's host must 
 !   be given as Master.address in siesta .fdf file.
 ! - If siesta_units is not called, length='Ang', energy='eV' are
 !   used by default. If it is called more than once, the units in the
@@ -58,7 +58,7 @@
 !   connects to it.
 ! - If argument cell is not present in the call to siesta_forces, or if
 !   the cell has zero volume, it is assumed that the system is a molecule,
-!   and a supercell is generated automatically by siesta so that the
+!   and a supercell is generated automatically by siesta so that the 
 !   different images do not overlap. In this case the stress returned
 !   has no physical meaning.
 ! - The stress is defined as dE/d(strain)/Volume, with a positive sign
@@ -98,7 +98,7 @@ PRIVATE ! Nothing is declared public beyond this point
   integer, parameter :: max_procs = 100  ! max. simultaneous siesta processes
   integer, parameter :: dp = kind(1.d0)  ! double precision real kind
   type(proc),   save :: p(max_procs)     ! data of siesta processes
-  integer,      save :: np = 0           ! present number of siesta processes
+  integer,      save :: np = 0           ! present number of siesta processes    
   integer,      save :: totp = 0         ! total siesta processes ever started
 
 ! Default driver's physical units (reset by siesta_units)
@@ -111,12 +111,12 @@ CONTAINS
 
 !---------------------------------------------------
 
-subroutine siesta_launch( label, nnodes, comm, launcher, localhost )
+subroutine siesta_launch( label, nnodes, mpi_comm, launcher, localhost )
   use posix_calls, only: system
   implicit none
   character(len=*),          intent(in) :: label
   integer,         optional, intent(in) :: nnodes
-  integer,         optional, intent(in) :: comm
+  integer,         optional, intent(in) :: mpi_comm
   character(len=*),optional, intent(in) :: launcher
   logical,         optional, intent(in) :: localhost
 
@@ -137,7 +137,7 @@ subroutine siesta_launch( label, nnodes, comm, launcher, localhost )
     write(task,*) ' mpirun -np ', nnodes, &
                   ' siesta < ', trim(label)//'.fdf > ', trim(label)//'.out &'
   else
-    write(task,*) './siesta < ', trim(label)//'.fdf > ', trim(label)//'.out &'
+    write(task,*) ' siesta < ', trim(label)//'.fdf > ', trim(label)//'.out &'
   endif
   print*,'siesta_launch: task = ',trim(task)
   call system(task)

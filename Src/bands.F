@@ -355,7 +355,6 @@ C
 C  Modules
 C
       use precision,    only : dp
-      use units,        only : eV
       use parallel,     only : Node, Nodes
       use parallelsubs, only : GetNodeOrbs
       use densematrix,  only : allocDenseMatrix, resetDenseMatrix
@@ -370,7 +369,6 @@ C
       use t_spin, only: tSpin
 
       use m_diag_option, only: ParallelOverK, Serial
-      use m_diag_option, only: print_diag
       use m_diag, only: diag_init
 
 
@@ -399,11 +397,13 @@ C
       logical :: SaveParallelOverK
       
       real(dp)
-     .  Dnew, qs(2), e1, e2, efs(2), emax, emin, Enew, qk, qtot,
+     .  Dnew, qs(2), e1, e2, efs(2), emax, emin, Enew, eV, qk, qtot,
      .  path, temp, wk, Entropy
 
 C Dynamic arrays
       real(dp), dimension(:), pointer :: aux => null()
+
+      parameter ( eV = 1.d0 / 13.60580d0 )
 
       save Dnew, Enew, e1, e2, qk, qtot, temp, wk
       data Dnew, Enew, e1, e2, qk, qtot, temp, wk /8*0.d0/
@@ -461,8 +461,7 @@ C Handle parallel over K points option which is not allowed for here
         Serial = Nodes == 1
         call diag_init()
       end if
-        call print_diag()
-        
+
 C Find the band energies
       if ( spin%none .or. spin%Col ) then
 C fixspin and qs are not used in diagk, since getD=.false. ...
@@ -479,7 +478,6 @@ C fixspin and qs are not used in diagk, since getD=.false. ...
      .              no_u, occtol, 1, no_u )
 
       elseif ( spin%NCol ) then
-        call print_diag()
         call diag2k(no_l, no_s, maxnh, maxnh, no_u,
      .              numh, listhptr, listh, numh, listhptr,
      .              listh, H, S, getD, getPSI, qtot, temp, e1, e2,
@@ -489,7 +487,6 @@ C fixspin and qs are not used in diagk, since getD=.false. ...
      .              no_u, occtol, 1, no_u )
 
       elseif ( spin%SO ) then
-        call print_diag()
         call diag3k(no_l, no_s, maxnh, maxnh, no_u, numh,
      .              listhptr, listh, numh, listhptr, listh,
      .              H, S, getD, getPSI, qtot, temp, e1, e2, xij,
@@ -552,25 +549,13 @@ C Write eigenvalues
      .        path = path + sqrt( (kpoint(1,ik)-kpoint(1,ik-1))**2 +
      .                            (kpoint(2,ik)-kpoint(2,ik-1))**2 +
      .                            (kpoint(3,ik)-kpoint(3,ik-1))**2 )
-            if ( no_u == 10 ) then
-              write(iu,'(f10.6,10f12.4)')
-     .           path, ((ek(io,ispin,ik)/eV,io=1,no_u),
-     .           ispin=1,spin%spinor)
-            else
-              write(iu,'(f10.6,10f12.4,/,(10x,10f12.4))')
-     .           path, ((ek(io,ispin,ik)/eV,io=1,no_u),
-     .           ispin=1,spin%spinor)
-            endif
+            write(iu,'(f10.6,10f12.4,/,(10x,10f12.4))')
+     .         path, ((ek(io,ispin,ik)/eV,io=1,no_u),
+     .         ispin=1,spin%spinor)
           else
-            if ( no_u == 8 ) then
-              write(iu,'(3f9.5,8f12.4)')
-     .        kpoint(1,ik), kpoint(2,ik), kpoint(3,ik),
-     .        ((ek(io,ispin,ik)/eV,io=1,no_u),ispin=1,spin%spinor)
-            else
             write(iu,'(3f9.5,8f12.4,/,(27x,8f12.4))')
      .        kpoint(1,ik), kpoint(2,ik), kpoint(3,ik),
      .        ((ek(io,ispin,ik)/eV,io=1,no_u),ispin=1,spin%spinor)
-            endif
           endif
         enddo
 

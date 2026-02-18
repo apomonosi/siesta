@@ -90,10 +90,6 @@ type, public :: hsx_t
   integer, pointer  :: isa(:) => null()
   real(dp), pointer :: zval(:) => null()
   real(dp)          :: Ef=0._dp, qtot=0._dp, temp=0._dp
-
-  ! K-point information for the run, only present in version >=2
-  real(dp) :: kdispl(3)
-  integer :: kcell(3,3) = 0
   integer :: version = 0
 end type
 
@@ -110,10 +106,10 @@ CONTAINS
     version = HSX_version(fname)
     if ( version == 0 ) then
       call read_hsx_file_version0(hsx, fname)
-    else if ( version == 1 .or. version == 2 ) then
-      call read_hsx_file_version1_2(hsx, fname)
+    else if ( version == 1 ) then
+      call read_hsx_file_version1(hsx, fname)
     else
-      STOP "unknown HSX file version [0, 1, 2]"
+      STOP "unknown HSX file version [0, 1]"
     end if
   end subroutine read_hsx_file
 
@@ -122,7 +118,7 @@ CONTAINS
     integer :: version
     integer :: iu
     integer :: na_u, no_u, no_s, nspin, n_nzs, err
-
+    
     ! Initialize
     version = 0
 
@@ -136,7 +132,7 @@ CONTAINS
        ! we can successfully read 4 integers
        version = 0
     else
-       rewind(iu)
+       backspace(iu)
        read(iu,iostat=err) version
     end if
 
@@ -145,7 +141,7 @@ CONTAINS
   end function HSX_version
 
 
-  subroutine read_hsx_file_version1_2(hsx, fname)
+  subroutine read_hsx_file_version1(hsx, fname)
     type(hsx_t), intent(out)  :: hsx
     character(len=*), intent(in) :: fname
 
@@ -165,8 +161,8 @@ CONTAINS
     read(hs_u, iostat=iostat) hsx%version
     if (iostat /= 0) STOP "version"
 
-    if ( .not. any(hsx%version == [1, 2]) ) then
-      STOP "incorrect call [version/=1|2]"
+    if ( hsx%version /= 1 ) then
+      STOP "incorrect call [version/=1]"
     end if
 
     ! now read whether this is double precision or not
@@ -203,11 +199,6 @@ CONTAINS
       if ( iostat /= 0 ) STOP "specific specie information"
     end do
 
-    if ( hsx%version == 2 ) then
-       read(hs_u,iostat=iostat) hsx%kcell, hsx%kdispl
-       if ( iostat /= 0 ) STOP "k-information"
-    end if
-
     ! Populate iaorb and iphorb
     ind = 0
     do ia = 1, hsx%na_u
@@ -231,7 +222,7 @@ CONTAINS
     allocate(hsx%numh(hsx%no_u))
     read(hs_u,iostat=iostat) hsx%numh
     if (iostat /= 0) STOP "numh(io)"
-
+  
     ! Create pointer
     allocate(hsx%listhptr(hsx%no_u))
     hsx%listhptr(1) = 0
@@ -242,7 +233,7 @@ CONTAINS
     ! Now read sparse data
     hsx%nh = hsx%listhptr(hsx%no_u) + hsx%numh(hsx%no_u)
     allocate(hsx%listh(hsx%nh))
-
+  
     do io=1,hsx%no_u
       read(hs_u,iostat=iostat) hsx%listh(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
       if (iostat /= 0) STOP "listh"
@@ -263,14 +254,14 @@ CONTAINS
               hsx%isc_off(1,is) * hsx%ucell(:,1) + &
               hsx%isc_off(2,is) * hsx%ucell(:,2) + &
               hsx%isc_off(3,is) * hsx%ucell(:,3)
-
+          
         end do
       end do
     end do
 
     ! Clean-up
     deallocate(lasto)
-
+    
     ! Read H and S
     allocate(hsx%hamilt(hsx%nh,hsx%nspin))
     allocate(hsx%Sover(hsx%nh))
@@ -282,12 +273,12 @@ CONTAINS
           if (iostat /= 0) STOP "H(dp)"
         end do
       end do
-
+      
       do io = 1, hsx%no_u
         read(hs_u,iostat=iostat) hsx%Sover(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
         if (iostat /= 0) STOP "S(dp)"
       end do
-
+      
     else
       allocate(rbuf(maxval(hsx%numh)))
 
@@ -309,18 +300,18 @@ CONTAINS
     end if
 
     close(hs_u)
-
+    
   contains
-
+    
     elemental function UCORB(a,p)
       integer, intent(in) :: a,p
       integer :: UCORB
       UCORB = MOD(a-1,p) + 1
-    end function
+    end function 
+    
+  end subroutine read_hsx_file_version1
 
-  end subroutine read_hsx_file_version1_2
-
-
+  
   subroutine read_hsx_file_version0(hsx,fname)
     type(hsx_t), intent(out)  :: hsx
     character(len=*), intent(in) :: fname
@@ -474,15 +465,10 @@ CONTAINS
         call write_hsx_file_version0(hsx,fname)
       else if ( version == 1 ) then
         call write_hsx_file_version1(hsx,fname)
-      else if ( version == 2 ) then
-        call write_hsx_file_version2(hsx,fname)
       else
-        print *, 'Unknown version specifier for HSX file [0, 1, 2]: ', version
-        stop 'Unknown version specifier [0, 1, 2]?'
+        print *, 'Unknown version specifier for HSX file [0, 1]: ', version
+        stop 'Unknown version specifier [0, 1]?'
       end if
-    else if ( any(hsx%kcell > 0) ) then
-      ! Check for variables only in 2
-      call write_hsx_file_version2(hsx,fname)
     else if ( associated(hsx%isc_off) ) then
       ! Check for variables only in 1
       call write_hsx_file_version1(hsx,fname)
@@ -491,66 +477,6 @@ CONTAINS
     end if
 
   end subroutine write_hsx_file
-
-  subroutine write_hsx_file_version2(hsx, fname)
-    type(hsx_t), intent(in)  :: hsx
-    character(len=*), intent(in) :: fname
-
-    integer :: iu, ia, io, ind, is
-    integer, allocatable :: lasto(:)
-
-    call get_unit_number(iu)
-
-    ! Open file
-    open( iu, file=trim(fname), form='unformatted', status='unknown' )
-
-    ! Write version specification (to easily distinguish between different versions)
-    write(iu) 1
-    ! And what precision
-    write(iu) .true.
-
-    ! Write overall data
-    write(iu) hsx%na_u, hsx%no_u, hsx%nspin, hsx%nspecies, hsx%nsc
-    write(iu) hsx%ucell, hsx%Ef, hsx%qtot, hsx%temp
-
-    ! Recreate lasto for easier storage
-    allocate(lasto(hsx%na_u))
-    lasto(1) = hsx%no(hsx%isa(1))
-    do ia = 2, hsx%na_u
-      lasto(ia) = lasto(ia-1) + hsx%no(hsx%isa(ia))
-    end do
-    write(iu) hsx%isc_off, hsx%xa, hsx%isa, lasto
-    deallocate(lasto)
-
-    ! Write other useful info
-    write(iu) (hsx%label(is),hsx%zval(is),hsx%no(is),is=1,hsx%nspecies)
-    do is = 1, hsx%nspecies
-      write(iu) (hsx%nquant(is,io), hsx%lquant(is,io), hsx%zeta(is,io),io=1,hsx%no(is))
-    end do
-
-    ! This is the only difference from version == 1
-    write(iu) hsx%kcell, hsx%kdispl
-
-    write(iu) hsx%numh
-
-    do io = 1, hsx%no_u
-      write(iu) hsx%listh(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
-    end do
-
-    do is = 1, hsx%nspin
-      do io = 1, hsx%no_u
-        write(iu) hsx%hamilt(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io),is)
-      end do
-    end do
-
-    do io = 1, hsx%no_u
-      write(iu) hsx%Sover(hsx%listhptr(io)+1:hsx%listhptr(io)+hsx%numh(io))
-    end do
-
-    close( iu )
-
-  end subroutine write_hsx_file_version2
-
 
   subroutine write_hsx_file_version1(hsx, fname)
     type(hsx_t), intent(in)  :: hsx

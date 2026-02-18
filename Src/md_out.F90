@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -11,6 +11,7 @@ use units, only: Ang
 use precision, only: dp
 use sys,      only: die
 use files,    only: slabel
+use m_energies, only: etot
 
 implicit none
 
@@ -27,7 +28,7 @@ subroutine md_v_format(na,isa,xa,cell)
 ! For V-compatible "movie" output
 !
 integer, intent(in)                 :: na
-integer, dimension(na), intent(in)   :: isa
+integer, dimension(na), intent(in)   :: isa 
 real(dp), dimension (3,na), intent(in) :: xa
 real(dp), dimension (3,3), intent(in)  :: cell
 
@@ -84,7 +85,7 @@ subroutine md_netcdf(na,isa,iza,xa,va,cell,vcell,varcel, &
 use netcdf
 
 integer, intent(in)                 :: na
-integer, dimension(na), intent(in)   :: isa, iza
+integer, dimension(na), intent(in)   :: isa, iza 
 real(dp), dimension (3,na), intent(in) :: xa, va
 real(dp), dimension (3,3), intent(in)  :: cell, vcell
 logical, intent(in)                    :: varcel
@@ -93,7 +94,7 @@ real(dp), intent(in)               :: volume, Psol
 
 
 integer iret
-integer  :: ncid
+integer  :: ncid 
 integer  :: xyz_id, atom_id, step_id, abc_id
 integer  :: xa_id, va_id, cell_id, vcell_id
 integer  :: eks_id, etot_id, temp_id, psol_id
@@ -257,7 +258,7 @@ integer        :: atom_no
     iret = nf90_put_var(ncid, eks_id, eks, start = (/ step_no /) )
        call check(iret)
 
-    iret = nf90_put_var(ncid, etot_id, tot_energy, start = (/ step_no /) )
+    iret = nf90_put_var(ncid, etot_id, etot, start = (/ step_no /) )
        call check(iret)
 
     iret = nf90_put_var(ncid, volume_id, volume, start = (/ step_no /) )
@@ -297,4 +298,4 @@ end subroutine check
 
 end module md_out
 
-
+       

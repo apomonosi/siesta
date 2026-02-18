@@ -14,31 +14,34 @@
       use m_siesta_forces
       use m_siesta_tddft
       use m_ts_global_vars, only: onlyS
-      
+      use sys, only: bye
+
       USE m_steps, only: inicoor, fincoor
+      use alloc
       use siesta_options, only: td_elec_dyn
-      use siesta_handlers_m, only: siesta_set_handlers
-      
+
       use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
       use parallel, only: ionode
 #ifdef MPI      
-      use mpi_siesta, only: mpi_comm_dft ! Includes Solver nodes
+      use mpi_siesta, only: true_mpi_comm_world
 #endif      
       use m_mpi_utils, only: broadcast
 
+#ifdef TRACING_SOLVEONLY
+      use extrae_module
+#endif
 
       implicit none
 
-      
       integer :: istep
       logical :: relaxd
 
-! Notes for PEXSI and ELSI operation (extra procs for Solver)
+! Notes for PEXSI operation
 !
-! A subset of nodes carries out non-Solver Siesta operations 
+! A subset of nodes carries out non-PEXSI Siesta operations 
 ! (i.e., setting up H, moving atoms, diagonalizing...). 
 ! These are tagged as "SIESTA_worker" (admittedly, a bad name)
-! All nodes are involved in the (PEXSI or ELSI) electronic-structure solver,
+! All nodes are involved in the PEXSI electronic-structure solver,
 ! and in the new LocalDOS computation based on selected inversion.
 !
 ! 'siesta_init', 'siesta_forces', and 'siesta_analysis' need to
@@ -51,9 +54,11 @@
 !----------------------------------------------------------------- BEGIN
 !      if (ionode) call memory_snapshot("at start of program")
 
-      call siesta_set_handlers()
-      
       call siesta_init()
+
+#ifdef TRACING_SOLVEONLY
+      call extrae_shutdown
+#endif      
 
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after siesta_init")
@@ -62,11 +67,11 @@
 C     Begin of coordinate relaxation iteration
       relaxd = .false.
 
-#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
+#ifdef SIESTA__PEXSI      
       ! Broadcast relevant things for program logic
       ! These were set in siesta_options, called only by "SIESTA_workers".
-      call broadcast(inicoor,comm=mpi_comm_dft)
-      call broadcast(fincoor,comm=mpi_comm_dft)
+      call broadcast(inicoor,comm=true_MPI_Comm_World)
+      call broadcast(fincoor,comm=true_MPI_Comm_World)
 #endif
       istep  = inicoor
       DO WHILE ((istep.le.fincoor) .AND. (.not. relaxd))
@@ -84,8 +89,8 @@ C     Begin of coordinate relaxation iteration
          end if
 
         if (SIESTA_worker) call siesta_move( istep, relaxd )
-#if defined (SIESTA__PEXSI) || defined (SIESTA__ELSI)
-        call broadcast(relaxd,comm=mpi_comm_dft)
+#ifdef SIESTA__PEXSI        
+        call broadcast(relaxd,comm=true_MPI_Comm_World)
 #endif
 
         call timer('IterGeom', 2)
@@ -108,10 +113,6 @@ C     End of coordinate-relaxation loop
       call siesta_end()
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("at end of program")
-#endif
-
-#ifdef _TRACE_
-      call Extrae_fini( )
 #endif
 
 !-----------------------------------------------------------------------END

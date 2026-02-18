@@ -8,25 +8,12 @@
 module m_eo
 
   use precision, only: dp
-  implicit none
+        implicit none
 
   public
 
   real(dp), pointer, save :: eo(:,:,:)  ! Hamiltonian eigenvalues
   real(dp), pointer, save :: qo(:,:,:)  ! Occupations of eigenstates
-
-  logical, save :: scf_eigenvalues_available
-
-contains
-
-  subroutine eoqo_reset()
-    use alloc, only : de_alloc
-    implicit none
-
-    call de_alloc( eo, 'eo', 'siesta_init' )
-    call de_alloc( qo, 'qo', 'siesta_init' )
-    nullify(eo, qo)
-  end subroutine eoqo_reset
 
 end module m_eo
 

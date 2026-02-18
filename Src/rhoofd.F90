@@ -53,8 +53,9 @@ subroutine rhoofd( no, np, maxnd, numd, listdptr, listd, nspin, &
   use m_spin,        only: SpOrb
   use listsc_module, only: LISTSC
   use mesh,          only: nsp, dxa, xdop, xdsp, meshLim
-  use meshdscf,      only: matrixOtoM, nrowsDscfL, listdl, &
-                           listdlptr, NeedDscfL, numdl, DscfL
+  use meshdscf,      only: matrixOtoM
+  use meshdscf,      only: nrowsDscfL, listdl, listdlptr, NeedDscfL, &
+       numdl, DscfL
   use meshphi,       only: DirectPhi, endpht, lstpht, listp2, phi
   use parallel,      only: Nodes, node
   use sys,           only: die

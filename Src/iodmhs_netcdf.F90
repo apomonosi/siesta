@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
 module iodmhs_netcdf
 
 #ifdef CDF
@@ -73,9 +71,8 @@ subroutine setup_dmhs_netcdf_file( maxnd, nbasis, nspin,    &
       integer, dimension(:), pointer  :: numd_global  => null()
       integer, dimension(:), pointer  :: global_row_pointer  => null()
 
-      integer  :: MPIerror, count, BNode, tag
+      integer  :: MPIerror, stat(MPI_STATUS_SIZE), count, BNode, tag
       integer  :: max_norbs, max_nnzs, ipt, io, iog
-      MPI_STATUS_TYPE :: stat
 
       if (Node == 0) then
          nullify ( norbs_node, nnzs_node)
@@ -325,9 +322,8 @@ integer               :: step_no, step_location
       integer, dimension(:), pointer  :: numd_global  => null()
       integer, dimension(:), pointer  :: global_row_pointer  => null()
 
-      integer  :: MPIerror, count, BNode, tag
+      integer  :: MPIerror, stat(MPI_STATUS_SIZE), count, BNode, tag
       integer  :: max_norbs, max_nnzs, ipt, io, iog, ispin
-      MPI_STATUS_TYPE :: stat
 
       if (Node == 0) then
          nullify ( norbs_node, nnzs_node)

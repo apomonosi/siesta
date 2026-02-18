@@ -10,7 +10,6 @@ MODULE siesta_options
 #ifdef SIESTA__FLOOK
   use flook, only : luaState
 #endif
-  use option_charges_m, only: option_charges_t
 
   implicit none
   
@@ -75,7 +74,6 @@ MODULE siesta_options
   logical :: writec        ! Write atomic coordinates at every geometry step?
   logical :: write_coop    ! Write information for COOP/COHP analysis ?
   logical :: save_ORB_INDX ! Write orbital information to ORB_INDX file ?
-  logical :: fc_save_dhs    ! Write file with Derivatives of Hamiltonian during FC run?
 
   ! Create graphviz information to visualize connectivity graph
   integer :: write_GRAPHVIZ
@@ -98,23 +96,6 @@ MODULE siesta_options
   integer :: nob              ! Number of bands for wannierization
                               !   (for non spin-polarized calculations).
 
-!----------------------------------------------------
-! Wannier90 within SIESTA interface
-  logical :: w90_wrapper_processing 
-                                 ! Will we call the Wannier90 subroutines
-                                 !   directly from SIESTA?
-                                 !   (not as an external post-processing tool)
-  integer :: n_wannier_manifolds ! Number of bands manifolds that will be 
-                                 !   considered for Wannier transformation
-  integer :: w90_index_perturbed_manifold 
-                                 ! Index of the manifold that will be perturbed
-                                 !   with a chemical potential
-  logical :: w90_r_between_manifolds ! Will we compute the position operator
-                                     !   matrix elements between bands in
-                                     !   different manifolds?
-  logical :: w90_mmn_diagonal        ! Will we force the matrix elements of the
-                                     !   Mmn matrix to be diagonal between 
-                                     !   bands of different manifolds?
 !----------------------------------------------------
   logical :: writef        ! Write atomic forces at every geometry step?
   logical :: writek        ! Write the k vectors of the BZ integration mesh?
@@ -146,6 +127,8 @@ MODULE siesta_options
 
   logical :: atmonly       ! Set up pseudoatom information only?
   logical :: harrisfun     ! Use Harris functional?
+  logical :: muldeb        ! Write Mulliken populations at every SCF step?
+  logical :: spndeb        ! Write spin-polarization information at every SCF step?
   logical :: orbmoms       ! Write orbital moments?
   logical :: split_sr_so   ! Cosmetic: split full lj NL energies into SR and SO parts
 
@@ -160,9 +143,6 @@ MODULE siesta_options
   real(dp):: dDtol            ! Tolerance in change of DM elements to finish SCF iteration
   logical :: converge_H       ! to finish SCF iteration?
   real(dp):: dHtol            ! Tolerance in change of H elements to finish SCF iteration
-
-  ! DFT-D3
-  logical :: want_dftd3_dispersion ! Whether to use DFT-D3
   
   logical :: broyden_optim ! Use Broyden method to optimize geometry?
   logical :: fire_optim    ! Use FIRE method to optimize geometry?
@@ -173,6 +153,10 @@ MODULE siesta_options
   logical :: GeometryMustConverge ! Do we *have to* converge the relaxation?
   logical :: want_domain_decomposition ! Use domain decomposition for orbitals 
   logical :: want_spatial_decomposition ! Use spatial decomposition for orbitals
+  logical :: hirshpop        ! Perform Hirshfeld population analysis?
+  logical :: voropop         ! Perform Voronoi population analysis?
+  logical :: partial_charges_at_every_geometry
+  logical :: partial_charges_at_every_scf_step
   logical :: monitor_forces_in_scf ! Compute forces and stresses at every step
 
   logical :: minim_calc_eigenvalues ! Use diagonalization at the end of each MD step to find eigenvalues for OMM
@@ -212,6 +196,7 @@ MODULE siesta_options
   integer :: DM_history_depth ! Number of previous density matrices used in extrapolation and reuse
   integer :: maxsav        ! Number of previous density matrices used in Pulay mixing
   integer :: broyden_maxit ! Max. iterations in Broyden geometry relaxation
+  integer :: mullipop      ! Option for Mulliken population level of detail
   integer :: ncgmax        ! Max. number of conjugate gradient steps in order-N minim.
   integer :: nkick         ! Period between 'kick' steps in SCF iteration
   integer :: nmove         ! Number of geometry iterations
@@ -234,8 +219,6 @@ MODULE siesta_options
   real(dp) :: eta(2)        ! Chemical-potential param. Read by redata used in ordern
   real(dp) :: etol          ! Relative tol. in CG minim, read by redata, used in ordern
   real(dp) :: ftol          ! Force tolerance to stop geometry relaxation
-  real(dp) :: fc_dHdR_tol   ! Tolerance for matrix elements of Hamiltonian derivative in Ry/Bohr
-  real(dp) :: fc_dSdR_tol   ! Tolerance for matrix elements of Overlap derivative in 1/Bohr
   real(dp) :: g2cut         ! Required planewave cutoff of real-space integration mesh
   real(dp) :: mn            ! Mass of Nose thermostat
   real(dp) :: mpr           ! Mass of Parrinello-Rahman variables
@@ -262,11 +245,7 @@ MODULE siesta_options
   integer,  parameter :: SOLVE_PEXSI  = 4
   integer,  parameter :: MATRIX_WRITE = 5
   integer,  parameter :: SOLVE_CHESS  = 6
-  integer,  parameter :: SOLVE_ELSI   = 7
   integer,  parameter :: SOLVE_DUMMY  = 10
-
-  ! Charge output options
-  type(option_charges_t) :: option_charges
   
 #ifdef SIESTA__FLOOK
   ! LUA-handle

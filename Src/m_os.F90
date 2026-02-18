@@ -1,9 +1,13 @@
 ! Module for mingling with the OS
 
 ! Fully implemented by Nick Papior Andersen
-#include "mpi_macros.f"
-
 module m_os
+
+#ifdef MPI
+  use mpi_siesta, only : MPI_Bcast, MPI_Comm_World, MPI_Logical
+  use mpi_siesta, only : MPI_AllReduce, MPI_LAnd
+#endif
+  
   implicit none
   
   private
@@ -16,20 +20,16 @@ module m_os
 contains
 
   function file_exist(file, Bcast, Comm, all) result(exist)
-#ifdef MPI
-    use mpi_siesta
-#endif
-    implicit none
+    
     character(len=*), intent(in) :: file
     logical, intent(in), optional :: Bcast ! whether it should be b-casted
-    MPI_COMM_TYPE, intent(in), optional  :: Comm ! the communicator (default World)
+    integer, intent(in), optional :: Comm ! the communicator (default World)
     logical, intent(in), optional :: all ! whether all Nodes sees the file
     logical :: exist
     
 #ifdef MPI
     logical :: all_exist
-    integer :: MPIerror
-    MPI_COMM_TYPE :: Com
+    integer :: MPIerror, Com
 #endif
 
     ! Now we have all required information
@@ -65,21 +65,17 @@ contains
 
   
   function dir_exist(dir, Bcast, Comm, all) result(exist)
-#ifdef MPI
-    use mpi_siesta
-#endif
-    implicit none
+
     character(len=*), intent(in) :: dir
     logical, intent(in), optional :: Bcast ! whether it should be b-casted
-    MPI_COMM_TYPE, intent(in), optional  :: Comm ! the communicator (default World)
+    integer, intent(in), optional :: Comm ! the communicator (default World)
     logical, intent(in), optional :: all ! whether all Nodes sees the file
     logical :: exist
     
     integer :: ldir
 #ifdef MPI
     logical :: all_exist
-    integer :: MPIerror
-    MPI_COMM_TYPE :: Com
+    integer :: MPIerror, Com
 #endif
 
     ! A directory of length 0 is the "top" directory,

@@ -7,25 +7,26 @@
 #
 default: psml2psf
 #
-MAIN_OBJDIR=.
-TOPDIR=.
+OBJDIR=Obj
+TOP_LEVEL=$(shell cd -P -- ../../../Src && pwd -P)
+VPATH:=$(TOP_LEVEL)
 
-VPATH:=$(TOPDIR)/Src:$(TOPDIR)/Pseudo/converters/psml2psf
-
+MAIN_OBJDIR:=$(shell cd -P -- ../../../\$(OBJDIR) && pwd -P)
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
-include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 #
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/ncps/src
 
-INCFLAGS+= $(PSML_INCFLAGS) $(NCPS_INCFLAGS)
-INCFLAGS+= $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
-INCFLAGS+= $(LIBSYS_INCFLAGS)
+NCPS=$(MAIN_OBJDIR)/ncps/src/libncps.a
+
+INCFLAGS:=$(INCFLAGS) $(PSML_INCFLAGS) $(NCPS_INCFLAGS)
+INCFLAGS:=$(INCFLAGS) $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
 #
-OBJS = 	psml2psf.o 
+OBJS = 	psml2psf.o handlers.o
 #
 #
 MOD_OBJS= m_getopts.o
@@ -37,9 +38,9 @@ $(COM_OBJS):
 #
 what:
 	echo "VPATH: " $(VPATH)
-psml2psf:   $(NCPS)  $(ALL_OBJS) $(LIBSYS)
+psml2psf:   $(NCPS)  $(ALL_OBJS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psml2psf $(ALL_OBJS) \
-        $(NCPS) $(PSML_LIBS) $(XMLF90_LIBS) $(LIBSYS)
+        $(NCPS) $(PSML_LIBS) $(XMLF90_LIBS)
 #
 psml2psf.o: m_getopts.o 
 #
@@ -48,9 +49,13 @@ clean:
 	rm -f psml2psf *.o  *.a *.pcl *.pc *.mod
 	rm -f *.mod
 #
-PROGS:= psml2psf
-install: $(PROGS)
-	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+$(NCPS):
+	@echo "Making sure that the ncps library is compiled..."
+	(cd $(MAIN_OBJDIR)/ncps/src ; make \
+                                     "ARCH_MAKE=$(ARCH_MAKE)"\
+                                     "PSML_INCFLAGS=$(PSML_INCFLAGS)"\
+                                     "VPATH=$(VPATH)/ncps/src")
+#
 
 
 

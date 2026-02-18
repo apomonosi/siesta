@@ -910,6 +910,10 @@ contains
     use parsing
     use sparse_matrices, only: S  ! Note direct import of (associated now) pointer
 
+#ifdef MPI
+    use mpi_siesta
+#endif
+
     ! The spin-configuration that is used to determine the spin-order.
     type(tSpin), intent(in) :: spin
     ! Number of atoms in the unit-cell
@@ -1371,7 +1375,7 @@ contains
 #ifdef MPI
       use mpi_siesta
 #endif
-      implicit none
+
       integer :: io, gio, i, ind, jo, i1, i2
       integer :: n_random, ir
       real(dp), allocatable :: rs(:)

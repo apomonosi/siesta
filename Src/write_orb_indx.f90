@@ -16,7 +16,7 @@ subroutine write_orb_indx( na_u, na_s, no_u, no_s, isa, xa, &
   use precision, only: dp       ! Double precision real kind
   use atmfuncs,  only: izofis   ! Returns atomic number
   use atmfuncs,  only: labelfis ! Returns atom label
-  use atmfuncs,  only: lofio    ! Returns angular momentum number
+  use atmfuncs,  only: lofio    ! Returns angular mumentum number
   use atmfuncs,  only: mofio    ! Returns magnetic quantum number
   use atmfuncs,  only: pol      ! Returns whether an orbital is polarized
   use atmfuncs,  only: rcut     ! Returns orbital cutoff radius
@@ -69,7 +69,7 @@ subroutine write_orb_indx( na_u, na_s, no_u, no_s, isa, xa, &
     atom_label = labelfis( is )   ! Atomic label
     iao = iphorb( io )            ! Orbital index within atom
     n = cnfigfio( is, iao)        ! Orbital's principal quantum number
-    l = lofio( is, iao )          ! Orbital's angular momentum number
+    l = lofio( is, iao )          ! Orbital's angular mumentum number
     m = mofio( is, iao )          ! (Real) orbital's magnetic quantum number
     z = zetafio( is, iao )        ! 'Zeta' index of orbital
     polarized = pol( is, iao )    ! Is this a polarization orbital?
@@ -103,7 +103,7 @@ subroutine write_orb_indx( na_u, na_s, no_u, no_s, isa, xa, &
     'spec = Atomic species label', &
     ' iao = Orbital index within atom', &
     '   n = Principal quantum number', &
-    '   l = Angular momentum quantum number', &
+    '   l = Angular mumentum quantum number', &
     '   m = Magnetic quantum number of (real) orbital:', &
     '       m<0 => sin(m*phi), m>=0 => cos(m*phi)', &
     '   z = Zeta index of orbital', &

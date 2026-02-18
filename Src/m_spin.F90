@@ -41,7 +41,6 @@ module t_spin
      logical :: SO = .false.
 
      !> Flavors of off-site implementation
-     !> We should use 'full' instead of 'offsite'
      logical :: SO_offsite = .false.
      logical :: SO_onsite  = .false.
 

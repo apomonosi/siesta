@@ -15,8 +15,7 @@ C
       use fdf
       use parallel,  only : Node
       use sys,       only : die
-      use m_cite,    only : add_citation
-      
+
       implicit none
 
 C     LOCAL variables
@@ -113,7 +112,7 @@ C     LOCAL variables
         call fdf_deprecated('XC.cocktail','XC.mix')
 
 C Output data for mix of functionals
-        if ((found_block) .and. (Node .eq. 0)) then
+        if ((nXCfunc .gt. 1) .and. (Node .eq. 0)) then
           write(6,'(/,''xc:'')')
           write(6,'(''xc: Exchange-correlation functional mix:'')
      .      ')
@@ -121,9 +120,6 @@ C Output data for mix of functionals
           write(6,'(''xc: Number     Functional     Authors  '',
      .      ''   Weight(Ex)   Weight(Ec)'')')
           do n = 1,nXCfunc
-             if (XCauth(n)(1:5) == "LIBXC") then
-                call add_citation("10.1016/j.softx.2017.11.002")
-             endif
           write(6,'(''xc: '',i4,3x,a20,2x,a20,3x,f5.3,8x,f5.3)')
      .        n,XCfunc(n),XCauth(n),XCweightX(n),XCweightC(n)
           enddo

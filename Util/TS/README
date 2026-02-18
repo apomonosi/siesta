@@ -14,10 +14,10 @@ by:
   to generate a default input FDF for TranSIESTA which defaults
   to the old versions implementation.
 
-- TBtrans / PHtrans
+- TBtrans
   this directory contains the TBtrans utility which is used for 
   calculating the transmission and other quantities from the 
-  Hamiltonian output files from TranSIESTA.
+  TSHS files output from TranSIESTA.
 
   It also reads NetCDF4 files created by the community utility:
 
@@ -44,6 +44,13 @@ by:
   REMARK: It will only read in TranSIESTA/TBtrans options and thus
           also only print TranSIESTA/TBtrans options. 
 	  It will not copy any other FDF-flags.
+
+- tshs2tshs
+  Converts TSHS files to other version files.
+  Currently there exists two file versions:
+   0 : old TSHS format (compatible with all programs)
+   1 : new TSHS format (not compatible with all programs), but 
+       have a drastic memory decrease  
 
 - Tight-binding
   To use tight-binding parameters compatible with TBtrans

@@ -33,10 +33,8 @@ program simple
   call siesta_units( 'Ang', 'eV' )
 
 ! Launch a siesta process using all available MPI processes
-! Note that this is the same as
-!           call siesta_launch( 'h2o', mpi_comm=MPI_Comm_World)
   call siesta_launch( 'h2o' )
-  if (myNode==0) print*, 'siesta launched (one job distributed on all MPI ranks in World)'
+  if (myNode==0) print*, 'siesta launched'
 
 ! Find forces
   call siesta_forces( 'h2o', na, xa, energy=e, fa=fa )

@@ -39,26 +39,12 @@ type trialorbital
   real(dp),dimension(3) :: yaxis  ! Angular momentum y-axis
   real(dp)              :: zovera ! z/a, diffusivity, spread. 
                                   !   Read from the nnkp file in Ang^-1
-                                  !   Transformed later to Bohr^-1
+                                  !   Transformed later to Ang^-1
   integer               :: r      ! Radial quantum number
   integer               :: l      ! Angular momentum
   integer               :: mr     ! z-projection quantum number
   real(dp)              :: rcut   ! Siesta's cut-off radius: Bohr
   integer               :: lmax   ! Maximum total angular momentum
-  logical               :: from_basis_orbital = .false.  
-                                  ! Does the trial function come from one of the
-                                  !   basis orbital (.true.) or is it radial
-                                  !   part defined from the hydrogenoid 
-                                  !   functions defined in the Wannier90 
-                                  !   user guide?
-  integer               :: iorb = 0   
-                                  ! If from_basis_orbital == .true. 
-                                  !   index of the orbital within the unit cell
-                                  !   on which we are going to project
-  integer               :: iorb_gindex = 0 
-                                  ! If from_basis_orbital == .true. 
-                                  !   Returns the global index of a
-                                  !   basis orbital
 end type
 
 ! Cut-off radii in units of \alpha^-1
@@ -490,19 +476,16 @@ subroutine print_trialorb( what )
 !
   type(trialorbital),intent(in)    :: what
 
-  write(*,fmt='(a,3f8.3,a)') " center = ",what%center," Bohr"
-  write(*,fmt='(a,3f8.3)')   " zaxis  = ",what%zaxis
-  write(*,fmt='(a,3f8.3)')   " xaxis  = ",what%xaxis
-  write(*,fmt='(a,3f8.3)')   " yaxis  = ",what%yaxis
-  write(*,fmt='(a,1f8.3,a)') " zovera = ",what%zovera," Bohr**-1"
-  write(*,fmt='(a,i5)')      " r      = ",what%r
-  write(*,fmt='(a,i5)')      " mr     = ",what%mr
-  write(*,fmt='(a,i5)')      " l      = ",what%l
-  write(*,'(a,1f8.3,a)')     " rcut   = ",what%rcut," Bohr"
-  write(*,fmt='(a,i5)')      " lmax   = ",what%lmax
-  write(*,fmt='(a,l5)')      " basis? = ",what%from_basis_orbital
-  write(*,fmt='(a,i5)')      " orbital= ",what%iorb
-  write(*,fmt='(a,i5)')      " gindex = ",what%iorb_gindex
+  write(*,fmt='(a,3f8.3,a)') "print_trialorb: center = ",what%center," Bohr"
+  write(*,fmt='(a,3f8.3)')   "print_trialorb: zaxis  = ",what%zaxis
+  write(*,fmt='(a,3f8.3)')   "print_trialorb: xaxis  = ",what%xaxis
+  write(*,fmt='(a,3f8.3)')   "print_trialorb: yaxis  = ",what%yaxis
+  write(*,fmt='(a,1f8.3,a)') "print_trialorb: zovera = ",what%zovera," Bohr**-1"
+  write(*,fmt='(a,i5)')      "print_trialorb: r      = ",what%r
+  write(*,fmt='(a,i5)')      "print_trialorb: mr     = ",what%mr
+  write(*,fmt='(a,i5)')      "print_trialorb: l      = ",what%l
+  write(*,'(a,1f8.3,a)')     "print_trialorb: rcut   = ",what%rcut," Bohr"
+  write(*,fmt='(a,i5)')      "print_trialorb: lmax   = ",what%lmax
 end subroutine print_trialorb
 
 endmodule trialorbitalclass

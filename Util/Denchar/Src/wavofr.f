@@ -20,7 +20,6 @@ C Compute the wave functions at the points of a plane or a 3D grid
 C in real space
 C     Coded by P. Ordejon, from Junquera's rhoofr. July 2003
 !     Extended to NC spin by Alberto Garcia, 2019      
-C Modified by A. Alcaraz to print out cube files with atoms, September 2024
 C **********************************************************************
 
       use precision
@@ -138,7 +137,6 @@ C **********************************************************************
      .  CHAR1*10, CHAR2*10, EXT*20, EXT2*25
 
       EXTERNAL IO_ASSIGN, IO_CLOSE, NEIGHB, WROUT
-      external :: die
 
 C **********************************************************************
 C INTEGER NPLAMAX          : Maximum number of points in the plane
@@ -760,13 +758,7 @@ C End y and z loops
        integer, intent(in) :: lun
        character(len=*), intent(in) :: fname
        ! rest by host association
-         if(NAINCELL.eq.0) then
-            write(*,*) 'A fake atom was place at the origin to avoid '
-            write(*,*) 'visualization errors with the cube file.'
-            NAINCELL = 1
-            IZA(1) = 99
-            XAINCELL(:,1) = 0.0
-         endif
+      
             WRITE(LUN,*) FNAME
             WRITE(LUN,*) FNAME
             WRITE(LUN,'(i5,4f12.6)') NAINCELL, XMIN, YMIN, ZMIN
@@ -782,12 +774,13 @@ C End y and z loops
       END
 
       subroutine mod_and_phase(rw,iw,mw,pw)
-      use units, only: pi
       integer, parameter :: dp = selected_real_kind(10,100)
       real(dp), intent(in) :: rw
       real(dp), intent(inout) :: iw
       real(dp), intent(out) :: mw, pw
 
+      real(dp), parameter :: pi = 3.1141592653589_dp
+      
       MW = SQRT(RW**2 + IW**2)
       IF (ABS(IW) .LT. 1.D-6) IW = ABS(IW)
       IF (ABS(RW) .LT. 1.D-12) THEN

@@ -77,6 +77,7 @@
       character(len=128) :: filename
       character(len=128) :: dummy
 
+      call read_chemical_types()
       nspecies = number_of_species()
       ns = nspecies
 
@@ -341,7 +342,7 @@
       integer, intent(in):: status
       if (status .ne. nf90_noerr) then
          print  *, trim(nf90_strerror(status))
-         call die("stopping program")
+         call die()
       endif
       end subroutine check
 
@@ -355,6 +356,7 @@
 
       integer is
 
+      call read_chemical_types()
       nspecies = number_of_species()
       ns = nspecies
 
@@ -485,15 +487,12 @@
       
       character(len=78) line
       integer :: iostat
-      integer :: nlines, i
 
-      nlines = 1
       read(unit,'(a)') line
-      if ( trim(line) == '<preamble>' ) then
-         do while ( trim(line) /= '</preamble>' )
-            read(unit,'(a)') line
-            nlines = nlines + 1
-         end do
+      if (trim(line) .eq. '<preamble>') then
+ 1       continue
+         read(unit,'(a)') line
+         if (trim(line) .ne. '</preamble>') goto 1
       endif
          
       read(unit,'(a2)') p%symbol
@@ -503,14 +502,9 @@
       read(unit,*) p%mass
       read(unit,*) p%self_energy
       read(unit,*) p%lmax_basis, p%n_orbnl
-      nlines = nlines + 7
-
       read(unit,fmt=*,iostat=iostat) p%lmax_projs, p%n_pjnl, p%lj_projs
       if (iostat /=0 ) then
-         rewind(unit)
-         do i = 1, nlines
-            read(unit,*) ! skip
-         end do
+         backspace(unit)
          read(unit,*) p%lmax_projs, p%n_pjnl
          p%lj_projs = .false.
       endif
@@ -665,7 +659,7 @@
       integer, intent(in):: status
       if (status .ne. nf90_noerr) then
          print  *, trim(nf90_strerror(status))
-         call die("stopping program")
+         call die()
       endif
       end subroutine check
 

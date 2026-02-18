@@ -5,7 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
       module globalise
 #ifdef MPI
 
@@ -17,7 +16,11 @@
       use on_core,   only : numhij, listhij
       use on_main,   only : ncL2G, ncG2L, nbandsloc, nbL2G
       use alloc,     only : re_alloc, de_alloc
-      use mpi_siesta
+      use mpi_siesta, only: mpi_comm_world
+      use mpi_siesta, only: mpi_status_size, mpi_integer
+      use mpi_siesta, only: mpi_sum, mpi_logical
+      use mpi_siesta, only: mpi_double_precision
+
       implicit none
 
       public :: setglobalise, setglobaliseF, setglobaliseB,
@@ -98,6 +101,7 @@ C  by passing to neighbouring nodes.
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
+
       implicit none
 
 C Passed variables
@@ -114,8 +118,8 @@ C Internal variables
       integer                 :: mug
       integer                 :: n
       integer                 :: nRequest
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer, pointer, save :: Request(:) => null()
+      integer, pointer, save :: Status(:,:) => null()
       logical, pointer, save :: lConnected(:,:) => null()
       logical, pointer, save :: lConnectedL(:) => null()
       logical, pointer, save :: lNodeNeeded(:) => null()
@@ -200,8 +204,9 @@ C Set local flags for C columns held locally
       enddo
 
 C Allocate communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2*NNodes, 'Request', 'globalise')
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Request',
+     &               'globalise')
 
 C Communicate flags to neighbouring nodes
       nRequest = 0
@@ -257,8 +262,8 @@ C Find basis functions that need to be transfered
       enddo
 
 C Free communication arrays
-      deallocate(Status)
-      deallocate(Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
       call de_alloc( lConnectedL, 'lConnectedL', 'globalise' )
       call de_alloc( lConnected, 'lConnected', 'globalise' )
 
@@ -276,6 +281,7 @@ C  by passing to neighbouring nodes.
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
+
       implicit none
 
 C Passed variables
@@ -292,8 +298,8 @@ C Internal variables
       integer                :: nRequest
       logical, pointer, save :: lBneededG(:,:) => null()
       logical, pointer, save :: lBneededL(:) => null()
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer, pointer, save :: Request(:) => null()
+      integer, pointer, save :: Status(:,:) => null()
 
 C Call timer
       call timer('setglobalB',1)
@@ -307,8 +313,9 @@ C Allocate array for storing which bands are needed
      &               'globalise' )
 
 C Allocate space for communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2*NNodes, 'Request', 'globalise' )
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Status',
+     &               'globalise' )
 
 C Initialise local flag array as to whether band is needed
       lBneededL(1:nbands) = .false.
@@ -491,8 +498,8 @@ C Wait for everything to finish
       call MPI_WaitAll(nRequest,Request,Status,MPIerror)
 
 C Free communication arrays
-      deallocate(Status)
-      deallocate(Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
 
 C Free workspace array
       call de_alloc( lBneededG, 'lBneededG', 'globalise' )
@@ -515,6 +522,7 @@ C  decomposition pattern.
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
+
       implicit none
 
 C Passed variables
@@ -533,12 +541,11 @@ C Internal variables
       integer                 :: is
       integer                 :: mu
       integer                 :: mug
-      integer                 :: n, nRequest
+      integer                 :: n
       integer                 :: ndata
       integer                 :: MPIerror
-
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer,  pointer, save :: Request(:,:) => null()
+      integer,  pointer, save :: Status(:,:) => null()
       real(dp), pointer, save :: gtmp(:,:) => null()
       real(dp), pointer, save :: gtmp2(:,:) => null()
 
@@ -550,15 +557,15 @@ C Global reduction only involving neighbouring nodes
 C
 
 C Allocate space for communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2, 1, NNodes, 'Request', 'globalise' )
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Status',
+     &               'globalise' )
       call re_alloc( gtmp, 1, ncmax*MaxBasisSendC*nspin, 1, NNodes,
      &               'gtmp', 'globalise' )
       call re_alloc( gtmp2, 1, ncmax*MaxBasisSendC*nspin, 1, NNodes,
      &               'gtmp2', 'globalise' )
 
 C Loop over neighbouring nodes
-      nRequest = 0
       do n = 1,NNodes
 
 C Load data arrays
@@ -575,14 +582,12 @@ C Load data arrays
         enddo
 
 C Post receives
-        nRequest = nRequest+1
         call MPI_IRecv(gtmp2(1,n),ndata,mpi_double_precision,NNodeNo(n),
-     .    NNodeNo(n),MPI_Comm_World,Request(nRequest),MPIerror)
+     .    NNodeNo(n),MPI_Comm_World,Request(2,n),MPIerror)
 
 C Post sends
-        nRequest = nRequest+1
         call MPI_ISend(gtmp(1,n),ndata,mpi_double_precision,NNodeNo(n),
-     .    Node,MPI_Comm_World,Request(nRequest),MPIerror)
+     .    Node,MPI_Comm_World,Request(1,n),MPIerror)
 
 C Statistics
         nTransferDouble = nTransferDouble + ndata
@@ -615,8 +620,8 @@ C Load data arrays
 C Deallocate space for communication arrays
       call de_alloc( gtmp2, 'gtmp2', 'globalise' )
       call de_alloc( gtmp, 'gtmp', 'globalise' )
-      deallocate(Status)
-      deallocate(Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
 
 C Call timer
       call timer('globaliseC',2)
@@ -631,7 +636,6 @@ C  Output statistics for globalisation process
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
-      implicit none
 
 C Passed variables
       integer
@@ -806,7 +810,6 @@ C  Communicate data for B matrix
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
-      implicit none
 
 C Passed variables
       integer
@@ -816,15 +819,16 @@ C Internal variables
       integer                 :: n
       integer                 :: MPIerror
       integer                 :: nRequest
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer,  pointer, save :: Request(:) => null(),
+     $                           Status(:,:) => null()
 
 C Call timer
       call timer('globaliseB',1)
 
 C Allocate space for communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2*NNodes, 'Request', 'globalise' )
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Status',
+     &               'globalise' )
 
 C Loop over neighbouring nodes to distribute elements
       nRequest = 0
@@ -861,8 +865,8 @@ C Reinitialise data counters ready for unloading
       ndataBR(1:NNodes) = 0
 
 C Deallocate space for communication arrays
-      deallocate(Status)
-      deallocate(Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
 
 C Call timer
       call timer('globaliseB',2)
@@ -1266,7 +1270,6 @@ C  decomposition pattern.
 C
 C  Julian Gale, NRI, Curtin University of Technology, April 2004
 C
-      implicit none
 
 C Passed variables
       integer
@@ -1283,10 +1286,10 @@ C Internal variables
       integer                 :: ik
       integer                 :: mu
       integer                 :: mug
-      integer                 :: n, nRequest
+      integer                 :: n
       integer                 :: MPIerror
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer,  pointer, save :: Request(:,:) => null()
+      integer,  pointer, save :: Status(:,:) => null()
       real(dp), pointer, save :: gtmp(:,:) => null()
       real(dp), pointer, save :: gtmp2(:,:) => null()
       real(dp), pointer, save :: gvec(:) => null()
@@ -1299,8 +1302,9 @@ C Global reduction only involving neighbouring nodes
 C
 
 C Allocate space for communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2, 1, NNodes, 'Request', 'globalise' )
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Status',
+     &               'globalise' )
       call re_alloc( gtmp, 1, MaxFtL, 1, NNodes, 'gtmp', 'globalise' )
       call re_alloc( gtmp2, 1, MaxFtG, 1, NNodes, 'gtmp2', 'globalise' )
       call re_alloc( gvec, 1, nbands, 'gvec', 'globalise' )
@@ -1322,7 +1326,6 @@ C Allocate space for communication arrays
 C Loop over neighbouring nodes
       ndataFR(1:NNodes) = 0
       ndataFS(1:NNodes) = 0
-      nRequest = 0
       do n = 1,NNodes
 
 C Load data arrays
@@ -1337,14 +1340,11 @@ C Load data arrays
         enddo
 
 C Post receives
-        nRequest = nRequest+1
         call MPI_IRecv(gtmp2(1,n),ndataFR(n),mpi_double_precision,
-     $       NNodeNo(n),NNodeNo(n),MPI_Comm_World,Request(nRequest),
-     $       MPIerror)
+     $       NNodeNo(n),NNodeNo(n),MPI_Comm_World,Request(2,n),MPIerror)
 C Post sends
-        nRequest = nRequest+1
         call MPI_ISend(gtmp(1,n),ndataFS(n),mpi_double_precision,
-     $       NNodeNo(n),Node,MPI_Comm_World,Request(nRequest),MPIerror)
+     $       NNodeNo(n),Node,MPI_Comm_World,Request(1,n),MPIerror)
 
 C Statistics
         nTransferDouble = nTransferDouble + ndataFR(n) + ndataFS(n)
@@ -1382,8 +1382,8 @@ C Deallocate space for communication arrays
       call de_alloc( gvec, 'gvec', 'globalise' )
       call de_alloc( gtmp2, 'gtmp2', 'globalise' )
       call de_alloc( gtmp, 'gtmp', 'globalise' )
-      deallocate(Status)
-      deallocate(Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
 
 C Call timer
       call timer('globaliseF',2)
@@ -1399,7 +1399,6 @@ C  relating to indexing of Ft by passing to neighbouring nodes.
 C
 C  Julian Gale, NRI, Curtin University of Technology, May 2004
 C
-      implicit none
 
 C Passed variables
       integer ::
@@ -1416,8 +1415,8 @@ C Internal variables
       integer                :: nRequest
       integer                :: nsizeL
       integer                :: nsizeG
-      MPI_REQUEST_TYPE, allocatable :: Request(:)
-      MPI_STATUS_TYPE_2D            :: Status
+      integer, pointer, save :: Request(:) => null(),
+     $                          Status(:,:) => null()
       logical, pointer, save :: lNeeded(:) => null()
 
 C Call timer
@@ -1433,11 +1432,12 @@ C Size data arrays
       call re_alloc(numftG,1,MaxBasisSendC,1,NNodes,name='numftG')
 
 C Allocate array for local flags as to columns needed
-      call re_alloc( lNeeded, 1, no_u, 'lNeeded', 'globalise' )
+      call re_alloc( lNeeded, 1, no_u, 'Request', 'globalise' )
 
 C Allocate communication arrays
-      allocate(Request(2*NNodes))
-      ALLOC_MPI_STATUS_2D(Status,2*NNodes)
+      call re_alloc( Request, 1, 2*NNodes, 'Request', 'globalise' )
+      call re_alloc( Status, 1, MPI_Status_Size, 1, 2*NNodes, 'Status',
+     &               'globalise' )
 
 C Loop over neighbouring nodes
       nRequest = 0
@@ -1578,7 +1578,8 @@ C Find true list of Ft elements
       enddo
 
 C Free communication arrays
-      deallocate(Status,Request)
+      call de_alloc( Status, 'Status', 'globalise' )
+      call de_alloc( Request, 'Request', 'globalise' )
       call de_alloc( lNeeded, 'lNeeded', 'globalise' )
 
 C Call timer

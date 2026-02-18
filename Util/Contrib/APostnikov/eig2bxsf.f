@@ -8,7 +8,6 @@ C             Written by Andrei Postnikov, Jun 2007, modif Jul 2010   Vers_0.4
 C             postnikov@univ-metz.fr
 C
       program ene2bxsf
-      use units, only : pi2
       implicit none
       integer ii1,ii2,ii3,io1,il1
       parameter (ii1=11,ii2=12,ii3=13,io1=14,il1=15)
@@ -16,26 +15,26 @@ C
      .        nspin,is,iband,iik,idiv1,idiv2,idiv3,itry1,itry2,itry3,
      .        ib,mkp,homo(2),lumo(2),ik,in2,in3,ialloc
       character inpfil*60,outfil*60,syslab*30,suffix*6
-      double precision cell(3,3),efermi,rcell(3,3),small,
-     .       relmin(3),kkp(3),dum, tiny
+      double precision cell(3,3),efermi,twopi,rcell(3,3),small,
+     .       relmin(3),kkp(3),dum
       logical unshift
       double precision,  allocatable :: relk(:,:), eneb(:,:), enek(:)
       integer,           allocatable :: ndiv(:,:),irrek(:)
       parameter (small=1.0d-04)
-      parameter (tiny=1d-16)
       external inver3,opnout
 C
 C     string manipulation functions in Fortran used below:
-C     len_trim(string): returns the length of string
+C     len_trim(string): returns the length of string 
 C                       without trailing blank characters,
 C     trim(string)    : returns the string with railing blanks removed
 C     char(integer)   : returns the character in the specified position
 C                       of computer's ASCII table, i.e. char(49)=1
 C
+      twopi = 8.d0*atan(1.d0)
       write (6,701,advance="no")
   701 format(" Specify  SystemLabel (or 'siesta' if none): ")
       read (5,*) syslab
-C --- open .XV and .EIG :
+C --- open .XV and .EIG : 
 C     inpfil = syslab(1:len_trim(syslab))//'.XV'
       inpfil = trim(syslab)//'.XV'
       open (ii1,file=inpfil,form='formatted',status='old',err=801)
@@ -49,18 +48,10 @@ C --- open LOG file:
 C --- read Fermi energy and total number of bands from .EIG :
       read  (ii2,*) efermi
       read  (ii2,*) nbands, nspin, nkp
-      if ( all(nspin /= [1, 2, 4, 8]) ) then
+      if (nspin.ne.1.and.nspin.ne.2) then
         write (6,*) 'A problem encountered: nspin=',nspin
         stop
       endif
-
-      if ( nspin > 2 ) then
-C ---   In the case of NC/SOC, the system is treated as one with
-C ---   a single spin component since there are twice as many
-C ---   bands as orbitals. This is already reflected in the
-C ---   no variable in the .EIG file
-        nspin = 1
-      end if
 
 C --- finds bands crossing the Fermi energy:
       do is=1,nspin
@@ -71,11 +62,11 @@ C --- finds bands crossing the Fermi energy:
       allocate (eneb(nbands,nspin),STAT=ialloc)
       if (ialloc.ne.0) then
         write (6,*) ' Fails to allocate space for nbands=',
-     .                nbands,', nspin=',nspin
+     .                nbands,', nspin=',nspin  
         stop
       endif
       do ik=1,nkp
-        read (ii2,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") iik,   !  written in
+        read (ii2,"(i5,10f12.5,/,(5x,10f12.5))") iik,   !  written in
      .  ((eneb(ib,is),ib=1,nbands),is=1,min(nspin,2))   !  ioeif.f
         if (iik.ne.ik) then
           write (6,*) ' iik=',iik,'.ne. ik=',ik,' for spin ',is
@@ -112,7 +103,7 @@ C +++++++++++++++++++++++++
       enddo
       write(il1,*) 'Reciprocal cell vectors times 2pi:'
       do ii=1,3
-        write(il1, 502) (rcell(jj,ii)*pi2,jj=1,3)
+        write(il1, 502) (rcell(jj,ii)*twopi,jj=1,3)
       enddo
 C +++++++++++++++++++++++++
 
@@ -126,7 +117,6 @@ C     coordinates in terms of reciprocal vectors:
       read (ii3,*) nkp
       relmin(:)=1.d0/small
       allocate (relk(3,nkp))
-      relk(:,:)=0.d0
       if (ialloc.ne.0) then
         write (6,*) ' Fails to allocate space for relk(3,',nkp,')'
         stop
@@ -142,18 +132,17 @@ C ---   find relative coordinates of k-point:
         do ii=1,3
           relk(ii,ikp)=( cell(ii,1)*kkp(1) +
      +                   cell(ii,2)*kkp(2) +
-     +                   cell(ii,3)*kkp(3) )/pi2
-          if (abs(relk(ii,ikp)).lt.tiny) relk(ii,ikp)=0.d0
+     +                   cell(ii,3)*kkp(3) )/twopi 
           if (abs(relk(ii,ikp)).lt.relmin(ii).and.
-     .        abs(relk(ii,ikp)).gt.small)
+     .        abs(relk(ii,ikp)).gt.small) 
      .        relmin(ii)=abs(relk(ii,ikp))
         enddo
       enddo
       close (ii3)
-C --- relmin(ii) is now the smallest relative coordinate of k points
-C     along the reciprocal vector (ii). Good chance that its inverse
+C --- relmin(ii) is now the smallest relative coordinate of k points 
+C     along the reciprocal vector (ii). Good chance that its inverse 
 C     is number of divisions. Round up to the closest integer:
-      mdiv(:)=floor(1.d0/relmin(:)+ 0.5d0)
+      mdiv(:)=floor(1.d0/relmin(:)+ 0.5)
       write (6,*) ' No. of divisions seems to be ',mdiv
       mkp = (mdiv(1)+1)*(mdiv(2)+1)*(mdiv(3)+1)
       write (6,*) ' Full No. of k-points on general grid:', mkp
@@ -163,11 +152,11 @@ C     is number of divisions. Round up to the closest integer:
         write (6,*) ' Fails to allocate space for mkp=',mkp
         stop
       endif
-C --- decifer all k-point coordinates as integer fractions, ndiv=relk/mdiv,
+C --- decifer all k-point coordinates as integer fractions, ndiv=relk/mdiv, 
 C     with  0 <= relk  < mdiv :
       unshift = .false.
       do ikp=1,nkp
-        ndiv(:,ikp)=modulo(floor(relk(:,ikp)/relmin(:)+0.5d0),mdiv(:))
+        ndiv(:,ikp)=modulo(floor(relk(:,ikp)/relmin(:)+0.5),mdiv(:)) 
 C          floor(relk/relmin)      : max. integer not exceeding relk/relmin
 C          floor(relk/relmin)+0.5  : the integer closest to relk/relmin
 C          modulo(..)              : an always non-negative coord. relk/mdiv
@@ -183,16 +172,16 @@ C++++++++++++++++++
         endif
       enddo
       if (.not.unshift) then
-        write (6,207)
+        write (6,207) 
         stop
       endif
-C --- attribute irreducible k-points
+C --- attribute irreducible k-points 
 C     to k-points over the full reciprocal cell:
       ind=0
 C -  The right sequnce ("column-major") of writing energies into .BXSF file:
       do idiv1 = 0,mdiv(1)
       do idiv2 = 0,mdiv(2)
-      div3: do idiv3 = 0,mdiv(3)
+      div3: do idiv3 = 0,mdiv(3) 
         ind = ind + 1      !  global address on the k-mesh
         itry1=mod(idiv1,mdiv(1))
         itry2=mod(idiv2,mdiv(2))
@@ -203,12 +192,12 @@ C -  The right sequnce ("column-major") of writing energies into .BXSF file:
      .        (ndiv(3,ikp).eq.itry3) ) then
 ! ---       k-point is identified!
             irrek(ind) = ikp
-            write (il1,503) idiv1,idiv2,idiv3,ikp
+            write (il1,503) idiv1,idiv2,idiv3,ikp   
             cycle div3 ! - skip the rest of ikp loop,
                        !   try the next idiv3. This is the regular termination
                        !   of the ikp search if the k-point is found.
           endif
-        enddo
+        enddo 
 ! ---   haven't find any matching k-point; take a second chance, try inversion:
         itry1=mod(mdiv(1)-idiv1,mdiv(1))
         itry2=mod(mdiv(2)-idiv2,mdiv(2))
@@ -219,7 +208,7 @@ C -  The right sequnce ("column-major") of writing energies into .BXSF file:
      .        (ndiv(3,ikp).eq.itry3) ) then
 C ---        k-point is identified!
             irrek(ind) = ikp
-            write (il1,503) idiv1,idiv2,idiv3,ikp
+            write (il1,503) idiv1,idiv2,idiv3,ikp   
             cycle div3 ! - skip the rest of ikp loop,
                        !   try the next idiv3. This is the regular termination
                        !   of the ikp search if the k-point is found.
@@ -244,7 +233,7 @@ C --- The writing sequence (into two BXSF files if two spins)
 C         outfil = syslab(1:len_trim(syslab))//'.BXSF'
           outfil = trim(syslab)//'.BXSF'
         else
-C         outfil =
+C         outfil = 
 C    .    syslab(1:len_trim(syslab))//'_spin_'//char(48+is)//'.BXSF'
           outfil = trim(syslab)//'_spin_'//char(48+is)//'.BXSF'
         endif
@@ -259,28 +248,28 @@ C    .    syslab(1:len_trim(syslab))//'_spin_'//char(48+is)//'.BXSF'
 C       write (io1, *)  ' ',syslab(1:len_trim(syslab))
         write (io1, *)  ' ',trim(syslab)
         write (io1, "(a19,a1)") '  BANDGRID_3D_spin_',char(48+is)
-        write (io1, "(i5)")     homo(is)-lumo(is)+1  !  No. of bands
+        write (io1, "(i5)")     homo(is)-lumo(is)+1  !  No. of bands 
         write (io1, "(3i5)")    mdiv(1)+1, mdiv(2)+1, mdiv(3)+1
         write (io1, "(3f16.8)") 0.0, 0.0, 0.0
-        write (io1, "(3f16.8)") (rcell(jj,1)*pi2,jj=1,3)
-        write (io1, "(3f16.8)") (rcell(jj,2)*pi2,jj=1,3)
-        write (io1, "(3f16.8)") (rcell(jj,3)*pi2,jj=1,3)
+        write (io1, "(3f16.8)") (rcell(jj,1)*twopi,jj=1,3)
+        write (io1, "(3f16.8)") (rcell(jj,2)*twopi,jj=1,3)
+        write (io1, "(3f16.8)") (rcell(jj,3)*twopi,jj=1,3)
         do iband=lumo(is),homo(is)
           write (io1, '(a7,i5)') '  BAND:',iband
-C --- again read band energies of the needed band and spin from .ENE
+C --- again read band energies of the needed band and spin from .ENE 
 C     and write them in the correct order into .BXSF
           rewind (ii2)
           read  (ii2,*) dum
           read  (ii2,*) ndum, ndum, ndum
 C --- read in all energy values over all k points for the given spin band:
           do ik=1,nkp
-            read (ii2,"(i10,10(tr1,e17.9),/,(tr10,10(tr1,e17.9)))") iik,
+            read (ii2,"(i5,10f12.5,/,(5x,10f12.5))") iik, 
      .      ((dum,ib=1,nbands),iis=1,is-1),    ! dummy read prev. spin, if any
      .       (dum,ib=1,iband-1),enek(ik),(dum,ib=iband+1,nbands),
      .      ((dum,ib=1,nbands),iis=is+1,nspin) ! dummy read next spin, if any
           enddo
 C --- write into .BXSF file:
-            write (io1, "(7f11.5)")
+            write (io1, "(7f11.5)") 
      .            (enek(irrek(ii)),ii=1,mkp)
         enddo   !  do iband=lumo(is),homo(is)
         write (io1, '(a17)') '  END_BANDGRID_3D'

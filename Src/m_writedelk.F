@@ -5,8 +5,6 @@
 !  or http://www.gnu.org/copyleft/gpl.txt.
 ! See Docs/Contributors.txt for a list of contributors.
 !
-#include "mpi_macros.f"
-
       module m_writedelk
       public :: write_delk
       CONTAINS
@@ -76,9 +74,7 @@ C Internal variables and arrays
       integer    ih,hl,nuo,maxnhtot,maxhg
       integer, dimension(:), allocatable :: numhg
 #ifdef MPI
-      integer    MPIerror, BNode
-      MPI_STATUS_TYPE :: Status
-      MPI_REQUEST_TYPE :: Request
+      integer    MPIerror, Request, Status(MPI_Status_Size), BNode
       integer,  dimension(:),   allocatable :: ibuffer
       real(dp), dimension(:),   allocatable :: buffer
       complex(dp), dimension(:),   allocatable :: buffer3

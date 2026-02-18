@@ -1,5 +1,5 @@
 ! ---
-! Copyright- (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -7,7 +7,6 @@
 ! ---
 !!@LICENSE
 !
-#include "mpi_macros.f"
       module parallel
 
 C  Parallelisation related global parameters
@@ -30,20 +29,16 @@ C                       must be a factor of the total number of processors.
 C                       Furthermore on many parallel machines (e.g. T3E)
 C                       this number must also be a power of 2.
 C
-#ifdef MPI
-      USE_MPI_ONLY_GROUP
-      USE_MPI_ONLY_COMM
-#endif
       implicit none
-      MPI_GROUP_TYPE, save :: SIESTA_group 
-      MPI_COMM_TYPE, save :: SIESTA_comm
+
+      integer, save :: SIESTA_group, SIESTA_comm
       logical, save :: SIESTA_worker = .false.
       integer, save :: Node = 0
       integer, save :: Nodes = 1
       integer, save :: PEXSINodes = 1
-      integer, save :: BlockSize  = 64
+      integer, save :: BlockSize  = 24
       integer, save :: ProcessorY = 1
-
+      
       logical, save :: IOnode = .true.
 
       public
@@ -58,7 +53,7 @@ C
 
       subroutine parallel_init()  ! Initializes Node, Nodes, and IOnode
 #ifdef MPI
-      use mpi_siesta, only: MPI_Comm_World, MPI_Comm_Rank, MPI_Comm_Size
+      use mpi_siesta, only: MPI_Comm_World
       logical, save:: initialized=.false.
       integer :: MPIerror
       if (.not.initialized) then
@@ -78,7 +73,7 @@ C
       elemental function parcount(Nodes,N)
       integer, intent(in) :: Nodes, N
       integer :: parcount
-
+      
       if ( mod(N,Nodes) == 0 ) then
          parcount = N
       else

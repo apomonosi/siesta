@@ -15,7 +15,6 @@
 !   kept for the invokation of matel.
 !
     use m_matel_registry, only: register_in_rf_pool, show_pool
-    use m_matel_registry, only: is_system_locked, lock_system_functions
     use atm_types, only: species_info, species, nspecies
     use radial, only: rad_func
 
@@ -26,12 +25,6 @@
 !
     integer :: is, io, ko, dftuo, l, m, gindex
 
-    ! Check if system functions are already registered
-    if (is_system_locked()) then
-      call die("register_rfs: Cannot register basic functions twice")
-    endif
-   
-    ! Orbitals
     do is = 1, nspecies
        spp => species(is)
        do io=1,spp%norbs
@@ -83,7 +76,6 @@
 
     ! Vna
     do is = 1, nspecies
-       if (species(is)%z <= 0) CYCLE  ! floating species
        spp => species(is)
        func => spp%vna
        l = 0
@@ -96,9 +88,6 @@
 #endif
     enddo
 
-    ! Lock the basic system functions so they cannot be registered again
-    call lock_system_functions()
-    
 #ifdef DEBUG_PAO
     call show_pool()
     call test_register()

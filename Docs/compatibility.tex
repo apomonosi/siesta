@@ -24,28 +24,10 @@ This list describes the compatibility issues when using different versions of \s
   \setlength\itemsep{1pt}
   \setlength\topsep{1pt}
 
-  \item[5.X]%
-    \begin{itemize}
-
-      \item TSHS file has been deprecated, prefer to use the TS.HSX, or the HSX files
-        for TranSiesta usage.
-
-      \item HSX files has changed (very little), so utilities relying on the HSX files
-        which are \emph{not} using the HSX utility shipped with Siesta will be affected.
-    \end{itemize}
-
   \item[5.0]%
   \begin{itemize}
     \item HSX file format has changed completely. All utilities shipped with \siesta\ are
     updated, but external utilities needs to upgrade as well.
-
-    \item Unit precision has changed to the CODATA-2018 units. This results in changed outputs
-      which makes direct comparison between older versions more difficult. See the releasenotes
-      for details.
-
-    \item Default values for basis sets generation have changed. For backwards compatibility,
-    one can set PAO.EnergyShift to 0.02 Ry, PAO.OldStylePolOrbs to true, and
-    PAO.SoftDefault to false.
   \end{itemize}
 
   \item[4.1]%
@@ -72,7 +54,7 @@ This list describes the compatibility issues when using different versions of \s
     in their respective blocks. If they are specified, however, they will be honoured.
 
   \end{itemize}
-
+  
 
   \item[4.0.2, 4.1] %
   Internal tabulated values. We have increased the tabulated grid quantities related to
@@ -98,7 +80,7 @@ This list describes the compatibility issues when using different versions of \s
     \item \emph{Electric field and dipole correction for slab calculations}
 
     Older versions applied an incorrect dipole correction when also using an
-    electric field (old behaviour may be recovered by forcing \code{SlabDipoleCorrection .false.}).
+    electric field (old behaviour may be recovered by forcing \code{SlabDipoleCorrection .false.}). 
 
     Older versions over-estimated the energy contribution from the dipole correction by a
     factor of 2 (old behaviour cannot be recovered).
@@ -155,7 +137,7 @@ This list describes the compatibility issues when using different versions of \s
     This change will slightly alter the output of most calculations
     and the detailed results of any post-processing. Keep this in mind
     if you need to maintain coherency within a project.
-
+    
   \end{itemize}
 
 \end{description}

@@ -14,17 +14,9 @@ module m_forces
 
   real(dp), pointer, save :: fa(:,:)    ! Atomic forces
   integer:: ntcon   ! Total number of position constraints imposed
-  real(dp), pointer, save :: cfa(:,:)   ! Atomic forces orthogonalized
+  real(dp), pointer, save :: cfa(:,:)   ! Atomic forces orthogonalized 
                                         ! to geometry constraints
 
-contains
-  subroutine forces_reset
-    use alloc, only: de_alloc
-
-    call de_alloc( fa, 'fa', 'siesta_init' )
-    call de_alloc( cfa, 'cfa', 'siesta_init' )
-    nullify( fa, cfa )
-  end subroutine forces_reset
 end module m_forces
 
 

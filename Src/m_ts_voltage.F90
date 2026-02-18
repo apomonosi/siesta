@@ -17,6 +17,11 @@ module m_ts_voltage
   ! As a future progress the voltage ramp might be situated in the contact region
   ! only. This makes more physical sense as the voltage drop does not occur
   ! in the electrode regions.
+  !
+  ! Created and copyrighted by: Nick Papior Andersen, 2012
+  ! The use of this program is allowed for not-for-profit research only.
+  ! Copy or disemination of all or part of this package is not
+  ! permitted without prior and explicit authorization by the author.
 
   use precision, only : dp
   use m_ts_tdir

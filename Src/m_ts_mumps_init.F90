@@ -67,7 +67,7 @@ contains
 
   subroutine init_MUMPS(mum,ID)
 #ifdef MPI
-    use mpi_siesta, only : MPI_COMM_SELF
+    use mpi_siesta
 #endif
     include 'zmumps_struc.h'
     type(zMUMPS_STRUC), intent(inout) :: mum

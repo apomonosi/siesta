@@ -37,7 +37,7 @@ contains
     
     use kpoint_scf_m, only : kpoint_scf
     use ts_kpoint_scf_m, only : setup_ts_kpoint_scf
-    use ts_kpoint_scf_m, only : ts_kpoint_scf
+    use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_Gamma_scf
     use m_ts_cctype
     use ts_electrode_m
     use m_ts_options ! Just everything (easier)
@@ -98,7 +98,7 @@ contains
     call print_ts_options( ucell )
 
     ! Print all warnings
-    call print_ts_warnings( ts_kpoint_scf%is_gamma(), ucell, na_u, xa, Nmove )
+    call print_ts_warnings( ts_Gamma_scf, ucell, na_u, xa, Nmove )
 
     ! If we actually have a transiesta run we need to process accordingly!
     if ( .not. TSmode ) return

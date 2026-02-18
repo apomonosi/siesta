@@ -5,7 +5,7 @@
 !==============================================================================!
 !> @brief Implementations of \a m_copy.
 !==============================================================================!
-module MatrixSwitch_copy_m
+module MatrixSwitch_m_copy
   use MatrixSwitch_ops
 
   implicit none
@@ -1528,4 +1528,4 @@ contains
   end subroutine m_copy_external_pzdbcpzcsc
 #endif
 
-end module MatrixSwitch_copy_m
+end module MatrixSwitch_m_copy

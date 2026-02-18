@@ -129,7 +129,7 @@ contains
          leqi(opt, 'SOC') .or. leqi(opt, 'SO') .or. &
          leqi(opt, 'spin-orbit+offsite') .or. leqi(opt, 'S-O+offsite') .or. &
          leqi(opt, 'SOC+offsite') .or. leqi(opt, 'SO+offsite') ) then
-       ! Spin-orbit defaults to the off-site (full) implementation
+       ! Spin-orbit defaults to the off-site implementation
        
        spin%SO = .true.
        spin%SO_offsite = .true.
@@ -247,14 +247,6 @@ contains
     if ( present(default_nspin) ) then
       default_nspin = spin%H
     end if
-
-    if (.not. spin%none .and. IOnode ) then
-       write(6,'(/a)') 'NOTE on units for spin output: '
-       write(6,'(a)')  '{S} is the spin magnetic moment, in units of the Bohr magneton,'
-       write(6,'(a)')  'assuming a g-factor for the electron spin of exactly 2.'
-       write(6,'(a)')  'The spin magnetic moment is then numerically equal to the charge inbalance,'
-       write(6,'(a/)') 'in units of electrons, between the spin-up and -down channels.'
-    endif
 
   contains
 

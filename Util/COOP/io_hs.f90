@@ -17,7 +17,7 @@ CONTAINS
     integer :: version
     integer :: iu
     integer :: na_u, no_u, no_s, nspin, n_nzs, err
-
+    
     external :: io_assign, io_close
 
     ! Initialize
@@ -32,7 +32,7 @@ CONTAINS
        ! we can successfully read 4 integers
        version = 0
     else
-       rewind(iu)
+       backspace(iu)
        read(iu,iostat=err) version
     end if
 
@@ -40,34 +40,34 @@ CONTAINS
 
   end function HSX_version
 
-
+  
   subroutine read_hs_file(fname)
     use main_vars
 
     character(len=*), intent(in) :: fname
-
+    
     integer :: version
 
     version = HSX_version(fname)
     if ( version == 0 ) then
       call read_hs_file_old(fname)
-    else if ( (version == 1) .or. (version == 2) ) then
-      call read_hs_file_version1_2(fname)
+    else if ( version == 1 ) then
+      call read_hs_file_version1(fname)
     else
-      STOP "unknown HSX file version [0, 2]"
+      STOP "unknown HSX file version [0, 1]"
     end if
   end subroutine read_hs_file
 
-  subroutine read_hs_file_version1_2(fname)
+  subroutine read_hs_file_version1(fname)
     use main_vars
     use precision, only: sp
 
     character(len=*), intent(in) :: fname
 
     integer :: numx, ind
-    real(dp) :: fucell(3,3), kdispl(3)
+    real(dp) :: fucell(3,3)
     logical :: is_dp
-    integer :: fnsc(3), kcell(3,3)
+    integer :: fnsc(3)
     integer :: ja, jo, version
     integer, allocatable :: isc_off(:,:), lasto(:)
     real(dp), allocatable :: xa(:,:)
@@ -80,7 +80,7 @@ CONTAINS
     read(hs_u, iostat=iostat) version
     if (iostat /= 0) STOP "version"
 
-    if ( version > 2 ) then
+    if ( version /= 1 ) then
       STOP "in correct call [version]"
     end if
 
@@ -119,11 +119,6 @@ CONTAINS
       if ( iostat /= 0 ) STOP "specific specie information"
     end do
 
-    if ( version == 2 ) then
-       read(hs_u,iostat=iostat) kcell, kdispl
-       if ( iostat /= 0 ) STOP "k-information"
-    end if
-
     ! Populate iaorb and iphorb
     ind = 0
     do ia = 1, na_u
@@ -150,7 +145,7 @@ CONTAINS
     allocate(numh(no_u))
     read(hs_u,iostat=iostat) numh ! numh
     if (iostat /= 0) STOP "numh(io)"
-
+  
     ! Create pointer
     allocate(listhptr(no_u))
     listhptr(1) = 0
@@ -161,7 +156,7 @@ CONTAINS
     ! Now read sparse data
     nh = listhptr(no_u) + numh(no_u)
     allocate(listh(nh))
-
+  
     do io=1,no_u
       read(hs_u,iostat=iostat) listh(listhptr(io)+1:listhptr(io)+numh(io))
       if (iostat /= 0) STOP "listh"
@@ -182,7 +177,7 @@ CONTAINS
               isc_off(1,is) * fucell(:,1) + &
               isc_off(2,is) * fucell(:,2) + &
               isc_off(3,is) * fucell(:,3)
-
+          
           dij(ind) = sqrt(dot_product(xij(:,ind),xij(:,ind))) / Ang
         end do
       end do
@@ -190,7 +185,7 @@ CONTAINS
 
     ! Clean-up
     deallocate(xa, isc_off, lasto)
-
+    
     ! Read H and S
     allocate(hamilt(nh,nspin))
     allocate(Sover(nh))
@@ -202,12 +197,12 @@ CONTAINS
           if (iostat /= 0) STOP "H(dp)"
         end do
       end do
-
+      
       do io = 1, no_u
         read(hs_u,iostat=iostat) Sover(listhptr(io)+1:listhptr(io)+numh(io))
         if (iostat /= 0) STOP "S(dp)"
       end do
-
+      
     else
       allocate(rbuf(maxval(numh)))
 
@@ -229,16 +224,16 @@ CONTAINS
     end if
 
     close(hs_u)
-
+    
   contains
-
+    
     elemental function UCORB(a,p)
       integer, intent(in) :: a,p
       integer :: UCORB
       UCORB = MOD(a-1,p) + 1
-    end function
-
-  end subroutine read_hs_file_version1_2
+    end function 
+    
+  end subroutine read_hs_file_version1
 
 
   subroutine read_hs_file_old(fname)
@@ -304,7 +299,7 @@ CONTAINS
     allocate(ibuff(numx), hbuff(numx), buff3(3,numx))
 
 
-    ! Create listhptr
+    ! Create listhptr 
     listhptr(1)=0
     do io=2,no_u
       listhptr(io)=listhptr(io-1)+numh(io-1)
@@ -342,7 +337,7 @@ CONTAINS
       enddo
     enddo
 
-    read(hs_u,iostat=iostat) qtot, temp_in_file
+    read(hs_u,iostat=iostat) qtot, temp_in_file 
     if (debug) print *, "QTOT, Temp in file: ", qtot, temp_in_file
     if (iostat /= 0) then
       if (debug) print *, "iostat:", iostat

@@ -123,7 +123,8 @@ C *******************************************************************
 #ifdef MPI
 C  Modules
       use mesh,         only : nmeshg
-      use parallel,     only : Node, Nodes
+      use parallel,     only : Node, Nodes, ProcessorY
+      use parallelsubs, only : HowManyMeshPerNode
       use mpi_siesta
       use moreMeshSubs, only : distExtMeshData, gathExtMeshData
 #endif
@@ -229,7 +230,7 @@ C Start time counter (intended only for debugging and development)
 C Check value of mspin
       if (mspin.lt.nspin) then
         write(6,*) 'cellXC: parameter mspin must be at least ', nspin
-        call die("stopping program")
+        call die()
       endif
 
       BS(1) = (meshLim(2,1)-meshLim(1,1)+1)*NSM
@@ -245,7 +246,7 @@ C be calculated.
             write(6,'(''  ERROR - number of fine mesh points per '',
      &      ''Node must be greater than finite difference order '')')
           endif
-          call die("stopping program")
+          call die()
         endif
 
         iDistr = 3

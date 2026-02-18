@@ -12,7 +12,7 @@ module ts_kpoint_scf_m
   ! Other uses (bands, optical, polarization) have their own structures.
   !
   use precision, only : dp
-
+  
   ! The k-point-type
   use kpoint_t_m
 
@@ -21,10 +21,12 @@ module ts_kpoint_scf_m
   public :: setup_ts_kpoint_scf
   public :: reset_ts_kpoint_scf
   public :: ts_kpoint_scf
-
+  public :: ts_gamma_SCF
+  
   private
 
-  type(kpoint_t), target, save :: ts_kpoint_scf
+  logical, save :: ts_gamma_SCF
+  type(kpoint_t), save :: ts_kpoint_scf
 
 contains
 
@@ -54,6 +56,9 @@ contains
 
     end if
 
+    ts_gamma_SCF = (ts_kpoint_scf%N == 1 .and. &
+        dot_product(ts_kpoint_scf%k(:,1),ts_kpoint_scf%k(:,1)) < 1.0e-20_dp)
+
     ! Quick-return if non-IO or not a transiesta run
     if ( .not. TSmode ) return
     if ( Node /= 0 ) return
@@ -72,7 +77,8 @@ contains
     else
       call kpoint_delete(ts_kpoint_scf)
     end if
-
+    ts_gamma_SCF = .true.
+    
   end subroutine reset_ts_kpoint_scf
 
   

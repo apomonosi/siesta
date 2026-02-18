@@ -61,7 +61,7 @@ contains
 #ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
     ! These were set in read_options, called only by "SIESTA_workers".
-    call broadcast(nscf,comm=MPI_Comm_DFT)
+    call broadcast(nscf,comm=true_MPI_Comm_World)
 #endif
 
     if ( SIESTA_worker )  then
@@ -97,7 +97,7 @@ contains
     ! putting the grid initialization into state_init and moving the
     ! calculation of H_0 to the body of the loop, done if first=.true.  This
     ! would suit "analysis" runs in which nscf = 0
-    if ( SIESTA_worker ) call setup_H0( G2max , istep)
+    if ( SIESTA_worker ) call setup_H0( G2max )
 
 #ifdef SIESTA__PEXSI
     if (ionode) call memory_snapshot("after setup_H0")

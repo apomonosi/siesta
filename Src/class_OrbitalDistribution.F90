@@ -27,11 +27,9 @@
 !      subroutine WhichNodeOrb( GOrb, Nodes, Node)
 !            returns the Node number that handles GOrb
 !            Node = nNode(GOrb)
-#include "mpi_macros.f"
 
   module class_OrbitalDistribution
-  USE_MPI_ONLY_COMM
-  USE_MPI_ONLY_NULL
+  
   implicit none
 
   character(len=*), parameter :: mod_name="class_OrbitalDistribution"
@@ -42,7 +40,7 @@
      !------------------------
      character(len=256)   :: name = "null OrbitalDistribution"
      !------------------------
-     MPI_COMM_TYPE  :: comm = MPI_COMM_RESET       ! MPI communicator
+     integer  :: comm = -1       ! MPI communicator
      integer  :: node = -1       ! MPI rank in comm  (my_proc)
      integer  :: nodes = 0       ! MPI size of comm  (nprocs)
      integer  :: node_io = -1    ! Node capable of IO
@@ -117,15 +115,12 @@
   end subroutine delete_Data
 
   subroutine newBlockCyclicDistribution(Blocksize,Comm,this,name)
-#ifdef MPI
-     use mpi_siesta, only: MPI_Comm_Rank, MPI_Comm_Size
-#endif
      !........................................
      ! Constructor
      !........................................
      type (OrbitalDistribution), intent(inout) :: this
      integer, intent(in)                       :: Blocksize
-     MPI_COMM_TYPE, intent(in)                 :: Comm
+     integer, intent(in)                       :: Comm
      character(len=*), intent(in), optional :: name
 
      integer :: error
@@ -184,7 +179,7 @@
         endif
         nl = this%data%nroc_proc(lNode)
 #ifdef MPI
-      else if (comms_are_identical(this%data%Comm, MPI_Comm_Self)) then ! globalized local distribution
+      else if ( this%data%Comm == MPI_Comm_Self ) then ! globalized local distribution
 
          ! No matter the node, it is the same orbital
          ! The interface for creating such an orbital distribution
@@ -250,7 +245,7 @@
         endif
         ig = this%data%nl2g(il)
 #ifdef MPI
-      else if ( comms_are_identical(this%data%Comm, MPI_Comm_Self) ) then ! globalized local distribution
+      else if ( this%data%Comm == MPI_Comm_Self ) then ! globalized local distribution
 
          ! No matter the node, it is the same orbital
          ! The interface for creating such an orbital distribution
@@ -310,7 +305,7 @@
         ! if (ng2p(ig)) < 0 then il = -that, else 0
         ! Example:  0 0 1 1 2 2 -1 -2 4 4 5 5 0 0 1 1 2 2 -3 -4 5 5 ..... (nb=2, np=6)
 #ifdef MPI
-      else if (comms_are_identical(this%data%Comm, MPI_Comm_Self)) then ! globalized local distribution
+      else if ( this%data%Comm == MPI_Comm_Self ) then ! globalized local distribution
 
          ! No matter the node, it is the same orbital
          ! The interface for creating such an orbital distribution
@@ -370,7 +365,7 @@
         ! if (ng2p(ig)) < 0 then il = -that, else 0
         ! Example:  0 0 1 1 2 2 -1 -2 4 4 5 5 0 0 1 1 2 2 -3 -4 5 5 ..... (nb=2, np=6)
 #ifdef MPI
-      else if (comms_are_identical(this%data%Comm, MPI_Comm_Self)) then ! globalized local distribution
+      else if ( this%data%Comm == MPI_Comm_Self ) then ! globalized local distribution
 
          ! No matter the node, it is the same orbital
          ! The interface for creating such an orbital distribution
@@ -401,7 +396,7 @@
    ! distribution
    function comm_(this) result(comm)
      type(OrbitalDistribution), intent(in) :: this
-     MPI_COMM_TYPE                        :: comm
+     integer :: comm
      comm = this%data%comm
    end function comm_
    
@@ -415,7 +410,7 @@
 
         print "(a,/,t4,5(a,i0),a)", &
              "  <orb-dist:"//trim(this%data%name), &
-             " comm=", MPI_COMM_ID(this%data%comm), &
+             " comm=", this%data%comm, &
              " node/nodes=", this%data%node,' / ',this%data%nodes, &
              " blocksize=",this%data%blocksize, &
              ", refcount: ", refcount(this), ">"
@@ -670,24 +665,5 @@
 !     End of INDXG2L
 ! 
       END function indxg2l
-
-#ifdef MPI
-      function comms_are_identical(comm1, comm2) result (identical)
-      use mpi_siesta, only: MPI_IDENT, MPI_Comm_compare
-      USE_MPI_ONLY_COMM
-        logical :: identical
-        MPI_COMM_TYPE, intent(in) :: comm1, comm2
-
-        integer :: comparison_result, ierr
-
-        identical = .false.
-        call MPI_Comm_compare(comm1, comm2, comparison_result, ierr)
-        if (ierr /= 0 ) then
-           return
-        endif
-
-        identical = comparison_result == MPI_IDENT
-      end function comms_are_identical
-#endif
 
 end module class_OrbitalDistribution

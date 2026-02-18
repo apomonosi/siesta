@@ -3,20 +3,25 @@
 #
 # Select the appropriate run below (at the end).
 #
-# Make sure that you are using the right version of Siesta.
-# The SIESTABIN setting below is quite naive and might not work
+# Take care to use the appropriate (e.g., parallel or serial) copy
+# of siesta. To run parallel jobs, you have to figure out how to
+# set the MPI environment. For a simple single-node interactive calculation
+# (where possible, such as in a Rocks cluster), you can use the parallel.sh
+# script.
+#
+# Make sure that you are using the right version of Siesta. 
+# The SIESTA setting below is quite naive and might not work
 # in all cases. You can call this script as:
 #
-#            SIESTABIN=/path/to/siesta/bin test.sh
+#            SIESTA=/path/to/siesta test.sh
 #
+#
+
 ROOT="../../../.."
 PSEUDOS=${ROOT}/Tests/Pseudos
 #
-if [ -z "$SIESTABIN" ] ; then
-      SIESTABIN=${ROOT}/bin/
-      SIESTA=${ROOT}/bin/siesta
-else
-      SIESTA=${SIESTABIN}/siesta
+if [ -z "$SIESTA" ] ; then
+      SIESTA=${ROOT}/Obj/siesta
 fi
 echo "Using Siesta executable: $SIESTA"
 #
@@ -37,20 +42,28 @@ ln -sf ${SIESTA} ./siesta
 #
 
 echo ""; echo "simple_pipes_serial"
-${SIESTABIN}/pipes_serial    | tee simple_pipes_serial.out
+../Src/simple_pipes_serial    | tee simple_pipes_serial.out
 mv h2o.out siesta_pipes_serial.out
+
 echo ""; echo "simple_pipes_parallel"
-${SIESTABIN}/pipes_parallel  | tee simple_pipes_parallel.out
+../Src/simple_pipes_parallel  | tee simple_pipes_parallel.out
 mv h2o.out siesta_pipes_parallel.out
 
+echo ""; echo "simple_mpi_serial"
+../Src/simple_mpi_serial      | tee simple_mpi_serial.out
+mv h2o.out siesta_mpi_serial.out
+
 echo ""; echo "simple_mpi_parallel"
-mpirun -np 2 ${SIESTABIN}/mpi_driver | tee simple_mpi_parallel.out
+mpirun -np 2 -output-filename simple_mpi_parallel.out ../Src/simple_mpi_parallel
+mv h2o.out siesta_mpi_parallel.out
 
 cat socket.fdf >> h2o.fdf
+
 echo ""; echo "simple_sockets_serial"
-${SIESTABIN}/sockets_serial    | tee simple_sockets_serial.out
+../Src/simple_sockets_serial    | tee simple_sockets_serial.out
 mv h2o.out siesta_sockets_serial.out
+
 echo ""; echo "simple_sockets_parallel"
-${SIESTABIN}/sockets_parallel  | tee simple_sockets_parallel.out
+../Src/simple_sockets_parallel  | tee simple_sockets_parallel.out
 mv h2o.out siesta_sockets_parallel.out
 

@@ -1,6 +1,4 @@
 ! Also the mixing container
-#include "mpi_macros.f"
-
 module m_mixing_scf
 
   use class_Fstack_dData1D
@@ -49,7 +47,6 @@ contains
     use precision, only: dp
 #ifdef MPI
     use mpi_siesta, only: MPI_Comm_World
-    USE_MPI_ONLY_COMM
 #endif
     use m_mixing, only: mixers_reset, mixers_init
     use m_mixing, only: mix_method, mix_method_variant
@@ -60,7 +57,7 @@ contains
     integer, intent(in) :: nspin
     
     ! The communicator used for the mixer
-    MPI_COMM_TYPE, intent(in), optional :: Comm
+    integer, intent(in), optional :: Comm
 
     ! Block constructs
     type(block_fdf) :: bfdf

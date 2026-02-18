@@ -21,7 +21,7 @@ program fatband
   use main_vars
   use orbital_set, only: get_orbital_set
   use io_hs, only: read_hs_file
-  use read_curves, only: read_curve_information, mask_to_arrays, read_n_curves
+  use read_curves, only: read_curve_information, mask_to_arrays
 
   implicit none
 
@@ -35,9 +35,6 @@ program fatband
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
   real(dp), allocatable  :: eig(:,:), fat(:,:)
 
-
-  logical  :: file_exists
-  character(len=100) :: wfsxnm
 
   integer  :: nwfmx, nwfmin
   integer  :: min_band = 1
@@ -112,23 +109,13 @@ program fatband
   read(mpr_u,*) sflnm
   read(mpr_u,*) what
   if (trim(what) /= "DOS") STOP "Fatbands needs DOS-style jobfile"
-
+  
   !==================================================
   ! Read WFSX file
-  wfsxnm      = trim(sflnm) // ".bands.WFSX"
-  file_exists = .false.
-  inquire(file=wfsxnm,exist=file_exists)
-  if (.not. file_exists) then
-     wfsxnm = trim(sflnm) // ".WFSX"
-     inquire(file=wfsxnm,exist=file_exists)
-     if (.not. file_exists) then
-        write(6,"(a)") "Cannot find WFSX file."
-        STOP
-     endif
-  endif
-  write(6,"(a)") "Reading wf file: " // trim(wfsxnm)
 
-  open(wfs_u,file=trim(wfsxnm),status='old',form='unformatted')
+  write(6,"(a)") "Reading wf file: " // trim(sflnm) // ".WFSX"
+
+  open(wfs_u,file=trim(sflnm)//'.WFSX',status='old',form='unformatted')
   read(wfs_u) nkp, gamma_wfsx
   allocate (wk(nkp), pk(3,nkp))
 
@@ -150,7 +137,7 @@ program fatband
   else
      nspin_blocks = nsp
   endif
-
+  
   do ik=1,nkp
      do is=1,nspin_blocks
 
@@ -166,7 +153,7 @@ program fatband
            read(wfs_u) eigval
            min_eigval = min(min_eigval,eigval)
            max_eigval = max(max_eigval,eigval)
-           !
+           ! 
            !
            if ((iw>=min_band).and.(iw<=max_band)) then
               min_eigval_in_band_set = min(min_eigval_in_band_set,eigval)
@@ -231,7 +218,7 @@ program fatband
   do ia=1,na_u
      it = isa(ia)
      io = 0
-     do
+     do 
         io = io + 1
         if (io > no(it)) exit
         lorb = lquant(it,io)
@@ -254,21 +241,14 @@ program fatband
 !
 ! Process orbital sets
 !
+  allocate(orb_mask(no_u,2,ncbmx))
+  allocate (koc(ncbmx,2,no_u))
+
   ! Give values to flags for reuse of the reading routine
   dos = .true.
   coop = .false.
-  call read_n_curves(coop, mpr_u, no_u, ncb)
-  allocate( orb_mask(no_u,2,ncb) )
-  allocate( koc(ncb,2,no_u) )
-  allocate( noc(ncb,2), dtc(ncb,2), tit(ncb) )
-
-  ! Need to rewind file and do a dummy read.
-  rewind(mpr_u)
-  read(mpr_u,*) sflnm
-  read(mpr_u,*) what
-
   call read_curve_information(.true.,.false.,  &
-                                    mpr_u,no_u,ncb,ncb,tit,orb_mask,dtc)
+                                    mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
 
   orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
 
@@ -285,7 +265,7 @@ program fatband
   do it=1,nspecies
      write(stt_u,"(5x,a20)") trim(label(it))
      io = 0
-     do
+     do 
         io = io + 1
         if (io > no(it)) exit
         write(stt_u,"(3(2x,i2))") nquant(it,io), lquant(it,io), zeta(it,io)
@@ -300,7 +280,7 @@ program fatband
   else
     write(stt_u,"(/'SPIN: ',i2)") nspin_blocks
   endif
-
+  
   write(stt_u,"(/'AO LIST:')")
   taux=repeat(' ',len(taux))
   do io=1,no_u
@@ -367,7 +347,7 @@ program fatband
 
 
   !=====================
-
+ 
   ! * Fatband weights
 
   ! nspin has been read in iohs
@@ -427,7 +407,7 @@ program fatband
         do i1=2,no1
            ptr(i1)=ptr(i1-1)+num_red(i1-1)
         enddo
-        nnz = sum(num_red(1:no1))
+        nnz = sum(num_red(1:no1))  
 
         write(*,"(a,3x,a,2x,a,i6,1x,i12)") 'Fatband coeffs set: ', trim(tit(ic)),  &
                                       'Base orbitals and interactions: ', &
@@ -464,11 +444,11 @@ program fatband
 
         rewind(wfs_u)
 
-        read(wfs_u)
-        read(wfs_u)
-        read(wfs_u)
-        read(wfs_u)
-
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+     
         open(fat_u,file=trim(mflnm)// "." // trim(tit(ic)) // '.EIGFAT')
         write(fat_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
         write(fat_u,"(3i6)")   nbands, nspin_blocks, nkp
@@ -482,11 +462,11 @@ program fatband
               ib = 0
               fat(:,is) = 0.0_dp
 
-              read(wfs_u)
-              read(wfs_u)
+              read(wfs_u) 
+              read(wfs_u) 
               read(wfs_u)  number_of_wfns
               do iw=1,number_of_wfns
-                 read(wfs_u)
+                 read(wfs_u) 
                  read(wfs_u) eigval
 
                  ! Use only the specified band set
@@ -510,7 +490,7 @@ program fatband
                          ind_red = ptr(i1)+i2
                          io2 = list_io2(ind_red)
                          ind = list_ind(ind_red)
-
+                             
                                 ! (qcos, qsin) = C_1*conjg(C_2)
                                 !AG: Corrected:  (qcos, qsin) = conjg(C_1)*(C_2)
                                 ! We might want to avoid recomputing this
@@ -523,10 +503,10 @@ program fatband
                                    qsin= wf(1,io1)*wf(2,io2) - &
                                         wf(2,io1)*wf(1,io2) + &
                                         wf(3,io1)*wf(4,io2) - &
-                                        wf(4,io1)*wf(3,io2)
+                                        wf(4,io1)*wf(3,io2) 
                                 else
                                    if (gamma_wfsx) then
-                                      qcos = wf(1,io1)*wf(1,io2)
+                                      qcos = wf(1,io1)*wf(1,io2) 
                                       qsin = 0.0_dp
                                    else
                                       qcos= (wf(1,io1)*wf(1,io2) + &
@@ -554,7 +534,7 @@ program fatband
               enddo      ! is
 
            enddo         ! ik
-
+           
            deallocate (num_red)
            deallocate (ptr)
            deallocate (list_io2)
@@ -563,8 +543,6 @@ program fatband
               close(fat_u)
 
         enddo    ! ic
-
-      deallocate( orb_mask, koc, noc, dtc, tit )
 
  CONTAINS
 
@@ -600,11 +578,10 @@ program fatband
       write(6,*)
       write(6,"('* INPUT FILES')")
       write(6,"('    [output files from SIESTA >=  2.4.1]')")
-      write(6,"('    SLabel.bands.WFSX and SLabel.HSX (new format)')")
-      write(6,"('    (Will use SLabel.WFSX if SLabel.bands.WFSX is not found)')")
+      write(6,"('    SLabel.WFSX and SLabel.HSX (new format)')")
       write(6,*)
       write(6,"('* OUTPUT FORMAT')")
-      write(6,*)
+      write(6,*) 
       write(6,*) " MLabel.CurveName.EIGFAT    :  File with eigenvalue and projection info "
       write(6,"('    [An information file with extension .info will always be generated]')")
       write(6,*)

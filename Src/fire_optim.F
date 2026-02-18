@@ -1,4 +1,4 @@
-!
+! 
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -8,19 +8,17 @@
       module m_fire_optim
 !
 !     FIRE geometry optimization
-!
+!      
       use precision, only : dp
       use fdf,          only: fdf_block
       use m_mpi_utils, only:  broadcast
-      use units, only: kBar, eV, Ang, amu
+      use units, only: kBar, eV, Ang
       use alloc, only: re_alloc, de_alloc
       use fdf, only: fdf_get
-
+      
       use m_fire
       use siesta_options, only: dt
       use parallel, only : ionode
-      use m_target_stress, only: set_target_stress
-      use m_target_stress, only: target_stress, constant_volume
 
       implicit none
 
@@ -43,7 +41,7 @@ c logical varcel        : true if variable cell optimization
 c *************************** INPUT AND OUTPUT ******************************
 c real*8 xa(3,na)       : Atomic coordinates
 c                         input: current step; output: next step
-c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell
+c real*8 cell(3,3)      : Matrix of the vectors defining the unit cell 
 c                         input: current step; output: next step
 c                         cell(ix,ja) is the ix-th component of ja-th vector
 c real*8 stress(3,3)    : Stress tensor components
@@ -76,10 +74,12 @@ c Internal variables and arrays
 ! Saved internal variables:
 
       logical, save :: frstme = .true.
+      logical, save :: constant_volume
       real(dp), save :: initial_volume
 
 
-      real(dp), save :: modcel(3),
+      real(dp), save :: tstres(3,3),
+     .                  modcel(3),
      .                  precon,
      .                  strain(3,3),
      .                  cellin(3,3)
@@ -95,11 +95,7 @@ c Internal variables and arrays
      $                  fire_alpha_factor, fire_dtmax
       integer        :: fire_nmin
 
-#ifdef SIESTA__UNITS_ORIGINAL
       real(dp), parameter ::  fovermp = 0.009579038 * Ang**2 / eV
-#else
-      real(dp), parameter ::  fovermp = 1._dp / amu
-#endif
       real(dp), parameter ::  dstrain_max = 0.1_dp
 
       real(dp) :: volcel
@@ -111,7 +107,7 @@ c ---------------------------------------------------------------------------
 C If first call to optim, check dim and get target stress --------------------
 
       if ( frstme ) then
-
+         
          fire_mass = fdf_get("MD.FIRE.Mass", 1.0_dp)
          fire_dt = fdf_get("MD.FIRE.TimeStep", dt)
          fire_dt_inc = fdf_get("MD.FIRE.TimeInc", FIRE_DEF_dt_inc)
@@ -143,7 +139,10 @@ C If first call to optim, check dim and get target stress --------------------
      $                   nmin=fire_nmin)
 
         if ( varcel ) then
-          call set_target_stress(tp)
+
+          constant_volume = fdf_get("MD.ConstantVolume", .false.)
+
+          call get_target_stress(tp,tstres)
 
 C Moduli of original cell vectors for fractional coor scaling back to au ---
 
@@ -155,7 +154,7 @@ C Moduli of original cell vectors for fractional coor scaling back to au ---
              modcel(n) = dsqrt( modcel(n) )
           enddo
 
-C Scale factor for strain variables to share magnitude with coordinates
+C Scale factor for strain variables to share magnitude with coordinates 
 C ---- (a length in Bohrs typical of bond lengths ..) ------------------
 
           precon = fdf_get('MD.PreconditionVariableCell',
@@ -196,9 +195,9 @@ C Inverse of matrix of cell vectors  (transpose of) ------------------------
 
         call reclat( cell, celli, 0 )
 
-C Transform coordinates and forces to fractional
+C Transform coordinates and forces to fractional 
 C but scale them again to Bohr by using the (fixed) moduli of the original
-C lattice vectors (allows using maximum displacement as before)
+C lattice vectors (allows using maximum displacement as before) 
 C convergence is checked here for input forces as compared with ftol
 
         relaxd = .true.
@@ -216,7 +215,7 @@ C convergence is checked here for input forces as compared with ftol
           enddo
         enddo
 
-C Symmetrizing the stress tensor
+C Symmetrizing the stress tensor 
 
         do i = 1, 3
            do j = i+1, 3
@@ -227,7 +226,7 @@ C Symmetrizing the stress tensor
 
 C Subtract target stress
 
-        stress_dif = stress - target_stress
+        stress_dif = stress - tstres
 !
 !       Take 1/3 of the trace out here if constant-volume needed
 !
@@ -238,7 +237,7 @@ C Subtract target stress
            enddo
         endif
 
-C Append excess stress and strain to gxa and gfa ------
+C Append excess stress and strain to gxa and gfa ------ 
 C preconditioning: scale stress and strain so as to behave similarly to x,f -
 
         indi = 3*na
@@ -255,7 +254,7 @@ C Check stress convergence --------------------------------------------------
 
         do i = 1, 3
            do j = 1, 3
-              relaxd = relaxd .and.
+              relaxd = relaxd .and. 
      .          ( abs(stress_dif(i,j)) .lt. abs(strtol) )
            enddo
         enddo
@@ -306,7 +305,7 @@ C Transform back if variable cell
 
       if ( varcel ) then
 
-      ! New cell
+      ! New cell 
 
         indi = 3*na
         do i = 1, 3
@@ -323,7 +322,7 @@ C Transform back if variable cell
            cell =  cell * (initial_volume/new_volume)**(1.0_dp/3.0_dp)
         endif
 
-C Output fractional coordinates to cartesian Bohr, and copy to xa -----------
+C Output fractional coordinates to cartesian Bohr, and copy to xa ----------- 
 
         do ia = 1, na
           do i = 1, 3
