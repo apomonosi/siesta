@@ -320,9 +320,12 @@ set(libsiesta_sources
   m_ts_dm_update.F90
   m_ts_elec_se.F90
   m_ts_electrode.F90
+  m_ts_electrode_spinor.F90
   m_ts_full_scat.F90
   m_ts_fullg.F90
+  m_ts_fullg_spinor.F90
   m_ts_fullk.F90
+  m_ts_fullk_spinor.F90
   m_ts_gf.F90
   m_ts_global_vars.f90
   m_ts_hartree.F90
@@ -344,11 +347,15 @@ set(libsiesta_sources
   m_ts_tri_common.F90
   m_ts_tri_init.F90
   m_ts_tri_scat.F90
+  m_ts_tri_scat_spinor.F90
   m_ts_trig.F90
+  m_ts_trig_spinor.F90
   m_ts_trik.F90
+  m_ts_trik_spinor.F90
   m_ts_trimat_invert.F90
   m_ts_voltage.F90
   m_ts_weight.F90
+  m_ts_weight_spinor.F90
   m_uuid.f90
   m_vee_integrals.F90
   m_wallclock.f90
@@ -684,6 +691,7 @@ set_property(
     m_ts_mumps_scat.F90
     m_ts_trimat_invert.F90
     m_ts_tri_scat.F90
+    m_ts_tri_scat_spinor.F90
     simple-version.F90
   APPEND PROPERTY COMPILE_DEFINITIONS
   $<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>
