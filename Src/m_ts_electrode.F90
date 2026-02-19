@@ -19,6 +19,9 @@ module m_ts_electrode
 
   public :: create_Green
   public :: calc_next_GS_Elec
+  public :: SSR_sGreen_DOS
+  public :: SSR_sGreen_NoDOS
+  public :: print_Elec_Green
 
   private
 
@@ -46,7 +49,7 @@ contains
   subroutine SSR_sGreen_DOS(no,ZE,H00,S00,H01,S01,accu, GS, &
        DOS, T, &
        nwork, zwork, &
-       iterations, final_invert)
+       iterations, final_invert, non_col)
        
 ! ***************** INPUT **********************************************
 ! integer     no      : Number of orbitals in the electrode
@@ -79,6 +82,7 @@ contains
     integer, intent(in) :: nwork
 
     logical, intent(in), optional :: final_invert
+    logical, intent(in), optional :: non_col
 
 ! ***********************
 ! * OUTPUT variables    *
@@ -97,6 +101,7 @@ contains
     integer :: ierr             !error in inversion
     integer :: i,j,ic,ic2
     logical :: as_first
+    logical :: non_col_l
 
     real(dp) :: ro
     complex(dp) :: zij, zji
@@ -112,6 +117,9 @@ contains
 
     ! Initialize counter
     if ( present(iterations) ) iterations = 0
+
+    non_col_l = .false.
+    if ( present(non_col) ) non_col_l = non_col
 
 !    call timer('ts_GS',1)
 
@@ -382,10 +390,16 @@ contains
       ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
 
       ! Calculate the total DOS
-      DOS(j) = DOS(j) - ro / Pi
-       
+      ! In the non-collinear/SOC case the DOS array has no/2 entries;
+      ! adjacent spin-orbital pairs are folded into the same spatial orbital.
+      if ( non_col_l ) then
+        DOS((j+1)/2) = DOS((j+1)/2) - ro / Pi
+      else
+        DOS(j) = DOS(j) - ro / Pi
+      end if
+
       i = i + no
-       
+
     end do
 
 !    call timer('ts_GS',2)

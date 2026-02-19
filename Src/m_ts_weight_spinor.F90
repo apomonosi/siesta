@@ -33,6 +33,8 @@
 ! In the case of non-collinear spins / spin-orbit coupling we use the sum of
 ! the real part of the spin-box diagonals only.
 
+#include "mpi_macros.f"
+
 module m_ts_weight_spinor
 
   use precision, only: dp
@@ -128,7 +130,7 @@ contains
 
 #ifdef MPI
     integer :: MPIerror
-    integer :: status(MPI_STATUS_SIZE)
+    MPI_STATUS_TYPE :: status
 #endif
 
 #ifdef TRANSIESTA_DEBUG
